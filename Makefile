@@ -13,9 +13,9 @@
 NAME 			= webserv
 
 CFLAGS 			:= -Wall -Wextra -Werror -std=c++98 -g3 -gdwarf-3 -O0
-CC 				= c++
+CPP 			= c++
 
-SRCS			= main.cpp
+SRCS			= src/main.cpp
 
 BUILD_DIR		= build
 OBJS			= $(SRCS:%.cpp=$(BUILD_DIR)/%.o)
@@ -23,12 +23,12 @@ OBJS			= $(SRCS:%.cpp=$(BUILD_DIR)/%.o)
 all: $(NAME)
 
 $(NAME): $(OBJS)
-		$(CC) $(CFLAGS) $(OBJS) -o $@
+		$(CPP) $(CFLAGS) $(OBJS) -o $@
 		@echo "$(NAME) BUILD COMPLETE!"
 
 $(BUILD_DIR)/%.o: %.cpp
 		@if [ ! -d $(@D) ]; then mkdir -p $(@D); fi
-		$(CC) $(CFLAGS) -c $^ -o $@
+		$(CPP) $(CFLAGS) -c $^ -o $@
 
 ## clean
 clean:

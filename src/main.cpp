@@ -11,10 +11,30 @@
 /* ************************************************************************** */
 
 #include <iostream>
+#include <fstream>
 
 
-int main()
+int main(int argc, char **argv)
 {
-	std::cout << "Wello horld!" << std::endl;
+	try {
+		std::cout << "Wello horld!" << std::endl;
+
+		std::ifstream file(argv[1]);
+		if (!file.is_open())
+			std::cerr << "Error: File doesn't exist or can't be opened." << std::endl;
+		else
+		{
+			std::string line;
+			while(std::getline(file, line))
+				std::cout << line << std::endl;
+		}
+		file.close();
+	}
+	catch (const std::exception& e)
+	{
+		std::cerr << e.what() << std::endl;
+	}
+
     return 0;
+	(void)argc;
 }
