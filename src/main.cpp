@@ -10,31 +10,33 @@
 /*                                                                            */
 /* ************************************************************************** */
 
-#include <iostream>
-#include <fstream>
 
+#include "webserv.hpp"
+#include "app/Server.hpp"
+#include "app/Client.hpp"
+#include "utils/Parser.hpp"
 
 int main(int argc, char **argv)
 {
 	try {
 		std::cout << "Wello horld!" << std::endl;
+		char *filename = argv[1];
+		Config conf = Parser::parse(filename);
+		Server srv = Server(conf);
 
-		std::ifstream file(argv[1]);
-		if (!file.is_open())
-			std::cerr << "Error: File doesn't exist or can't be opened." << std::endl;
-		else
-		{
-			std::string line;
-			while(std::getline(file, line))
-				std::cout << line << std::endl;
+		srv.start();
+
+		while(1) {
+			Client clnt;
+			clnt.acceptConnection(srv);
+			clnt.handleRequest();
 		}
-		file.close();
 	}
 	catch (const std::exception& e)
 	{
 		std::cerr << e.what() << std::endl;
 	}
 
-    return 0;
+    return (0);
 	(void)argc;
 }
