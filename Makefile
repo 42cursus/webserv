@@ -10,4 +10,34 @@
 #                                                                              #
 # **************************************************************************** #
 
+NAME 			= webserv
 
+CFLAGS 			:= -Wall -Wextra -Werror -std=c++98 -g3 -gdwarf-3 -O0
+CPP 			= c++
+
+SRCS			= src/main.cpp
+
+BUILD_DIR		= build
+OBJS			= $(SRCS:%.cpp=$(BUILD_DIR)/%.o)
+
+all: $(NAME)
+
+$(NAME): $(OBJS)
+		$(CPP) $(CFLAGS) $(OBJS) -o $@
+		@echo "$(NAME) BUILD COMPLETE!"
+
+$(BUILD_DIR)/%.o: %.cpp
+		@if [ ! -d $(@D) ]; then mkdir -p $(@D); fi
+		$(CPP) $(CFLAGS) -c $^ -o $@
+
+## clean
+clean:
+		@$(RM) -rf $(OBJS)
+
+## fclean
+fclean: clean
+		@$(RM) -vf $(NAME)
+
+re: fclean all
+
+.PHONY: all clean fclean re
