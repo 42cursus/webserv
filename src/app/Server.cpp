@@ -48,11 +48,11 @@ int Server::start()
 		throw Server::GenericException();
 	}
 	/* listens on socket */
-	if(listen(_socket_fd, 5) < 0) {
+	if (listen(_socket_fd, 5) < 0) {
 		std::cerr << "Failed to listen on server socket." << std::endl;
 		throw Server::GenericException();
 	}
-	std::cout << "Server started on port : " << cfg.server_addr.sin_port << std::endl;
+	std::cout << "Server started on port: " << ntohs(cfg.server_addr.sin_port) << std::endl;
 	return _socket_fd;
 }
 
@@ -64,6 +64,11 @@ Server::~Server()
 int Server::getSocketFd() const
 {
 	return _socket_fd;
+}
+
+void Server::stop()
+{
+
 }
 
 const char *Server::GenericException::what() const throw()

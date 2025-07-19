@@ -28,7 +28,6 @@ public:
 								  std::string> headers,
 								  std::string body,
 								  std::string mimetype);
-
 };
 
 

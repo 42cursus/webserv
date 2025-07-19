@@ -30,13 +30,11 @@ Config Parser::parse(const char *filename)
 
 	std::ifstream file(filename);
 	if (!file.is_open())
-		std::cerr << "Error: File doesn't exist or can't be opened."
-				  << std::endl;
+		std::cerr << "Err: File doesn't exist or can't be opened." << std::endl;
 	else
 	{
-		std::ifstream &file_1 = file;
 		std::string line;
-		while (std::getline(file_1, line))
+		while (std::getline(file, line))
 			std::cout << line << std::endl;
 	}
 	file.close();

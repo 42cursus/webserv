@@ -18,14 +18,16 @@
 HttpRequest::HttpRequest(const std::string &path) : path(path)
 {}
 
-void HttpRequest::parseRequest(const std::string& rawRequest){
+void HttpRequest::parseRequest(const std::string &rawRequest)
+{
 
 	int currindex = 0;
 
-	while(currindex < rawRequest.length())
+	while (currindex < rawRequest.length())
 	{
-		if(rawRequest[currindex] == ' ') {
-			break ;
+		if (rawRequest[currindex] == ' ')
+		{
+			break;
 		}
 		method += rawRequest[currindex];
 		currindex++;
@@ -34,8 +36,10 @@ void HttpRequest::parseRequest(const std::string& rawRequest){
 	headers["method"] = method;
 
 	currindex++;
-	while(currindex < rawRequest.length()){
-		if(rawRequest[currindex] == ' '){
+	while (currindex < rawRequest.length())
+	{
+		if (rawRequest[currindex] == ' ')
+		{
 			break;
 		}
 		path += rawRequest[currindex];
@@ -45,30 +49,30 @@ void HttpRequest::parseRequest(const std::string& rawRequest){
 	headers["path"] = path;
 }
 
-std::string HttpRequest::readHtmlFile(const std::string &path) {
-
-	std::string filename = path.substr(1,path.length());
-
+std::string HttpRequest::readHtmlFile(const std::string &path)
+{
+	int flag = 0;
+	std::string filename = path.substr(1, path.length());
 
 	std::string str = "../" + filename;
 	std::ifstream file(str.c_str());
-	int flag=0;
-	if(!file) {
-		flag=1;
+
+	if (!file) {
+		flag = 1;
 		std::cerr << "File not found." << std::endl;
 	}
 
-	// std::cout<<"file found"<<std::endl;
-	if(flag==0){
+	if (flag == 0) {
 		std::stringstream buffer;
 		buffer << file.rdbuf();
 		return buffer.str();
 	}
 
-
 	return "";
 }
-std::string HttpRequest::getMimeType(const std::string &path){
+
+std::string HttpRequest::getMimeType(const std::string &path)
+{
 	std::map<std::string, std::string> mimeTypes;
 
 	mimeTypes.insert(std::make_pair("html", "text/html"));

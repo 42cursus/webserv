@@ -27,34 +27,35 @@ Client::~Client()
 void Client::acceptConnection(Server &srv)
 {
 	_socket_fd = accept(srv.getSocketFd(), (struct sockaddr*)&_addr, &_addr_size);
-	if (_socket_fd < 0){
+	if (_socket_fd < 0) {
 		std::cerr << "Failed to accept client request." << std::endl;
 		throw Client::GenericException();
 	}
 }
 
+void logServingFile(const std::string& path, const std::string& mimetype) {
+	std::cout << "Serving file: " << path << " with MIME type: " << mimetype << std::endl;
+}
+
 void Client::handleRequest()
 {
-	//handle client request.
-	//read from the client.
 	read(_socket_fd, _req_buffer, 1024);
 	HttpRequest req = HttpRequest();
 
 	req.parseRequest(_req_buffer);
-	// for(auto it = req.headers.begin(); it != req.headers.end(); it++){
-	//     std::cout << it->first << " : " << it->second << std::endl;
-	// }
+	std::map<const std::string, std::string>::iterator it = req.headers.begin();
+	while (it != req.headers.end())
+	{
+		std::cout << it->first << " : " << it->second << std::endl;
+		it++;
+	}
 	std::string mimetype = req.getMimeType(req.path);
-	// std::cout << "Mimetype: " << mimetype << std::endl;
 	HttpResponse res= HttpResponse();
 	std::string body = req.readHtmlFile(req.path);
-	std::string response = res.buildHttpResponse("200", "OK", req.headers, body,
-												 mimetype);
-//	logServingFile(req.path, mimetype);
+	std::string response = res.buildHttpResponse("200", "OK", req.headers, body, mimetype);
+	logServingFile(req.path, mimetype);
 
-	//write to client.
 	write(_socket_fd, response.c_str(), response.length());
-	//close client socket.
 	close(_socket_fd);
 }
 
