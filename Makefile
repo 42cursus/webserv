@@ -3,10 +3,10 @@
 #                                                         :::      ::::::::    #
 #    Makefile                                           :+:      :+:    :+:    #
 #                                                     +:+ +:+         +:+      #
-#    By: abelov <abelov@student.42london.com>       +#+  +:+       +#+         #
+#    By: margo <margo@student.42.fr>                +#+  +:+       +#+         #
 #                                                 +#+#+#+#+#+   +#+            #
 #    Created: 2025/07/17 22:30:53 by abelov            #+#    #+#              #
-#    Updated: 2025/07/17 22:30:54 by abelov           ###   ########.fr        #
+#    Updated: 2025/07/23 18:14:33 by margo            ###   ########.fr        #
 #                                                                              #
 # **************************************************************************** #
 
@@ -15,7 +15,12 @@ NAME 			= webserv
 CFLAGS 			:= -Wall -Wextra -Werror -std=c++98 -g3 -gdwarf-3 -O0
 CPP 			= c++
 
-SRCS			= src/main.cpp
+SRCS			= src/main.cpp \
+				  src/app/Client.cpp \
+				  src/app/Server.cpp \
+				  src/http/HttpRequest.cpp \
+				  src/http/HttpResponse.cpp \
+				  src/utils/Parser.cpp
 
 BUILD_DIR		= build
 OBJS			= $(SRCS:%.cpp=$(BUILD_DIR)/%.o)
