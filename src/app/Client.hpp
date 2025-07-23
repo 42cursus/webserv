@@ -24,8 +24,9 @@ private:
 	int _socket_fd;
 	struct sockaddr_in _addr;
 	socklen_t _addr_size;
+	Server &srv;
 public:
-	Client();
+	explicit Client(Server &);
 	~Client();
 
 	class GenericException : public  std::exception
@@ -34,7 +35,7 @@ public:
 		const char* what() const throw();
 	};
 
-	void acceptConnection(Server &srv);
+	void acceptConnection();
 	void handleRequest();
 };
 

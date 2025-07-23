@@ -29,7 +29,7 @@ public:
 
 	void parseRequest(const std::string& rawRequest);
 
-	std::string readHtmlFile(const std::string &path);
+	std::string readHtmlFile(const std::string &, const std::string &);
 	std::string getMimeType(const std::string &path);
 };
 

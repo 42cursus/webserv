@@ -12,8 +12,14 @@
 
 NAME 			= webserv
 
+BUILD_DIR		= build
+INC_DIR			= ./include
+
 CFLAGS 			:= -Wall -Wextra -Werror -std=c++98 -g3 -gdwarf-3 -O0
 CPP 			= c++
+
+INCLUDE_FLAGS	:= -I. -I$(INC_DIR) -I/usr/include
+
 
 SRCS			= src/main.cpp \
 				  src/app/Client.cpp \
@@ -22,7 +28,8 @@ SRCS			= src/main.cpp \
 				  src/http/HttpResponse.cpp \
 				  src/utils/Parser.cpp
 
-BUILD_DIR		= build
+
+
 OBJS			= $(SRCS:%.cpp=$(BUILD_DIR)/%.o)
 
 all: $(NAME)
@@ -33,7 +40,7 @@ $(NAME): $(OBJS)
 
 $(BUILD_DIR)/%.o: %.cpp
 		@if [ ! -d $(@D) ]; then mkdir -p $(@D); fi
-		$(CPP) $(CFLAGS) -c $^ -o $@
+		$(CPP) $(CFLAGS) $(INCLUDE_FLAGS) -c $^ -o $@
 
 ## clean
 clean:

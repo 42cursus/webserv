@@ -13,14 +13,52 @@
 #include <cstring>
 #include "Parser.hpp"
 
+/*
+struct Config
+{
+	struct {
+		struct {
+			struct sockaddr_in ipv4_listen;
+			struct {
+				char *path;
+				struct {
+					char *root;
+					char **index;
+				}	config;
+			} location;
+		} server;
+	} http;
+};
+ */
 
 Config Parser::make_default_config()
 {
-	Config cfg = {0x00};
-	std::memset(&cfg.server_addr, 0, sizeof(cfg.server_addr));
-	cfg.server_addr.sin_family = AF_INET;
-	cfg.server_addr.sin_port = htons(8080);
-	cfg.server_addr.sin_addr.s_addr = htonl(INADDR_ANY);
+	static const char *index[] = {
+		"index.html",
+		"index.htm"
+	};
+
+	Config cfg = {
+		.http = {
+			.server = {
+				.ipv4_listen = {
+					.sin_family = AF_INET,
+					.sin_port = htons(8080),
+					.sin_addr = {
+						.s_addr = htonl(INADDR_ANY)
+					},
+					.sin_zero = {0x00}
+				},
+				.location = {
+					.path = (char *)"/",
+					.config = {
+						.root = (char *)"./resources/web",
+						.index = (char **)index
+					}
+				}
+			}
+		}
+	};
 	return cfg;
 }
 

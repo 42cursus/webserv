@@ -19,10 +19,11 @@
 
 class Parser
 {
-	static Config make_default_config();
 
 public:
 	static Config parse(const char *filename);
+
+	static Config make_default_config();
 };
 
 

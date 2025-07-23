@@ -23,7 +23,7 @@ void HttpRequest::parseRequest(const std::string &rawRequest)
 
 	int currindex = 0;
 
-	while (currindex < rawRequest.length())
+	while (currindex < (int)rawRequest.length())
 	{
 		if (rawRequest[currindex] == ' ')
 		{
@@ -36,25 +36,22 @@ void HttpRequest::parseRequest(const std::string &rawRequest)
 	headers["method"] = method;
 
 	currindex++;
-	while (currindex < rawRequest.length())
+	while (currindex < (int)rawRequest.length())
 	{
 		if (rawRequest[currindex] == ' ')
-		{
 			break;
-		}
 		path += rawRequest[currindex];
 		currindex++;
 	}
-
 	headers["path"] = path;
 }
 
-std::string HttpRequest::readHtmlFile(const std::string &path)
+std::string HttpRequest::readHtmlFile(const std::string &path,
+									  const std::string &root_folder)
 {
 	int flag = 0;
 	std::string filename = path.substr(1, path.length());
-
-	std::string str = "../" + filename;
+	std::string str = root_folder + "/" + filename;
 	std::ifstream file(str.c_str());
 
 	if (!file) {
@@ -76,8 +73,10 @@ std::string HttpRequest::getMimeType(const std::string &path)
 	std::map<std::string, std::string> mimeTypes;
 
 	mimeTypes.insert(std::make_pair("html", "text/html"));
+	mimeTypes.insert(std::make_pair("htm", "text/html"));
 	mimeTypes.insert(std::make_pair("css", "text/css"));
 	mimeTypes.insert(std::make_pair("js", "text/javascript"));
+	mimeTypes.insert(std::make_pair("jpeg", "image/jpeg"));
 	mimeTypes.insert(std::make_pair("jpg", "image/jpeg"));
 	mimeTypes.insert(std::make_pair("png", "image/png"));
 

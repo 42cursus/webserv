@@ -15,9 +15,32 @@
 #include "app/Server.hpp"
 #include "app/Client.hpp"
 #include "utils/Parser.hpp"
+#include <csignal>
+typedef struct sigaction	t_sigaction;
+
+
+static sig_atomic_t g_var;
+
+void	sig_handler(int sig, siginfo_t *info, void *ctx)
+{
+	int					sipid;
+
+	sipid = info->si_pid;
+	if (sig == SIGINT)
+		g_var = SIGINT;
+	return ;
+	(void)ctx;
+	(void)sipid;
+}
 
 int main(int argc, char **argv)
 {
+	t_sigaction	act;
+
+	act.sa_flags = SA_SIGINFO | SA_RESTART;
+	act.sa_sigaction = &sig_handler;
+	sigemptyset(&act.sa_mask);
+
 	try {
 		std::cout << "Wello horld!" << std::endl;
 		char *filename = argv[1];
@@ -26,11 +49,13 @@ int main(int argc, char **argv)
 
 		srv.start();
 
-		while(1) {
-			Client clnt;
-			clnt.acceptConnection(srv);
+		while(g_var != SIGINT)
+		{
+			Client clnt(srv);
+			clnt.acceptConnection();
 			clnt.handleRequest();
 		}
+		srv.stop();
 	}
 	catch (const std::exception& e)
 	{

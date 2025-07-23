@@ -17,12 +17,24 @@
 #include <unistd.h>
 #include <cerrno>
 #include <csignal>
+#include <cstring>
 #include <string>
 #include <netinet/in.h>
 
 struct Config
 {
-	struct sockaddr_in server_addr;
+	struct {
+		struct {
+			struct sockaddr_in ipv4_listen;
+			struct {
+				char	*path;
+				struct {
+					char	*root;
+					char	**index;
+				}	config;
+			}	location;
+		}	server;
+	}	http;
 };
 
 #endif //WEBSERV_HPP

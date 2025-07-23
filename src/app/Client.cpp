@@ -14,7 +14,12 @@
 #include "src/http/HttpRequest.hpp"
 #include "src/http/HttpResponse.hpp"
 
-Client::Client() : _socket_fd(), _addr(), _addr_size()
+#ifdef __clang__
+#pragma clang diagnostic push
+#pragma ide diagnostic ignored "modernize-use-auto"
+#endif
+
+Client::Client(Server &srv) : _req_buffer(), _socket_fd(), _addr(), _addr_size(), srv(srv)
 {
 
 }
@@ -24,7 +29,7 @@ Client::~Client()
 
 }
 
-void Client::acceptConnection(Server &srv)
+void Client::acceptConnection()
 {
 	_socket_fd = accept(srv.getSocketFd(), (struct sockaddr*)&_addr, &_addr_size);
 	if (_socket_fd < 0) {
@@ -50,8 +55,10 @@ void Client::handleRequest()
 		it++;
 	}
 	std::string mimetype = req.getMimeType(req.path);
+	std::string body = req.readHtmlFile(req.path, srv.getCfg().http.server.location.config.root);
+
 	HttpResponse res= HttpResponse();
-	std::string body = req.readHtmlFile(req.path);
+
 	std::string response = res.buildHttpResponse("200", "OK", req.headers, body, mimetype);
 	logServingFile(req.path, mimetype);
 
@@ -63,3 +70,7 @@ const char *Client::GenericException::what() const throw()
 {
 	return "Client exception happened";
 }
+
+#ifdef __clang__
+#pragma clang diagnostic pop
+#endif

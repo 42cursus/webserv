@@ -27,15 +27,16 @@ class Server
 {
 private:
 	static const unsigned int DEFAULT_PORT = 8080;
-	static Config make_default_config();
 	int _socket_fd;
 
 protected:
 	const Config cfg;
+public:
+	const Config &getCfg() const;
 
 public:
 	static Config default_config;
-	Server(const Config conf);
+	explicit Server(Config conf);
 	Server();
 	~Server();
 
