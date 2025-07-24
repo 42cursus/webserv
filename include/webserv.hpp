@@ -26,6 +26,7 @@ struct Config
 	struct {
 		struct {
 			struct sockaddr_in ipv4_listen;
+			char	*server_name;
 			struct {
 				char	*path;
 				struct {

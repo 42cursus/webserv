@@ -1,43 +1,55 @@
 /* ************************************************************************** */
 /*                                                                            */
 /*                                                        :::      ::::::::   */
-/*   Client.hpp                                         :+:      :+:    :+:   */
+/*   TCPServer.hpp                                      :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
 /*   By: abelov <abelov@student.42london.com>       +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
-/*   Created: 2025/07/18 20:31:02 by abelov            #+#    #+#             */
-/*   Updated: 2025/07/18 20:31:03 by abelov           ###   ########.fr       */
+/*   Created: 2025/07/18 19:12:05 by abelov            #+#    #+#             */
+/*   Updated: 2025/07/23 21:00:53 by abelov           ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
-#ifndef CLIENT_HPP
-#define CLIENT_HPP
+#pragma once
+#ifndef TCPSERVER_HPP
+#define TCPSERVER_HPP
 
-
+#include <sys/socket.h>
 #include <netinet/in.h>
-#include "Server.hpp"
+#include <arpa/inet.h>
+#include <fcntl.h>
+#include <sys/epoll.h>
 
-class Client
+#include <sys/wait.h>
+#include "webserv.hpp"
+
+class TCPServer
 {
 private:
-	char _req_buffer[1024];
+	static const unsigned int DEFAULT_PORT = 8080;
 	int _socket_fd;
-	struct sockaddr_in _addr;
-	socklen_t _addr_size;
-	Server &srv;
+
+protected:
+	const Config cfg;
 public:
-	explicit Client(Server &);
-	~Client();
+	const Config &getCfg() const;
+
+public:
+	static Config default_config;
+	explicit TCPServer(Config conf);
+	TCPServer();
+	~TCPServer();
 
 	class GenericException : public  std::exception
 	{
 	public:
 		const char* what() const throw();
 	};
-
-	void acceptConnection();
-	void handleRequest();
+	int getSocketFd() const;
+	int start();
+	int serve(TCPServer &);
+	void stop();
 };
 
 
-#endif //CLIENT_HPP
+#endif //TCPSERVER_HPP
