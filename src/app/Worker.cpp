@@ -1,16 +1,16 @@
 /* ************************************************************************** */
 /*                                                                            */
 /*                                                        :::      ::::::::   */
-/*   Client.cpp                                         :+:      :+:    :+:   */
+/*   Worker.cpp                                         :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
 /*   By: abelov <abelov@student.42london.com>       +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/07/18 21:02:20 by abelov            #+#    #+#             */
-/*   Updated: 2025/07/18 21:02:21 by abelov           ###   ########.fr       */
+/*   Updated: 2025/07/23 21:16:48 by abelov           ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
-#include "Client.hpp"
+#include "Worker.hpp"
 #include "src/http/HttpRequest.hpp"
 #include "src/http/HttpResponse.hpp"
 
@@ -19,22 +19,27 @@
 #pragma ide diagnostic ignored "modernize-use-auto"
 #endif
 
-Client::Client(Server &srv) : _req_buffer(), _socket_fd(), _addr(), _addr_size(), srv(srv)
+Worker::Worker(TCPServer &srv)
+	: _req_buffer(),
+	_socket_fd(),
+	_addr(),
+	_addr_size(),
+	srv(srv)
 {
 
 }
 
-Client::~Client()
+Worker::~Worker()
 {
 
 }
 
-void Client::acceptConnection()
+void Worker::acceptConnection()
 {
 	_socket_fd = accept(srv.getSocketFd(), (struct sockaddr*)&_addr, &_addr_size);
 	if (_socket_fd < 0) {
 		std::cerr << "Failed to accept client request." << std::endl;
-		throw Client::GenericException();
+		throw Worker::GenericException();
 	}
 }
 
@@ -42,7 +47,7 @@ void logServingFile(const std::string& path, const std::string& mimetype) {
 	std::cout << "Serving file: " << path << " with MIME type: " << mimetype << std::endl;
 }
 
-void Client::handleRequest()
+void Worker::handleRequest()
 {
 	read(_socket_fd, _req_buffer, 1024);
 	HttpRequest req = HttpRequest();
@@ -66,7 +71,7 @@ void Client::handleRequest()
 	close(_socket_fd);
 }
 
-const char *Client::GenericException::what() const throw()
+const char *Worker::GenericException::what() const throw()
 {
 	return "Client exception happened";
 }

@@ -1,38 +1,39 @@
 /* ************************************************************************** */
 /*                                                                            */
 /*                                                        :::      ::::::::   */
-/*   Server.cpp                                         :+:      :+:    :+:   */
+/*   TCPServer.cpp                                      :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
 /*   By: abelov <abelov@student.42london.com>       +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/07/18 19:12:40 by abelov            #+#    #+#             */
-/*   Updated: 2025/07/18 19:12:41 by abelov           ###   ########.fr       */
+/*   Updated: 2025/07/23 21:01:03 by abelov           ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
 #include <cstring>
-#include "Server.hpp"
+#include "TCPServer.hpp"
 #include "src/utils/Parser.hpp"
+#include "Worker.hpp"
 
-Config Server::default_config = Parser::make_default_config();
+Config TCPServer::default_config = Parser::make_default_config();
 
-Server::Server(const Config conf) : cfg(conf)
+TCPServer::TCPServer(const Config conf) : cfg(conf)
 {
 
 }
 
-Server::Server() : cfg(default_config)
+TCPServer::TCPServer() : cfg(default_config)
 {
 
 }
 
-int Server::start()
+int TCPServer::start()
 {
 	sockaddr_in in = cfg.http.server.ipv4_listen;
 	_socket_fd = socket(in.sin_family, SOCK_STREAM, 0);
 	if (_socket_fd < 0) {
 		std::cerr << "Failed to create server socket." << std::endl;
-		throw Server::GenericException();
+		throw TCPServer::GenericException();
 	}
 	int reuse = 1;
 	int result = setsockopt(_socket_fd, SOL_SOCKET, SO_REUSEADDR, (void *)&reuse, sizeof(reuse));
@@ -43,39 +44,52 @@ int Server::start()
 	if (is_bind < 0)
 	{
 		std::cerr << "Failed to bind server socket." << std::endl;
-		throw Server::GenericException();
+		throw TCPServer::GenericException();
 	}
 	// listens on socket
 	if (listen(_socket_fd, 5) < 0)
 	{
 		std::cerr << "Failed to listen on server socket." << std::endl;
-		throw Server::GenericException();
+		throw TCPServer::GenericException();
 	}
 	std::cout << "Server started on port: " << ntohs(in.sin_port) << std::endl;
 	return _socket_fd;
 }
 
-Server::~Server()
+TCPServer::~TCPServer()
 {
 
 }
 
-int Server::getSocketFd() const
+int TCPServer::getSocketFd() const
 {
 	return _socket_fd;
 }
 
-void Server::stop()
+void TCPServer::stop()
 {
 	close(_socket_fd);
 }
 
-const Config &Server::getCfg() const
+const Config &TCPServer::getCfg() const
 {
 	return cfg;
 }
 
-const char *Server::GenericException::what() const throw()
+int TCPServer::serve(TCPServer &srv)
+{
+	extern sig_atomic_t g_var;
+
+	while(g_var != SIGINT)
+	{
+		Worker wrkr(srv);
+		wrkr.acceptConnection();
+		wrkr.handleRequest();
+	}
+	return 0;
+}
+
+const char *TCPServer::GenericException::what() const throw()
 {
 	return "Server exception happened";
 }

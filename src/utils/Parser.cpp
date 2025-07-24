@@ -128,6 +128,7 @@ Config Parser::make_default_config()
 					},
 					.sin_zero = {0x00}
 				},
+				.server_name = (char *)"localhost",
 				.location = {
 					.path = (char *)"/",
 					.config = {
