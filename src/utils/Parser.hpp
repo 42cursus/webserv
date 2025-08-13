@@ -6,7 +6,7 @@
 /*   By: margo <margo@student.42.fr>                +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/07/18 20:22:36 by abelov            #+#    #+#             */
-/*   Updated: 2025/08/12 22:12:26 by margo            ###   ########.fr       */
+/*   Updated: 2025/08/13 23:34:07 by margo            ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -40,6 +40,7 @@ typedef	struct s_token
 	e_token	type;
 	std::string	literal;
 	int	line;
+	bool	operator==(const t_token& other) const;
 }	t_token;
 class Parser
 {

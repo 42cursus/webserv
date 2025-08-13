@@ -6,7 +6,7 @@
 /*   By: margo <margo@student.42.fr>                +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/07/18 20:22:49 by abelov            #+#    #+#             */
-/*   Updated: 2025/08/12 22:23:38 by margo            ###   ########.fr       */
+/*   Updated: 2025/08/13 23:33:22 by margo            ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -178,22 +178,22 @@ Config	Parser::getConfig() const
 	return _config;
 }
 
-t_token	Parser::getCurrentToken() const
+s_token	Parser::getCurrentToken() const
 {
 	return _currentToken;
 }
 
-void	Parser::setCurrentToken(t_token token)
+void	Parser::setCurrentToken(s_token token)
 {
 	_currentToken = token;
 }
 
-t_token	Parser::getNextToken() const
+s_token	Parser::getNextToken() const
 {
 	return _nextToken;
 }
 
-void	Parser::setNextToken(t_token token)
+void	Parser::setNextToken(s_token token)
 {
 	_nextToken = token;
 }
@@ -209,18 +209,17 @@ Config Parser::parse(const char *filename)
 	(void)filename;
 }
 
-/*
-std::vector<t_token>	Parser::tokenize()
+std::vector<s_token>	Parser::tokenize()
 {
 	int	linecount = 0;
 	std::string	line;
-	std::vector<t_token>	tokens;
+	std::vector<s_token>	tokens;
 	
 	std::ifstream file(_configRoot);
 	if (!file.is_open())
 	{
 		std::cerr << "Err: File doesn't exist or can't be opened." << std::endl;
-		return std::vector<t_token>();
+		return std::vector<s_token>();
 	}
 	
 	while (std::getline(file, line))
@@ -236,29 +235,29 @@ std::vector<t_token>	Parser::tokenize()
 		{
 			if (word[0] == '#')
 			{
-				tokens.push_back(t_token{COMMENT, word, linecount}); // to do: function for storing comments
+				tokens.push_back(s_token{COMMENT, word, linecount}); // to do: function for storing comments
 				break ;
 			}
 			else if (word == "http" || word == "server" || word == "listen" || word == "location" || word == "root" || word == "index")
-				tokens.push_back(t_token{KEY, word, linecount});
+				tokens.push_back(s_token{KEY, word, linecount});
 			else if (word == "{")
-				tokens.push_back(t_token{BLOCK_START, word, linecount});
+				tokens.push_back(s_token{BLOCK_START, word, linecount});
 			else if (word == "}")
-				tokens.push_back(t_token{BLOCK_END, word, linecount});
+				tokens.push_back(s_token{BLOCK_END, word, linecount});
 			else if (word.find('\\') != std::string::npos)
-				tokens.push_back(t_token{REGEX, word, linecount});
+				tokens.push_back(s_token{REGEX, word, linecount});
 			else if (word[0] == '"' && word.back() == '"')
-				tokens.push_back(t_token{QUOTES, readQuotedString(word), linecount});
+				tokens.push_back(s_token{QUOTES, readQuotedString(word), linecount});
 			else if (word[0] == '$')
-				tokens.push_back(t_token{VAR, word, linecount}); // to do: function extracting/expanding variable ???
+				tokens.push_back(s_token{VAR, word, linecount}); // to do: function extracting/expanding variable ???
 			else if (word == ";" || word.back() == ';')
 			{
 				if (word != ";")
-					tokens.push_back(t_token{KEY, word.substr(0, word.length() - 1), linecount});
-				tokens.push_back(t_token{SEMICOLON, ";", linecount});
+					tokens.push_back(s_token{KEY, word.substr(0, word.length() - 1), linecount});
+				tokens.push_back(s_token{SEMICOLON, ";", linecount});
 			}
 			else
-				tokens.push_back(t_token{ILLEGAL, word, linecount});
+				tokens.push_back(s_token{ILLEGAL, word, linecount});
 		}
 	}
 	
@@ -333,17 +332,48 @@ Config Parser::parse(const char *filename)
 }
 */
 
-/*
+bool	s_token::operator==(const s_token&	other) const
+{
+	return (type == other.type && literal == other.literal && line == other.line);
+}
+
+void	printTokens(std::vector<s_token> tokens)
+{
+	for (std::vector<s_token>::iterator it = tokens.begin(); it != tokens.end(); ++it)
+	{
+		if (it->type == EOL)
+			std::cout << "EOL" << it->literal << "on line" << it->line << std::endl;
+		else if (it->type == KEY)
+			std::cout << "KEYWORD" << it->literal << "on line" << it->line << std::endl;
+		else if (it->type == VAR)
+			std::cout << "VARIABLE" << it->literal << "on line" << it->line << std::endl;	
+		else if (it->type == QUOTES)
+			std::cout << "QUOTED STRING" << it->literal << "on line" << it->line << std::endl;
+		else if (it->type == BLOCK_START)
+			std::cout << "BLOCK START" << it->literal << "on line" << it->line << std::endl;
+		else if (it->type == BLOCK_END)
+			std::cout << "BLOCK END" << it->literal << "on line" << it->line << std::endl;
+		else if (it->type == SEMICOLON)
+			std::cout << "SEMICOLON" << it->literal << "on line" << it->line << std::endl;
+		else if (it->type == REGEX)
+			std::cout << "REGEX" << it->literal << "on line" << it->line << std::endl;
+		else if (it->type == COMMENT)
+			std::cout << "COMMENT" << it->literal << "on line" << it->line << std::endl;
+		else if (it->type == ILLEGAL)
+			std::cout << "EOL" << it->literal << "on line" << it->line << std::endl;
+		else
+			std::cout << "UNKNOWN" << it->literal << "on line" << it->line << std::endl;
+	}
+}
+
 int	main(int argc, char *argv[])
 {
 	Parser*	parse = new Parser();
-	std::string	conf;
-	char*	filename;
+	std::vector<s_token> tokens;
 
 	(void)argc;
-	filename = argv[1];
-	conf = parse->read_file(filename);
-	std::cout << conf << std::endl;
-	std::map<std::string, std::string> mtypes = parse->init_mime_types();
+	parse->setConfigRoot(argv[1]);
+	tokens = parse->tokenize();
+	printTokens(tokens);
 }
 */
