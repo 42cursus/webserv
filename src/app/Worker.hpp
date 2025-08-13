@@ -1,55 +1,43 @@
 /* ************************************************************************** */
 /*                                                                            */
 /*                                                        :::      ::::::::   */
-/*   Server.hpp                                         :+:      :+:    :+:   */
+/*   Worker.hpp                                         :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
 /*   By: abelov <abelov@student.42london.com>       +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
-/*   Created: 2025/07/18 19:12:05 by abelov            #+#    #+#             */
-/*   Updated: 2025/07/18 19:12:05 by abelov           ###   ########.fr       */
+/*   Created: 2025/07/18 20:31:02 by abelov            #+#    #+#             */
+/*   Updated: 2025/07/23 21:16:43 by abelov           ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
-#pragma once
-#ifndef SERVER_HPP
-#define SERVER_HPP
+#ifndef WORKER_HPP
+#define WORKER_HPP
 
-#include <sys/socket.h>
+
 #include <netinet/in.h>
-#include <arpa/inet.h>
-#include <fcntl.h>
-#include <sys/epoll.h>
+#include "TCPServer.hpp"
 
-#include <sys/wait.h>
-#include "webserv.hpp"
-
-class Server
+class Worker
 {
 private:
-	static const unsigned int DEFAULT_PORT = 8080;
+	char _req_buffer[1024];
 	int _socket_fd;
-
-protected:
-	const Config cfg;
+	struct sockaddr_in _addr;
+	socklen_t _addr_size;
+	TCPServer &srv;
 public:
-	const Config &getCfg() const;
-
-public:
-	static Config default_config;
-	explicit Server(Config conf);
-	Server();
-	~Server();
+	explicit Worker(TCPServer &);
+	~Worker();
 
 	class GenericException : public  std::exception
 	{
 	public:
 		const char* what() const throw();
 	};
-	int getSocketFd() const;
-	int start();
-	void stop();
 
+	void acceptConnection();
+	void handleRequest();
 };
 
 
-#endif //SERVER_HPP
+#endif //WORKER_HPP

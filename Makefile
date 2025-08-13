@@ -22,8 +22,8 @@ INCLUDE_FLAGS	:= -I. -I$(INC_DIR) -I/usr/include
 
 
 SRCS			= src/main.cpp \
-				  src/app/Client.cpp \
-				  src/app/Server.cpp \
+				  src/app/Worker.cpp \
+				  src/app/TCPServer.cpp \
 				  src/http/HttpRequest.cpp \
 				  src/http/HttpResponse.cpp \
 				  src/utils/Parser.cpp
