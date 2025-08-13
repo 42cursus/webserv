@@ -6,7 +6,7 @@
 /*   By: margo <margo@student.42.fr>                +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/07/18 20:22:49 by abelov            #+#    #+#             */
-/*   Updated: 2025/08/08 16:39:59 by margo            ###   ########.fr       */
+/*   Updated: 2025/08/12 22:23:38 by margo            ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -62,6 +62,54 @@ bool	Parser::isInBlock() const
 	return _inBlock;
 }
 
+std::string	Parser::getConfigRoot() const
+{
+	return _configRoot;
+}
+
+void	Parser::setConfigRoot(std::string configRoot)
+{
+	_configRoot = configRoot;
+}
+
+Config	Parser::getConfig() const
+{
+	return _config;
+}
+
+t_token	Parser::getCurrentToken() const
+{
+	return _currentToken;
+}
+
+void	Parser::setCurrentToken(t_token token)
+{
+	_currentToken = token;
+}
+
+t_token	Parser::getNextToken() const
+{
+	return _nextToken;
+}
+
+void	Parser::setNextToken(t_token token)
+{
+	_nextToken = token;
+}
+
+std::string	Parser::readQuotedString(std::string word)
+{
+	if (word.length() >= 2 && word[0] == '"' && word.back() == '"')
+		return word.substr(1, word.length() - 2);
+
+	return word;
+}
+
+void	Parser::toggle()
+{
+	_currentState->toggle(this);
+}
+
 Config Parser::make_default_config()
 {
 	static const char *index[] = {
@@ -109,6 +157,62 @@ std::string Parser::read_file(const char *filename)
 	file.close();
 
 	return buffer.str();
+}
+
+std::vector<t_token>	Parser::tokenize()
+{
+	int	linecount = 0;
+	std::string	line;
+	std::vector<t_token>	tokens;
+	
+	std::ifstream file(_configRoot);
+	if (!file.is_open())
+	{
+		std::cerr << "Err: File doesn't exist or can't be opened." << std::endl;
+		return std::vector<t_token>();
+	}
+	
+	while (std::getline(file, line))
+	{
+		linecount++;
+		std::istringstream	iss(line);
+		std::string	word;
+		
+		if (line.empty())
+			continue ;
+
+		while (iss >> word)
+		{
+			if (word[0] == '#')
+			{
+				tokens.push_back(t_token{COMMENT, word, linecount}); // to do: function for storing comments
+				break ;
+			}
+			else if (word == "http" || word == "server" || word == "listen" || word == "location" || word == "root" || word == "index")
+				tokens.push_back(t_token{KEY, word, linecount});
+			else if (word == "{")
+				tokens.push_back(t_token{BLOCK_START, word, linecount});
+			else if (word == "}")
+				tokens.push_back(t_token{BLOCK_END, word, linecount});
+			else if (word.find('\\') != std::string::npos)
+				tokens.push_back(t_token{REGEX, word, linecount});
+			else if (word[0] == '"' && word.back() == '"')
+				tokens.push_back(t_token{QUOTES, readQuotedString(word), linecount});
+			else if (word[0] == '$')
+				tokens.push_back(t_token{VAR, word, linecount}); // to do: function extracting/expanding variable ???
+			else if (word == ";" || word.back() == ';')
+			{
+				if (word != ";")
+					tokens.push_back(t_token{KEY, word.substr(0, word.length() - 1), linecount});
+				tokens.push_back(t_token{SEMICOLON, ";", linecount});
+			}
+			else
+				tokens.push_back(t_token{ILLEGAL, word, linecount});
+		}
+	}
+	
+	file.close();
+	return tokens;
 }
 
 std::map<std::string, std::string> Parser::init_mime_types()
