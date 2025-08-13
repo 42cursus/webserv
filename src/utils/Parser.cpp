@@ -15,6 +15,113 @@
 #include "Parser.hpp"
 
 /*
+** -------------------------------- STATIC VARS -------------------------------
+*/
+
+
+/*
+** ------------------------------- CONSTRUCTORS -------------------------------
+*/
+
+Parser::Parser(IState*	currentState)
+	: _currentState(currentState),
+	  _inBlock(false)
+{
+
+}
+
+Parser::Parser()
+{
+
+}
+
+Parser::Parser(const Parser &copy)
+{
+	(void)copy;
+}
+
+/*
+** ------------------------------- DESTRUCTOR ---------------------------------
+*/
+
+Parser::~Parser()
+{
+	delete _currentState;
+}
+
+
+/*
+** -------------------------------- OPERATORS ---------------------------------
+*/
+
+/*
+** --------------------------------- METHODS ----------------------------------
+*/
+
+std::string	Parser::readQuotedString(std::string word)
+{
+	if (word.length() >= 2 && word[0] == '"' && word[word.size() - 1] == '"')
+		return word.substr(1, word.length() - 2);
+
+	return word;
+}
+
+Config Parser::make_default_config()
+{
+	static const char *index[] = {
+		"index.html",
+		"index.htm"
+	};
+
+	Config cfg = {
+		.http = {
+			.server = {
+				.ipv4_listen = {
+					.sin_family = AF_INET,
+					.sin_port = htons(8080),
+					.sin_addr = {
+						.s_addr = htonl(INADDR_ANY)
+					},
+					.sin_zero = {0x00}
+				},
+				.server_name = (char *)"localhost",
+				.location = {
+					.path = (char *)"/",
+					.config = {
+						.root = (char *)"./resources/web",
+						.index = (char **)index
+					}
+				}
+			}
+		}
+	};
+	return cfg;
+}
+
+std::string Parser::read_file(const char *filename)
+{
+	//Config conf = make_default_config();
+
+	std::ifstream file(filename);
+	if (!file.is_open())
+	{
+		std::cerr << "Err: File doesn't exist or can't be opened." << std::endl;
+		return std::string();
+	}
+
+	std::stringstream buffer;
+	buffer << file.rdbuf();
+	file.close();
+
+	return buffer.str();
+}
+
+/*
+** -------------------------------- ACCESSORS ---------------------------------
+*/
+
+
+/*
 struct Config
 {
 	struct {
@@ -40,12 +147,6 @@ struct Config
 			6. construct config struct
  */
 
-Parser::Parser(IState*	currentState): _currentState(currentState), _key(""), _inBlock(false) {};
-
-Parser::~Parser() 
-{
-	delete _currentState;
-}
 
 IState*	Parser::getCurrentState() const
 {
@@ -97,69 +198,18 @@ void	Parser::setNextToken(t_token token)
 	_nextToken = token;
 }
 
-std::string	Parser::readQuotedString(std::string word)
-{
-	if (word.length() >= 2 && word[0] == '"' && word.back() == '"')
-		return word.substr(1, word.length() - 2);
-
-	return word;
-}
-
 void	Parser::toggle()
 {
 	_currentState->toggle(this);
 }
 
-Config Parser::make_default_config()
+Config Parser::parse(const char *filename)
 {
-	static const char *index[] = {
-		"index.html",
-		"index.htm"
-	};
-
-	Config cfg = {
-		.http = {
-			.server = {
-				.ipv4_listen = {
-					.sin_family = AF_INET,
-					.sin_port = htons(8080),
-					.sin_addr = {
-						.s_addr = htonl(INADDR_ANY)
-					},
-					.sin_zero = {0x00}
-				},
-				.server_name = (char *)"localhost",
-				.location = {
-					.path = (char *)"/",
-					.config = {
-						.root = (char *)"./resources/web",
-						.index = (char **)index
-					}
-				}
-			}
-		}
-	};
-	return cfg;
+	return Config();
+	(void)filename;
 }
 
-std::string Parser::read_file(const char *filename)
-{
-	//Config conf = make_default_config();
-
-	std::ifstream file(filename);
-	if (!file.is_open())
-	{
-		std::cerr << "Err: File doesn't exist or can't be opened." << std::endl;
-		return std::string();
-	}
-	
-	std::stringstream buffer;
-	buffer << file.rdbuf();
-	file.close();
-
-	return buffer.str();
-}
-
+/*
 std::vector<t_token>	Parser::tokenize()
 {
 	int	linecount = 0;
@@ -249,6 +299,8 @@ std::map<std::string, std::string> Parser::init_mime_types()
 	}
 	return (std::map<std::string, std::string>());
 }
+*/
+
 /*
 Config Parser::parse(const char *filename)
 {
@@ -281,6 +333,7 @@ Config Parser::parse(const char *filename)
 }
 */
 
+/*
 int	main(int argc, char *argv[])
 {
 	Parser*	parse = new Parser();
@@ -293,3 +346,4 @@ int	main(int argc, char *argv[])
 	std::cout << conf << std::endl;
 	std::map<std::string, std::string> mtypes = parse->init_mime_types();
 }
+*/
