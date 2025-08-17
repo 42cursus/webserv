@@ -52,6 +52,7 @@ int	main(int argc, char **argv)
 	try {
 		std::cout << "Wello horld!" << std::endl;
 		Config conf = Parser::parse(filename);
+		conf = Parser::make_default_config();
 		TCPServer srv = TCPServer(conf);
 		srv.start();
 		srv.serve(srv);
