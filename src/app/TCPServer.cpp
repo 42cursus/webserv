@@ -98,18 +98,21 @@ int TCPServer::serve(TCPServer &srv)
 {
 	extern sig_atomic_t		g_var;
 	std::map<int , Worker*>	connections;
-	// fd_set					readfds;
 
 	while(g_var != SIGINT)
 	{
 		std::vector<struct pollfd>	pollfds;
-		pollfds.push_back((struct pollfd){.fd = srv.getSocketFd(), .events = POLLIN});
+		pollfds.push_back((struct pollfd){.fd = srv.getSocketFd(), .events = POLLIN, .revents = 0});
 		std::map<int , Worker*>::iterator it = connections.begin();
 		while (it != connections.end())
 		{
-			pollfds.push_back((struct pollfd){.fd = it->first, .events = POLLIN});
+			pollfds.push_back((struct pollfd){.fd = it->first, .events = POLLIN, .revents = 0});
 			it++;
 		}
+		// std::cout << "pollfds: ";
+		// for (size_t i = 0; i < pollfds.size(); i++)
+		// 	std::cout << pollfds[i].fd << ' ';
+		// std::cout << std::endl;
 		poll(pollfds.data(), pollfds.size(), -1);
 		if (pollfds[0].revents & POLLIN)
 		{
