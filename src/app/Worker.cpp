@@ -16,7 +16,7 @@
 
 #ifdef __clang__
 #pragma clang diagnostic push
-#pragma ide diagnostic ignored "modernize-use-auto"
+// #pragma ide diagnostic ignored "modernize-use-auto"
 #endif
 
 Worker::Worker(TCPServer &srv)
@@ -41,6 +41,7 @@ void Worker::acceptConnection()
 		std::cerr << "Failed to accept client request." << std::endl;
 		throw Worker::GenericException();
 	}
+	std::cout << "Accepted connection. fd: " << _socket_fd << std::endl;
 }
 
 void logServingFile(const std::string& path, const std::string& mimetype) {
@@ -49,10 +50,26 @@ void logServingFile(const std::string& path, const std::string& mimetype) {
 
 void Worker::handleRequest()
 {
-	read(_socket_fd, _req_buffer, 1024);
-	HttpRequest req = HttpRequest();
+	std::string	rawRequest;
+	int			nread;
 
-	req.parseRequest(_req_buffer);
+	while (rawRequest.find("\r\n\r\n") == rawRequest.npos)
+	{
+		nread = read(_socket_fd, _req_buffer, 1024);
+		_req_buffer[nread] = '\0';
+		rawRequest += _req_buffer;
+	}
+	HttpRequest req = HttpRequest();
+	std::cout << "\e[32m" << rawRequest << "\e[31m" << std::endl;
+	for (int i = 0; rawRequest[i] != 0 && i < 1024; i++)
+	{
+		std::cout << (int)rawRequest[i] << ' ';
+		if (rawRequest[i] == '\n')
+			std::cout << std::endl;
+	}
+	std::cout << "\e[m" << std::endl;
+
+	req.parseRequest(rawRequest);
 	std::map<const std::string, std::string>::iterator it = req.headers.begin();
 	while (it != req.headers.end())
 	{

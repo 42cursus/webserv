@@ -53,6 +53,7 @@ int TCPServer::start()
 		throw TCPServer::GenericException();
 	}
 	std::cout << "Server started on port: " << ntohs(in.sin_port) << std::endl;
+	std::cout << "Listen socket_fd: " << _socket_fd << std::endl;
 	return _socket_fd;
 }
 
