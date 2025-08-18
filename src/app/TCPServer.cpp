@@ -11,6 +11,10 @@
 /* ************************************************************************** */
 
 #include <cstring>
+#include <map>
+#include <sys/select.h>
+#include <poll.h>
+#include <vector>
 #include "TCPServer.hpp"
 #include "src/utils/Parser.hpp"
 #include "Worker.hpp"
@@ -77,15 +81,55 @@ const Config &TCPServer::getCfg() const
 	return cfg;
 }
 
+// int TCPServer::serve(TCPServer &srv)
+// {
+// 	extern sig_atomic_t g_var;
+//
+// 	while(g_var != SIGINT)
+// 	{
+// 		Worker wrkr(srv);
+// 		wrkr.acceptConnection();
+// 		wrkr.handleRequest();
+// 	}
+// 	return 0;
+// }
+
 int TCPServer::serve(TCPServer &srv)
 {
-	extern sig_atomic_t g_var;
+	extern sig_atomic_t		g_var;
+	std::map<int , Worker*>	connections;
+	// fd_set					readfds;
 
 	while(g_var != SIGINT)
 	{
-		Worker wrkr(srv);
-		wrkr.acceptConnection();
-		wrkr.handleRequest();
+		std::vector<struct pollfd>	pollfds;
+		pollfds.push_back((struct pollfd){.fd = srv.getSocketFd(), .events = POLLIN});
+		std::map<int , Worker*>::iterator it = connections.begin();
+		while (it != connections.end())
+		{
+			pollfds.push_back((struct pollfd){.fd = it->first, .events = POLLIN});
+			it++;
+		}
+		poll(pollfds.data(), pollfds.size(), -1);
+		if (pollfds[0].revents & POLLIN)
+		{
+			Worker* wrkr = new Worker(srv);
+			wrkr->acceptConnection();
+			connections[wrkr->getSocketFd()] = wrkr;
+		}
+		for (size_t i = 1; i < pollfds.size(); i++)
+		{
+			if (pollfds[i].revents & POLLIN)
+			{
+				int	fd = pollfds[i].fd;
+				connections[fd]->handleRequest();
+				if (connections[fd]->requestHandled())
+				{
+					delete connections[fd];
+					connections.erase(fd);
+				}
+			}
+		}
 	}
 	return 0;
 }

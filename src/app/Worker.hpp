@@ -21,13 +21,16 @@ class Worker
 {
 private:
 	char _req_buffer[1024];
+	std::string rawRequest;
 	int _socket_fd;
+	int _request_handled;
 	struct sockaddr_in _addr;
 	socklen_t _addr_size;
 	TCPServer &srv;
 public:
 	explicit Worker(TCPServer &);
 	~Worker();
+	// Worker&	operator=(Worker const &src);
 
 	class GenericException : public  std::exception
 	{
@@ -37,6 +40,8 @@ public:
 
 	void acceptConnection();
 	void handleRequest();
+	int getSocketFd() const;
+	int requestHandled() const;
 };
 
 

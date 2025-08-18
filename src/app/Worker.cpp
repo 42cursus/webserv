@@ -50,15 +50,13 @@ void logServingFile(const std::string& path, const std::string& mimetype) {
 
 void Worker::handleRequest()
 {
-	std::string	rawRequest;
 	int			nread;
 
-	while (rawRequest.find("\r\n\r\n") == rawRequest.npos)
-	{
-		nread = read(_socket_fd, _req_buffer, 1024);
-		_req_buffer[nread] = '\0';
-		rawRequest += _req_buffer;
-	}
+	nread = read(_socket_fd, _req_buffer, 1024);
+	_req_buffer[nread] = '\0';
+	rawRequest += _req_buffer;
+	if (rawRequest.find("\r\n\r\n") == rawRequest.npos)
+		return ;
 	HttpRequest req = HttpRequest();
 	std::cout << "\e[32m" << rawRequest << "\e[31m" << std::endl;
 	for (int i = 0; rawRequest[i] != 0 && i < 1024; i++)
@@ -86,11 +84,29 @@ void Worker::handleRequest()
 
 	write(_socket_fd, response.c_str(), response.length());
 	close(_socket_fd);
+	_request_handled = 1;
 }
 
 const char *Worker::GenericException::what() const throw()
 {
 	return "Client exception happened";
+}
+
+// Worker&	Worker::operator=(Worker const &src)
+// {
+// 	this->_socket_fd = src._socket_fd;
+// 	this->srv = src.srv;
+// 	return (*this);
+// }
+
+int Worker::getSocketFd() const
+{
+	return _socket_fd;
+}
+
+int Worker::requestHandled() const
+{
+	return _request_handled;
 }
 
 #ifdef __clang__
