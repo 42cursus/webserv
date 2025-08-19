@@ -12,6 +12,7 @@
 
 #include <cstring>
 #include <map>
+#include <sys/poll.h>
 #include <sys/select.h>
 #include <poll.h>
 #include <vector>
@@ -132,7 +133,16 @@ int TCPServer::serve(TCPServer &srv)
 					connections.erase(fd);
 				}
 			}
+			if (pollfds[i].revents & (POLLHUP | POLLERR))
+				std::cout << "error occured on fd: " << pollfds[i].fd << std::endl;
 		}
+	}
+	std::map<int , Worker*>::iterator it = connections.begin();
+	while (it != connections.end())
+	{
+		close(it->first);
+		delete it->second;
+		it++;
 	}
 	return 0;
 }
