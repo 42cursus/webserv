@@ -6,7 +6,7 @@
 /*   By: abelov <abelov@student.42london.com>       +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/07/18 19:12:40 by abelov            #+#    #+#             */
-/*   Updated: 2025/07/23 21:01:03 by abelov           ###   ########.fr       */
+/*   Updated: 2025/08/20 21:48:07 by fsmyth           ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -19,6 +19,7 @@
 #include "TCPServer.hpp"
 #include "src/utils/Parser.hpp"
 #include "Worker.hpp"
+#include "WorkerPool.hpp"
 
 Config TCPServer::default_config = Parser::make_default_config();
 
@@ -99,6 +100,7 @@ int TCPServer::serve(TCPServer &srv)
 {
 	extern sig_atomic_t		g_var;
 	std::map<int , Worker*>	connections;
+	WorkerPool				wrkrPool(srv);
 
 	while(g_var != SIGINT)
 	{
@@ -117,7 +119,7 @@ int TCPServer::serve(TCPServer &srv)
 		poll(pollfds.data(), pollfds.size(), -1);
 		if (pollfds[0].revents & POLLIN)
 		{
-			Worker* wrkr = new Worker(srv);
+			Worker* wrkr = wrkrPool.alloc();
 			wrkr->acceptConnection();
 			connections[wrkr->getSocketFd()] = wrkr;
 		}
@@ -126,10 +128,9 @@ int TCPServer::serve(TCPServer &srv)
 			if (pollfds[i].revents & POLLIN)
 			{
 				int	fd = pollfds[i].fd;
-				connections[fd]->handleRequest();
-				if (connections[fd]->requestHandled())
+				if (connections[fd]->handleRequest() == 0)
 				{
-					delete connections[fd];
+					wrkrPool.free(connections[fd]);
 					connections.erase(fd);
 				}
 			}

@@ -6,7 +6,7 @@
 /*   By: abelov <abelov@student.42london.com>       +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/07/18 21:02:20 by abelov            #+#    #+#             */
-/*   Updated: 2025/07/23 21:16:48 by abelov           ###   ########.fr       */
+/*   Updated: 2025/08/20 21:02:04 by fsmyth           ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -48,16 +48,15 @@ void logServingFile(const std::string& path, const std::string& mimetype) {
 	std::cout << "Serving file: " << path << " with MIME type: " << mimetype << std::endl;
 }
 
-void Worker::handleRequest()
+int Worker::handleRequest()
 {
 	int			nread;
 
-	_request_handled = 0;
 	nread = read(_socket_fd, _req_buffer, 1024);
 	_req_buffer[nread] = '\0';
 	rawRequest += _req_buffer;
 	if (rawRequest.find("\r\n\r\n") == rawRequest.npos)
-		return ;
+		return (1);
 	std::cout << "\e[35m" << "Request ready on fd: " << _socket_fd << std::endl;
 	HttpRequest req = HttpRequest();
 	std::cout << "\e[32m" << rawRequest << "\e[31m" << std::endl;
@@ -86,7 +85,7 @@ void Worker::handleRequest()
 
 	write(_socket_fd, response.c_str(), response.length());
 	close(_socket_fd);
-	_request_handled = 1;
+	return (0);
 }
 
 const char *Worker::GenericException::what() const throw()
@@ -109,6 +108,11 @@ int Worker::getSocketFd() const
 int Worker::requestHandled() const
 {
 	return _request_handled;
+}
+
+void	Worker::clearRequest(void)
+{
+	rawRequest.erase();
 }
 
 #ifdef __clang__

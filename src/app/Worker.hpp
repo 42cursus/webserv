@@ -6,7 +6,7 @@
 /*   By: abelov <abelov@student.42london.com>       +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/07/18 20:31:02 by abelov            #+#    #+#             */
-/*   Updated: 2025/07/23 21:16:43 by abelov           ###   ########.fr       */
+/*   Updated: 2025/08/20 21:00:43 by fsmyth           ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -39,9 +39,10 @@ public:
 	};
 
 	void acceptConnection();
-	void handleRequest();
+	int handleRequest();
 	int getSocketFd() const;
 	int requestHandled() const;
+	void clearRequest();
 };
 
 
