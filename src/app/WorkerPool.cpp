@@ -6,7 +6,7 @@
 /*   By: fsmyth <fsmyth@student.42london.com>       +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/08/20 20:00:30 by fsmyth            #+#    #+#             */
-/*   Updated: 2025/08/20 21:08:34 by fsmyth           ###   ########.fr       */
+/*   Updated: 2025/08/20 22:14:16 by fsmyth           ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -39,10 +39,11 @@ Worker*	WorkerPool::alloc(void)
 	{
 		if (_allocp == _size)
 		{
-			_pool.reserve(_size * 2);
+			std::cout << "growing pool: " << _size << " to " << _size * 2 << std::endl;
+			_size *= 2;
+			_pool.reserve(_size);
 			for (size_t i = _allocp; i < _size; i++)
 				_pool.push_back(Worker(_srv));
-			_size *= 2;
 		}
 		out = &_pool[_allocp++];
 	}

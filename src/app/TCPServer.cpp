@@ -6,7 +6,7 @@
 /*   By: abelov <abelov@student.42london.com>       +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/07/18 19:12:40 by abelov            #+#    #+#             */
-/*   Updated: 2025/08/20 21:48:07 by fsmyth           ###   ########.fr       */
+/*   Updated: 2025/08/20 22:17:40 by fsmyth           ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -112,10 +112,6 @@ int TCPServer::serve(TCPServer &srv)
 			pollfds.push_back((struct pollfd){.fd = it->first, .events = POLLIN, .revents = 0});
 			it++;
 		}
-		// std::cout << "pollfds: ";
-		// for (size_t i = 0; i < pollfds.size(); i++)
-		// 	std::cout << pollfds[i].fd << ' ';
-		// std::cout << std::endl;
 		poll(pollfds.data(), pollfds.size(), -1);
 		if (pollfds[0].revents & POLLIN)
 		{
