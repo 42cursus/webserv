@@ -23,11 +23,14 @@ class WorkerPool
 {
 
 private:
-	std::vector<Worker>	_pool;
-	std::list<Worker *>	_freeList;
-	TCPServer&			_srv;
-	size_t				_allocp;
-	size_t				_size;
+	std::list<std::vector<Worker> >				_pool;
+	std::list<Worker *>							_freeList;
+	TCPServer&									_srv;
+	size_t										_allocp;
+	size_t										_size;
+	size_t										_nodesize;
+
+	Worker*		_getWorker(size_t index);
 
 public:
 	WorkerPool(TCPServer& srv, size_t size = 1024);

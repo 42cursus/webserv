@@ -98,28 +98,36 @@ const Config &TCPServer::getCfg() const
 
 int TCPServer::serve(TCPServer &srv)
 {
-	extern sig_atomic_t		g_var;
-	std::map<int , Worker*>	connections;
-	WorkerPool				wrkrPool(srv);
+	extern sig_atomic_t			g_var;
+	std::map<int , Worker*>		connections;
+	WorkerPool					wrkrPool(srv);
+	std::vector<struct pollfd>	pollfds;
+	size_t						nfds;
 
+	pollfds.resize(1024);
+	pollfds.data()[0] = (struct pollfd){.fd = srv.getSocketFd(), .events = POLLIN, .revents = 0};
 	while(g_var != SIGINT)
 	{
-		std::vector<struct pollfd>	pollfds;
-		pollfds.push_back((struct pollfd){.fd = srv.getSocketFd(), .events = POLLIN, .revents = 0});
 		std::map<int , Worker*>::iterator it = connections.begin();
-		while (it != connections.end())
+		for (nfds = 1; it != connections.end(); it++, nfds++)
 		{
-			pollfds.push_back((struct pollfd){.fd = it->first, .events = POLLIN, .revents = 0});
-			it++;
+			if (nfds == pollfds.size())
+				pollfds.resize(pollfds.size() + 1024);
+			pollfds.data()[nfds] = (struct pollfd){
+				.fd = it->first,
+				.events = POLLIN,
+				.revents = 0
+			};
 		}
-		poll(pollfds.data(), pollfds.size(), -1);
+
+		poll(pollfds.data(), nfds, -1);
 		if (pollfds[0].revents & POLLIN)
 		{
 			Worker* wrkr = wrkrPool.alloc();
 			wrkr->acceptConnection();
 			connections[wrkr->getSocketFd()] = wrkr;
 		}
-		for (size_t i = 1; i < pollfds.size(); i++)
+		for (size_t i = 1; i < nfds; i++)
 		{
 			if (pollfds[i].revents & POLLIN)
 			{
@@ -138,7 +146,6 @@ int TCPServer::serve(TCPServer &srv)
 	while (it != connections.end())
 	{
 		close(it->first);
-		delete it->second;
 		it++;
 	}
 	return 0;

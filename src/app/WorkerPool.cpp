@@ -13,13 +13,16 @@
 #include "WorkerPool.hpp"
 #include "TCPServer.hpp"
 #include "Worker.hpp"
+#include <vector>
 
 WorkerPool::WorkerPool(TCPServer& srv, size_t size) : _srv(srv), _allocp(0)
 {
 	_size = size;
-	_pool.reserve(_size);
-	for (size_t i = 0; i < _size; i++)
-		_pool.push_back(Worker(_srv));
+	_nodesize = size;
+	_pool.push_front(std::vector<Worker>());
+	_pool.front().reserve(_nodesize);
+	for (size_t i = 0; i < _nodesize; i++)
+		_pool.front().push_back(Worker(_srv));
 }
 
 WorkerPool::~WorkerPool(void)
@@ -39,13 +42,16 @@ Worker*	WorkerPool::alloc(void)
 	{
 		if (_allocp == _size)
 		{
-			std::cout << "growing pool: " << _size << " to " << _size * 2 << std::endl;
-			_size *= 2;
-			_pool.reserve(_size);
-			for (size_t i = _allocp; i < _size; i++)
-				_pool.push_back(Worker(_srv));
+			std::cout << "growing pool: " << _size << " to " << _size + _nodesize << std::endl;
+			_size += _nodesize;
+			_pool.push_back(std::vector<Worker>());
+			_pool.back().reserve(_nodesize);
+			for (size_t i = 0; i < _nodesize; i++)
+				_pool.back().push_back(Worker(_srv));
 		}
-		out = &_pool[_allocp++];
+		out = _getWorker(_allocp);
+		std::cout << "Getting worker: " << out << " allocp: " << _allocp << std::endl;
+		_allocp++;
 	}
 	else
 	{
@@ -56,9 +62,20 @@ Worker*	WorkerPool::alloc(void)
 	return (out);
 }
 
+Worker*	WorkerPool::_getWorker(size_t index)
+{
+	std::list<std::vector<Worker> >::iterator	it = _pool.begin();
+
+	for (size_t total = _nodesize - 1; total < index; total += _nodesize)
+		it++;
+
+	return (&it->data()[index % _nodesize]);
+}
+
+
 void	WorkerPool::free(Worker* wrkr)
 {
-	if (wrkr == &_pool[_allocp - 1])
+	if (wrkr == _getWorker(_allocp - 1))
 		_allocp--;
 	else
 		_freeList.push_front(wrkr);

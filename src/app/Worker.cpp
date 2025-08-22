@@ -14,11 +14,6 @@
 #include "src/http/HttpRequest.hpp"
 #include "src/http/HttpResponse.hpp"
 
-#ifdef __clang__
-#pragma clang diagnostic push
-// #pragma ide diagnostic ignored "modernize-use-auto"
-#endif
-
 Worker::Worker(TCPServer &srv)
 	: _req_buffer(),
 	_socket_fd(),
@@ -52,7 +47,7 @@ int Worker::handleRequest()
 {
 	int			nread;
 
-	nread = read(_socket_fd, _req_buffer, 1024);
+	nread = read(_socket_fd, _req_buffer, 1023);
 	_req_buffer[nread] = '\0';
 	rawRequest += _req_buffer;
 	if (rawRequest.find("\r\n\r\n") == rawRequest.npos)
@@ -114,7 +109,3 @@ void	Worker::clearRequest(void)
 {
 	rawRequest.erase();
 }
-
-#ifdef __clang__
-#pragma clang diagnostic pop
-#endif
