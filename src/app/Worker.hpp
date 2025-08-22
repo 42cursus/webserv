@@ -6,7 +6,7 @@
 /*   By: abelov <abelov@student.42london.com>       +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/07/18 20:31:02 by abelov            #+#    #+#             */
-/*   Updated: 2025/07/23 21:16:43 by abelov           ###   ########.fr       */
+/*   Updated: 2025/08/20 21:00:43 by fsmyth           ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -21,13 +21,16 @@ class Worker
 {
 private:
 	char _req_buffer[1024];
+	std::string rawRequest;
 	int _socket_fd;
+	int _request_handled;
 	struct sockaddr_in _addr;
 	socklen_t _addr_size;
 	TCPServer &srv;
 public:
 	explicit Worker(TCPServer &);
 	~Worker();
+	// Worker&	operator=(Worker const &src);
 
 	class GenericException : public  std::exception
 	{
@@ -36,7 +39,10 @@ public:
 	};
 
 	void acceptConnection();
-	void handleRequest();
+	int handleRequest();
+	int getSocketFd() const;
+	int requestHandled() const;
+	void clearRequest();
 };
 
 

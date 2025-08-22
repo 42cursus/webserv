@@ -10,40 +10,88 @@
 /*                                                                            */
 /* ************************************************************************** */
 
+#include <cctype>
 #include <iostream>
 #include <fstream>
+#include <list>
 #include <sstream>
+#include <string>
+#include <vector>
 #include "HttpRequest.hpp"
 
 HttpRequest::HttpRequest(const std::string &path) : path(path)
 {}
 
+size_t	HttpRequest::_parseStartLine(const std::string &line)
+{
+	int							i = 0;
+	int							line_end = line.find("\r\n");
+	std::vector<std::string>	tokens;
+	// std:
+
+	while (i < line_end)
+	{
+		std::string	token;
+		while (line[i] != ' ' && i < line_end)
+			token += line[i++];
+		tokens.push_back(token);
+		while (line[i] == ' ' && i < line_end)
+			i++;
+	}
+	if (tokens.size() != 3)
+	{
+		std::cerr << "Failed to parse start line." << std::endl;
+		throw HttpRequest::GenericException();
+	}
+	method = tokens[0];
+	headers["method"] = method;
+	path = tokens[1];
+	headers["path"] = path;
+	protocol = tokens[2];
+	headers["protocol"] = protocol;
+	return (line_end + 2);
+}
+
+size_t	HttpRequest::_parseHeader(const std::string &line)
+{
+	int			i = 0;
+	int			line_end = line.find("\r\n");
+	std::string	field;
+	std::string	content;
+
+	while (i < line_end)
+	{
+		if (line[i] == ':')
+			break;
+		if (line[i] == ' ')
+		{
+			std::cerr << "Malformed request in header: " << "\e[34m" << line.substr(0, line_end) << "\e[m" << std::endl;
+			throw HttpRequest::GenericException();
+		}
+		field += std::tolower(line[i++]);
+	}
+	while (line[++i] == ' ')
+		;
+	while (i < line_end)
+		content += line[i++];
+	headers[field] = content;
+	return (line_end + 2);
+}
+
 void HttpRequest::parseRequest(const std::string &rawRequest)
 {
+	std::string	line;
+	int			line_end;
 
-	int currindex = 0;
-
-	while (currindex < (int)rawRequest.length())
+	line = &rawRequest[_parseStartLine(rawRequest)];
+	line_end = line.find("\r\n");
+	// std::cout << "line_end: " << line_end << std::endl;
+	while (line_end != 0)
 	{
-		if (rawRequest[currindex] == ' ')
-		{
-			break;
-		}
-		method += rawRequest[currindex];
-		currindex++;
+		line = &line[_parseHeader(line)];
+		line_end = line.find("\r\n");
+		// std::cout << "line_end: " << line_end << std::endl;
 	}
-
-	headers["method"] = method;
-
-	currindex++;
-	while (currindex < (int)rawRequest.length())
-	{
-		if (rawRequest[currindex] == ' ')
-			break;
-		path += rawRequest[currindex];
-		currindex++;
-	}
-	headers["path"] = path;
 }
 
 std::string HttpRequest::readHtmlFile(const std::string &path,
@@ -83,6 +131,12 @@ std::string HttpRequest::getMimeType(const std::string &path)
 	std::string fileExtension = path.substr(path.find_last_of(".") + 1);
 
 	return mimeTypes[fileExtension];
+}
+
+
+const char *HttpRequest::GenericException::what() const throw()
+{
+	return "Client exception happened";
 }
 
 HttpRequest::HttpRequest()

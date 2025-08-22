@@ -18,11 +18,18 @@
 #include <map>
 
 class HttpRequest {
+
+private:
+	
+	size_t	_parseStartLine(const std::string &line);
+	size_t	_parseHeader(const std::string &line);
+
 public:
 	HttpRequest();
 
 	std::string method;
 	std::string path;
+	std::string protocol;
 	std::map<std::string, std::string> headers; //FIXME: we are probably not allowed to use map ???
 
 	explicit HttpRequest(const std::string &path);
@@ -31,6 +38,12 @@ public:
 
 	std::string readHtmlFile(const std::string &, const std::string &);
 	std::string getMimeType(const std::string &path);
+
+	class GenericException : public  std::exception
+	{
+	public:
+		const char* what() const throw();
+	};
 };
 
 #endif //HTTPREQUEST_HPP
