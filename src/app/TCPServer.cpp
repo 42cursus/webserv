@@ -6,7 +6,7 @@
 /*   By: abelov <abelov@student.42london.com>       +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/07/18 19:12:40 by abelov            #+#    #+#             */
-/*   Updated: 2025/08/20 22:17:40 by fsmyth           ###   ########.fr       */
+/*   Updated: 2025/08/23 19:14:13 by fsmyth           ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -112,7 +112,9 @@ int TCPServer::serve(TCPServer &srv)
 		for (nfds = 1; it != connections.end(); it++, nfds++)
 		{
 			if (nfds == pollfds.size())
+			{
 				pollfds.resize(pollfds.size() + 1024);
+			}
 			pollfds.data()[nfds] = (struct pollfd){
 				.fd = it->first,
 				.events = POLLIN,
