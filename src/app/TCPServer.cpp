@@ -6,7 +6,7 @@
 /*   By: abelov <abelov@student.42london.com>       +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/07/18 19:12:40 by abelov            #+#    #+#             */
-/*   Updated: 2025/08/23 19:14:13 by fsmyth           ###   ########.fr       */
+/*   Updated: 2025/08/23 19:52:25 by fsmyth           ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -131,9 +131,9 @@ int TCPServer::serve(TCPServer &srv)
 		}
 		for (size_t i = 1; i < nfds; i++)
 		{
+			int	fd = pollfds[i].fd;
 			if (pollfds[i].revents & POLLIN)
 			{
-				int	fd = pollfds[i].fd;
 				if (connections[fd]->handleRequest() == 0)
 				{
 					wrkrPool.free(connections[fd]);
@@ -141,7 +141,12 @@ int TCPServer::serve(TCPServer &srv)
 				}
 			}
 			if (pollfds[i].revents & (POLLHUP | POLLERR))
+			{
 				std::cout << "error occured on fd: " << pollfds[i].fd << std::endl;
+				close(fd);
+				wrkrPool.free(connections[fd]);
+				connections.erase(fd);
+			}
 		}
 	}
 	std::map<int , Worker*>::iterator it = connections.begin();
