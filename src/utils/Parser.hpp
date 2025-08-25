@@ -6,7 +6,7 @@
 /*   By: margo <margo@student.42.fr>                +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/07/18 20:22:36 by abelov            #+#    #+#             */
-/*   Updated: 2025/08/13 23:34:07 by margo            ###   ########.fr       */
+/*   Updated: 2025/08/25 23:23:37 by margo            ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -21,6 +21,8 @@
 #include "State.hpp"
 #include "../../include/webserv.hpp"
 
+
+
 enum	e_token
 {
 	EOL,
@@ -33,6 +35,7 @@ enum	e_token
 	REGEX,
 	COMMENT,
 	ILLEGAL,
+	NONE,
 } ;
 
 typedef	struct s_token
@@ -52,7 +55,8 @@ private:
 	t_token	_nextToken;
 	IState*	_currentState;
 	bool	_inBlock;
-	std::vector<IBlock>	_blocks;
+	std::vector<IBlock*>	_blocks;
+	std::string commentBuf;	
 
 public:
 	Parser();
@@ -61,9 +65,12 @@ public:
 	Parser(IState*	currentState);
 	~Parser();
 
+	std::string getKey() const;
+	void	setKey(std::string key);
 	IState*	getCurrentState() const;
-	void	setCurrentState(IState& newState);
+	void	setCurrentState(IState* newState);
 	bool 	isInBlock() const;
+	void	setInBlock(bool in);
 	std::string	getConfigRoot() const;
 	void	setConfigRoot(std::string configRoot);
 	Config	getConfig() const;
@@ -71,15 +78,20 @@ public:
 	void	setCurrentToken(t_token token);
 	t_token	getNextToken() const;
 	void	setNextToken(t_token token);
+	IBlock* getBlock(std::string key);
+	void	addNewBlock(IBlock* newBlock);
 
 	std::string	readUntil(std::string line, char delim);
 	std::string readQuotedString(std::string word);
 	void	toggle();
 
 	static std::string read_file(const char *filename);
+	t_token	makeToken(e_token key, std::string word, int linecount);
 	std::vector<t_token> tokenize();
+	Comment	makeComment(std::string buf, int line);
 	static	std::map<std::string, std::string> init_mime_types();
-	static Config parse(const char *filename);
+	Config parse(std::vector<t_token>& tokens);
+	void	parseServer();
 	static Config make_default_config();
 };
 
