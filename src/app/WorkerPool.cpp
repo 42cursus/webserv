@@ -6,7 +6,7 @@
 /*   By: fsmyth <fsmyth@student.42london.com>       +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/08/20 20:00:30 by fsmyth            #+#    #+#             */
-/*   Updated: 2025/08/20 22:14:16 by fsmyth           ###   ########.fr       */
+/*   Updated: 2025/08/23 19:14:42 by fsmyth           ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -27,11 +27,12 @@ WorkerPool::WorkerPool(TCPServer& srv, size_t size) : _srv(srv), _allocp(0)
 
 WorkerPool::~WorkerPool(void)
 {
-	std::cout << "WorkerPool {" << std::endl;
-	std::cout << "\tsize: " << _size << std::endl;
-	std::cout << "\tfreeList len: " << _freeList.size() << std::endl;
-	std::cout << "\tallocp: " << _allocp << std::endl;
-	std::cout << '}' << std::endl;
+	// std::cout << std::endl;
+	// std::cout << "WorkerPool {" << std::endl;
+	// std::cout << "\tsize: " << _size << std::endl;
+	// std::cout << "\tfreeList len: " << _freeList.size() << std::endl;
+	// std::cout << "\tallocp: " << _allocp << std::endl;
+	// std::cout << '}' << std::endl;
 }
 
 Worker*	WorkerPool::alloc(void)
@@ -42,7 +43,7 @@ Worker*	WorkerPool::alloc(void)
 	{
 		if (_allocp == _size)
 		{
-			std::cout << "growing pool: " << _size << " to " << _size + _nodesize << std::endl;
+			// std::cout << "growing pool: " << _size << " to " << _size + _nodesize << std::endl;
 			_size += _nodesize;
 			_pool.push_back(std::vector<Worker>());
 			_pool.back().reserve(_nodesize);
@@ -50,7 +51,7 @@ Worker*	WorkerPool::alloc(void)
 				_pool.back().push_back(Worker(_srv));
 		}
 		out = _getWorker(_allocp);
-		std::cout << "Getting worker: " << out << " allocp: " << _allocp << std::endl;
+		// std::cout << "Getting worker: " << out << " allocp: " << _allocp << std::endl;
 		_allocp++;
 	}
 	else

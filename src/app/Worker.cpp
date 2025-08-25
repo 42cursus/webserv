@@ -6,7 +6,7 @@
 /*   By: abelov <abelov@student.42london.com>       +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/07/18 21:02:20 by abelov            #+#    #+#             */
-/*   Updated: 2025/08/20 21:02:04 by fsmyth           ###   ########.fr       */
+/*   Updated: 2025/08/23 20:29:15 by fsmyth           ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -49,21 +49,21 @@ int Worker::handleRequest()
 
 	nread = read(_socket_fd, _req_buffer, 1023);
 	_req_buffer[nread] = '\0';
-	rawRequest += _req_buffer;
-	if (rawRequest.find("\r\n\r\n") == rawRequest.npos)
+	_rawRequest += _req_buffer;
+	if (_rawRequest.find("\r\n\r\n") == _rawRequest.npos)
 		return (1);
 	std::cout << "\e[35m" << "Request ready on fd: " << _socket_fd << std::endl;
 	HttpRequest req = HttpRequest();
-	std::cout << "\e[32m" << rawRequest << "\e[31m" << std::endl;
-	for (int i = 0; rawRequest[i] != 0 && i < 1024; i++)
+	std::cout << "\e[32m" << _rawRequest << "\e[31m" << std::endl;
+	for (int i = 0; _rawRequest[i] != 0 && i < 1024; i++)
 	{
-		std::cout << (int)rawRequest[i] << ' ';
-		if (rawRequest[i] == '\n')
+		std::cout << (int)_rawRequest[i] << ' ';
+		if (_rawRequest[i] == '\n')
 			std::cout << std::endl;
 	}
 	std::cout << "\e[m" << std::endl;
 
-	req.parseRequest(rawRequest);
+	req.parseRequest(_rawRequest);
 	std::map<const std::string, std::string>::iterator it = req.headers.begin();
 	while (it != req.headers.end())
 	{
@@ -105,7 +105,12 @@ int Worker::requestHandled() const
 	return _request_handled;
 }
 
+std::string& Worker::getRawRequest()
+{
+	return _rawRequest;
+}
+
 void	Worker::clearRequest(void)
 {
-	rawRequest.erase();
+	_rawRequest.erase();
 }

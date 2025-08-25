@@ -6,7 +6,7 @@
 /*   By: abelov <abelov@student.42london.com>       +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/07/18 20:31:02 by abelov            #+#    #+#             */
-/*   Updated: 2025/08/20 21:00:43 by fsmyth           ###   ########.fr       */
+/*   Updated: 2025/08/23 20:29:23 by fsmyth           ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -21,7 +21,7 @@ class Worker
 {
 private:
 	char _req_buffer[1024];
-	std::string rawRequest;
+	std::string _rawRequest;
 	int _socket_fd;
 	int _request_handled;
 	struct sockaddr_in _addr;
@@ -41,6 +41,7 @@ public:
 	void acceptConnection();
 	int handleRequest();
 	int getSocketFd() const;
+	std::string& getRawRequest();
 	int requestHandled() const;
 	void clearRequest();
 };
