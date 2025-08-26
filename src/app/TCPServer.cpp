@@ -6,7 +6,7 @@
 /*   By: abelov <abelov@student.42london.com>       +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/07/18 19:12:40 by abelov            #+#    #+#             */
-/*   Updated: 2025/08/23 19:52:25 by fsmyth           ###   ########.fr       */
+/*   Updated: 2025/08/24 14:35:55 by fsmyth           ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -106,8 +106,10 @@ int TCPServer::serve(TCPServer &srv)
 
 	pollfds.resize(1024);
 	pollfds.data()[0] = (struct pollfd){.fd = srv.getSocketFd(), .events = POLLIN, .revents = 0};
+	std::cout << "\e[?1049h";
 	while(g_var != SIGINT)
 	{
+		std::cout << "\e[2J\e[H" << std::flush;
 		std::map<int , Worker*>::iterator it = connections.begin();
 		for (nfds = 1; it != connections.end(); it++, nfds++)
 		{
@@ -120,6 +122,9 @@ int TCPServer::serve(TCPServer &srv)
 				.events = POLLIN,
 				.revents = 0
 			};
+			std::cout << "\e[34;1mfd\e[m: " << it->first << "\t\e[35;1mworker\e[m: " << it->second << std::endl;
+			std::cout << "\e[32;1mRequest\e[m: " << std::endl;;
+			std::cout << it->second->getRawRequest() << "---------------" << std::endl << std::endl;
 		}
 
 		poll(pollfds.data(), nfds, -1);
@@ -149,6 +154,7 @@ int TCPServer::serve(TCPServer &srv)
 			}
 		}
 	}
+	std::cout << "\e[?1049l";
 	std::map<int , Worker*>::iterator it = connections.begin();
 	while (it != connections.end())
 	{
