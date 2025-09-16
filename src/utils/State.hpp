@@ -47,14 +47,14 @@ class   Start: public IState
         Start(const Start& copy);
         Start& operator=(const Start& copy);
     
-        void    enter(Parser* parser);
-
+        
     public:
         Start();
         ~Start();
-
+        
+        void    enter(Parser* parser);
         void    toggle(Parser *parser);
-        //void    exit(Parser* parser);
+        void    exit(Parser* parser);
 } ;
 
 class   IBlock: public IState
@@ -86,9 +86,9 @@ class   IBlock: public IState
         IState* getParent() const;
         void    setParent(IState*   parentDirective);
 
-        virtual void    enter(Parser* parser);
-        virtual void    toggle(Parser* parser);
-        virtual void    exit(Parser*    parser);
+        virtual void    enter(Parser* parser) = 0;
+        virtual void    toggle(Parser* parser) = 0;
+        virtual void    exit(Parser*    parser) = 0;
 
 } ;
 

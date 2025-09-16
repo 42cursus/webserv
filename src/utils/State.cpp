@@ -6,7 +6,7 @@
 /*   By: margo <margo@student.42.fr>                +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/08/07 20:47:27 by margo             #+#    #+#             */
-/*   Updated: 2025/08/25 23:14:59 by margo            ###   ########.fr       */
+/*   Updated: 2025/09/16 17:57:48 by margo            ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -17,6 +17,11 @@ Start::Start() {};
 
 Start::~Start() {};
 
+void    Start::enter(Parser* parser)
+{
+    (void)parser;
+}
+
 void    Start::toggle(Parser *parser)
 {
     if (parser->getCurrentToken().literal == "http")
@@ -26,6 +31,12 @@ void    Start::toggle(Parser *parser)
     }
     // else if for events or other top level directives if needed
 }
+
+void    Start::exit(Parser* parser)
+{
+    (void)parser;
+}
+
 
 IBlock::IBlock(std::string name): _name(name) {};
 
@@ -38,7 +49,7 @@ IBlock::~IBlock()
 {
     delete _parent;
 
-    for (std::vector<IDirective*>::iterator it = _directives.begin(); it != _directives.end(); ++it)
+    for (std::vector<IState*>::iterator it = _directives.begin(); it != _directives.end(); ++it)
         delete *it;
     _directives.clear();
 }
@@ -129,6 +140,11 @@ void    Server::enter(Parser *parser)
     parser->addNewBlock(this);
     setLine(parser->getCurrentToken().line);
     setParent(parser->getBlock("http"));
+}
+
+void    Server::toggle(Parser *parser)
+{
+    std::cout << parser->getKey() << std::endl;
 }
 
 void    Server::exit(Parser *parser)

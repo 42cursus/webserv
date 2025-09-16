@@ -6,7 +6,7 @@
 /*   By: margo <margo@student.42.fr>                +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/07/18 20:22:49 by abelov            #+#    #+#             */
-/*   Updated: 2025/08/25 23:28:32 by margo            ###   ########.fr       */
+/*   Updated: 2025/09/16 21:14:37 by margo            ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -40,6 +40,12 @@ Parser::Parser(const Parser &copy)
 	(void)copy;
 }
 
+Parser::errorException::errorException(std::string msg): _errorMsg(msg) {};
+
+const char* Parser::errorException::what() const throw()
+{
+	return _errorMsg.c_str();
+}
 /*
 ** ------------------------------- DESTRUCTOR ---------------------------------
 */
@@ -261,7 +267,6 @@ void	Parser::toggle()
 	_currentState->toggle(this);
 }
 
-
 std::vector<t_token>	Parser::tokenize()
 {
 	int	linecount = 0;
@@ -394,22 +399,56 @@ void	printTokens(std::vector<t_token> tokens)
 	}
 }
 
-Config Parser::parse(std::vector<t_token>&	tokens)
+void	Parser::parseServer(std::vector<t_token>& tokens)
+{
+	std::vector<t_token>::iterator it;
+	
+	_config.http.server.ipv4_listen.sin_family = AF_INET;
+	_config.http.server.ipv4_listen.sin_addr.s_addr = htonl(INADDR_ANY);
+	memset(_config.http.server.ipv4_listen.sin_zero, 0, sizeof(_config.http.server.ipv4_listen.sin_zero));
+	for(it = _currentIt; it != tokens.end(); ++it)
+	{
+		if (it->literal == "listen" && (it + 1) != tokens.end())
+		{
+			int port;
+			std::stringstream ss((it + 1)->literal);
+			ss >> port;
+			if (port < 1 || port > 65636)
+				throw errorException("Invalid config: port");
+			_config.http.server.ipv4_listen.sin_port = htons(port);
+			++it;
+		}
+		if (it->literal == "server_name" && (it + 1) != tokens.end())
+		{
+			_config.http.server.server_name = strDupForConstChar((it + 1)->literal.c_str());
+			//std::cout << _config.http.server.server_name << std::endl;
+			++it;
+		}
+	}
+}
+
+void Parser::parse(std::vector<t_token>&	tokens)
 {
 	std::vector<t_token>::iterator it;
 	
 	setCurrentState(new Start());
 	for (it = tokens.begin(); it != tokens.end(); ++it)
 	{
+		_currentIt = it;
 		_currentToken = *it;
 		if (it + 1 != tokens.end())
-			_nextToken = *(it + 1);
+		_nextToken = *(it + 1);
 		
+		std::cout << getCurrentToken().literal << std::endl << getCurrentToken().line << std::endl;
 		toggle();
 		if (dynamic_cast<Server*>(_currentState) != NULL)
 		{
 			// populate Config struct w sockaddr_in and server_name
+			parseServer(tokens);
+			it = _currentIt;
+			break ;
 		}
+		/*
 		else if (dynamic_cast<Location*>(_currentState) != NULL)
 		{
 			// populate Config struct w path
@@ -418,9 +457,31 @@ Config Parser::parse(std::vector<t_token>&	tokens)
 		{
 			// populate Config struct w root and index
 		}
+		*/
 	}
 	
-	return Config();
+}
+
+void	printConfig(Config cfg)
+{
+	int family;
+	uint16_t port;
+	uint32_t addr;
+	char *server_name;
+
+	family = cfg.http.server.ipv4_listen.sin_family;
+	port = ntohs(cfg.http.server.ipv4_listen.sin_port);
+	addr = ntohl(cfg.http.server.ipv4_listen.sin_addr.s_addr);
+	server_name = cfg.http.server.server_name;
+
+	std::cout << "Address Family: " << family << std::endl 
+              << "Port: " << port << std::endl
+              << "IP Address: " << ((addr >> 24) & 0xFF) << "."
+                               << ((addr >> 16) & 0xFF) << "."
+                               << ((addr >> 8) & 0xFF) << "."
+                               << (addr & 0xFF) << std::endl
+              << "Server Name: " << (server_name ? server_name : "NULL") << std::endl; 
+	
 }
 
 /*
@@ -431,13 +492,13 @@ Config Parser::parse(std::vector<t_token>&	tokens)
 
 int	main(int argc, char *argv[])
 {
-	Config	config;
 	Parser*	parse = new Parser();
 	std::vector<t_token> tokens;
 
 	(void)argc;
 	parse->setConfigRoot(argv[1]);
 	tokens = parse->tokenize();
-	printTokens(tokens);
-	config = parse->parse(tokens);
+	//printTokens(tokens);
+	parse->parse(tokens);
+	printConfig(parse->_config);
 }

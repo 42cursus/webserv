@@ -6,7 +6,7 @@
 /*   By: margo <margo@student.42.fr>                +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/07/18 20:22:36 by abelov            #+#    #+#             */
-/*   Updated: 2025/08/25 23:23:37 by margo            ###   ########.fr       */
+/*   Updated: 2025/09/16 21:14:53 by margo            ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -17,6 +17,7 @@
 #include <fstream>
 #include <map>
 #include <string>
+#include <arpa/inet.h>
 //#include "webserv.hpp"
 #include "State.hpp"
 #include "../../include/webserv.hpp"
@@ -43,27 +44,29 @@ typedef	struct s_token
 	e_token	type;
 	std::string	literal;
 	int	line;
-	bool	operator==(const t_token& other) const;
+	bool	operator==(const s_token& other) const;
 }	t_token;
 class Parser
 {
 private:
 	std::string	_key;
 	std::string	_configRoot;
-	Config	_config;
 	t_token	_currentToken;
 	t_token	_nextToken;
+	std::vector<t_token>::iterator _currentIt;
 	IState*	_currentState;
 	bool	_inBlock;
 	std::vector<IBlock*>	_blocks;
 	std::string commentBuf;	
-
-public:
+	
+	public:
 	Parser();
 	Parser(const Parser& copy);
 	Parser&	operator=(const Parser& copy);
 	Parser(IState*	currentState);
 	~Parser();
+	
+	Config	_config;
 
 	std::string getKey() const;
 	void	setKey(std::string key);
@@ -90,10 +93,22 @@ public:
 	std::vector<t_token> tokenize();
 	Comment	makeComment(std::string buf, int line);
 	static	std::map<std::string, std::string> init_mime_types();
-	Config parse(std::vector<t_token>& tokens);
-	void	parseServer();
+	void parse(std::vector<t_token>& tokens);
+	void	parseServer(std::vector<t_token>& tokens);
 	static Config make_default_config();
+	
+	class errorException: public std::exception
+	{
+		private:
+			std::string _errorMsg;
+			
+		public:
+			errorException(std::string msg);
+			~errorException() throw() {};
+			const char*	what() const throw();	
+	};
 };
 
+char *strDupForConstChar(const char *str);
 
 #endif //PARSER_HPP
