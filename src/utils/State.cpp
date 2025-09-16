@@ -6,7 +6,7 @@
 /*   By: margo <margo@student.42.fr>                +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/08/07 20:47:27 by margo             #+#    #+#             */
-/*   Updated: 2025/09/16 17:57:48 by margo            ###   ########.fr       */
+/*   Updated: 2025/09/16 22:31:40 by margo            ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -37,7 +37,6 @@ void    Start::exit(Parser* parser)
     (void)parser;
 }
 
-
 IBlock::IBlock(std::string name): _name(name) {};
 
 bool IBlock::operator==(const IBlock& oth)
@@ -67,6 +66,11 @@ std::string IBlock::getCode() const
 std::vector<IState*> IBlock::getDirectives() const
 {
     return _directives;
+}
+
+void    IBlock::addParameter(Parameter newParameter)
+{
+    _parameters.push_back(newParameter);
 }
 
 void    IBlock::addDirective(IState* newDir)
@@ -144,10 +148,45 @@ void    Server::enter(Parser *parser)
 
 void    Server::toggle(Parser *parser)
 {
-    std::cout << parser->getKey() << std::endl;
+    if (parser->getCurrentToken().literal == "location")
+    {
+        Location* location = new Location();
+        location->setParent(this);
+        parser->setCurrentState(location);
+        exit(parser);
+        parser->getCurrentState()->enter(parser);
+    }
 }
 
 void    Server::exit(Parser *parser)
 {
     addDirective(parser->getCurrentState());
+}
+
+Location::Location(): IBlock("location") {};
+
+Location::~Location() {};
+
+void Location::enter(Parser* parser)
+{
+    Parameter root;
+    
+    parser->setKey(getName());
+    parser->setInBlock(false);
+    setLine(parser->getCurrentToken().line);
+    root.value = parser->getNextToken().literal;
+    root.rlidx = parser->getNextToken().line;
+    addParameter(root);
+}
+
+void    Location::toggle(Parser *parser)
+{
+    if (parser->getCurrentToken().literal == "root")
+    {
+        // get root path
+    }
+    else if (parser->getCurrentToken().literal == "index")
+    {
+       // get all index paths 
+    }
 }

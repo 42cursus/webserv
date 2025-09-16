@@ -6,7 +6,7 @@
 /*   By: margo <margo@student.42.fr>                +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/07/18 20:22:49 by abelov            #+#    #+#             */
-/*   Updated: 2025/09/16 21:14:37 by margo            ###   ########.fr       */
+/*   Updated: 2025/09/16 21:47:56 by margo            ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -67,8 +67,6 @@ Parser::~Parser()
 /*
 ** --------------------------------- METHODS ----------------------------------
 */
-
-
 
 std::string	Parser::readQuotedString(std::string word)
 {
@@ -132,29 +130,13 @@ std::string Parser::read_file(const char *filename)
 ** -------------------------------- ACCESSORS ---------------------------------
 */
 
-
 /*
-struct Config
-{
-	struct {
-		struct {
-			struct sockaddr_in ipv4_listen;
-			struct {
-				char *path;
-				struct {
-					char *root;
-					char **index;
-				}	config;
-			} location;
-		} server;
-	} http;
-};
 
 		TO DO:
 			//1. open and read config file (copy in buf stream and close)
 			2. read http 
-			3. read server 
-			4. read listening port > hostname/IP and TCP port
+			//3. read server 
+			//4. read listening port > hostname/IP and TCP port
 			5. read config stuff (root +  index + anything else)
 			6. construct config struct
  */
@@ -363,8 +345,6 @@ std::map<std::string, std::string> Parser::init_mime_types()
 	return (std::map<std::string, std::string>());
 }
 
-
-
 bool	t_token::operator==(const t_token&	other) const
 {
 	return (type == other.type && literal == other.literal && line == other.line);
@@ -421,7 +401,6 @@ void	Parser::parseServer(std::vector<t_token>& tokens)
 		if (it->literal == "server_name" && (it + 1) != tokens.end())
 		{
 			_config.http.server.server_name = strDupForConstChar((it + 1)->literal.c_str());
-			//std::cout << _config.http.server.server_name << std::endl;
 			++it;
 		}
 	}
@@ -487,7 +466,8 @@ void	printConfig(Config cfg)
 /*
 	TO DO:
 		1. finish parsing function
-		2. function to print Config struct for testing purposes
+		//2. function to print Config struct for testing purposes
+		3. update Config to be able to handle multiple servers
 */
 
 int	main(int argc, char *argv[])

@@ -31,6 +31,18 @@ typedef struct Comment
     int rlidx;
 } Comment;
 
+typedef struct Root
+{
+    std::string path;
+    int rlidx;
+} Root;
+
+typedef struct Index
+{
+    std::string paths[2]; // change this in case it needs more
+    int rlidx;
+} Index ;
+
 class IState
 {
     public:
@@ -82,6 +94,7 @@ class   IBlock: public IState
         std::string    getCode() const;
         std::vector<IState*> getDirectives() const;
         std::vector<Parameter>  getParameters() const;
+        void    addParameter(Parameter newParameter);
         void    addDirective(IState* newDir);
         IState* getParent() const;
         void    setParent(IState*   parentDirective);
@@ -95,7 +108,7 @@ class   IBlock: public IState
 /*
     1. HTTP (context)
     2. server (context)
-    3. listen 
+    //3. listen 
     4. location (context)
     5. root
     6. index
@@ -132,10 +145,18 @@ class Server: public IBlock
         void    exit(Parser* parser);
 } ;
 
-typedef struct Listen
+class Location: public IBlock
 {
-    int port;
-    int line;
-} Listen;
+    private:
+        Location(const Location& copy);
+        Location& operator=(const Location& copy);
+    public:
+        Location();
+        ~Location();
+
+        void enter(Parser* parser);
+        void toggle(Parser* parser);
+        void exit(Parser* parser);
+} ;
 
 #endif
