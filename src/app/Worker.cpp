@@ -1,35 +1,45 @@
 /* ************************************************************************** */
 /*                                                                            */
 /*                                                        :::      ::::::::   */
-/*   Client.cpp                                         :+:      :+:    :+:   */
+/*   Worker.cpp                                         :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
 /*   By: abelov <abelov@student.42london.com>       +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/07/18 21:02:20 by abelov            #+#    #+#             */
-/*   Updated: 2025/07/18 21:02:21 by abelov           ###   ########.fr       */
+/*   Updated: 2025/07/23 21:16:48 by abelov           ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
-#include "Client.hpp"
+#include "Worker.hpp"
 #include "src/http/HttpRequest.hpp"
 #include "src/http/HttpResponse.hpp"
 
-Client::Client() : _socket_fd(), _addr(), _addr_size()
+#ifdef __clang__
+#pragma clang diagnostic push
+#pragma ide diagnostic ignored "modernize-use-auto"
+#endif
+
+Worker::Worker(TCPServer &srv)
+	: _req_buffer(),
+	_socket_fd(),
+	_addr(),
+	_addr_size(),
+	srv(srv)
 {
 
 }
 
-Client::~Client()
+Worker::~Worker()
 {
 
 }
 
-void Client::acceptConnection(Server &srv)
+void Worker::acceptConnection()
 {
 	_socket_fd = accept(srv.getSocketFd(), (struct sockaddr*)&_addr, &_addr_size);
 	if (_socket_fd < 0) {
 		std::cerr << "Failed to accept client request." << std::endl;
-		throw Client::GenericException();
+		throw Worker::GenericException();
 	}
 }
 
@@ -37,7 +47,7 @@ void logServingFile(const std::string& path, const std::string& mimetype) {
 	std::cout << "Serving file: " << path << " with MIME type: " << mimetype << std::endl;
 }
 
-void Client::handleRequest()
+void Worker::handleRequest()
 {
 	read(_socket_fd, _req_buffer, 1024);
 	HttpRequest req = HttpRequest();
@@ -50,8 +60,10 @@ void Client::handleRequest()
 		it++;
 	}
 	std::string mimetype = req.getMimeType(req.path);
+	std::string body = req.readHtmlFile(req.path, srv.getCfg().http.server.location.config.root);
+
 	HttpResponse res= HttpResponse();
-	std::string body = req.readHtmlFile(req.path);
+
 	std::string response = res.buildHttpResponse("200", "OK", req.headers, body, mimetype);
 	logServingFile(req.path, mimetype);
 
@@ -59,7 +71,11 @@ void Client::handleRequest()
 	close(_socket_fd);
 }
 
-const char *Client::GenericException::what() const throw()
+const char *Worker::GenericException::what() const throw()
 {
 	return "Client exception happened";
 }
+
+#ifdef __clang__
+#pragma clang diagnostic pop
+#endif

@@ -1,32 +1,33 @@
 /* ************************************************************************** */
 /*                                                                            */
 /*                                                        :::      ::::::::   */
-/*   Client.hpp                                         :+:      :+:    :+:   */
+/*   Worker.hpp                                         :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
 /*   By: abelov <abelov@student.42london.com>       +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/07/18 20:31:02 by abelov            #+#    #+#             */
-/*   Updated: 2025/07/18 20:31:03 by abelov           ###   ########.fr       */
+/*   Updated: 2025/07/23 21:16:43 by abelov           ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
-#ifndef CLIENT_HPP
-#define CLIENT_HPP
+#ifndef WORKER_HPP
+#define WORKER_HPP
 
 
 #include <netinet/in.h>
-#include "Server.hpp"
+#include "TCPServer.hpp"
 
-class Client
+class Worker
 {
 private:
 	char _req_buffer[1024];
 	int _socket_fd;
 	struct sockaddr_in _addr;
 	socklen_t _addr_size;
+	TCPServer &srv;
 public:
-	Client();
-	~Client();
+	explicit Worker(TCPServer &);
+	~Worker();
 
 	class GenericException : public  std::exception
 	{
@@ -34,9 +35,9 @@ public:
 		const char* what() const throw();
 	};
 
-	void acceptConnection(Server &srv);
+	void acceptConnection();
 	void handleRequest();
 };
 
 
-#endif //CLIENT_HPP
+#endif //WORKER_HPP

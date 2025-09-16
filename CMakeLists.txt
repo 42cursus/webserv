@@ -22,6 +22,7 @@ set(CMAKE_CXX_STANDARD 98)
 include_directories(include)
 
 set(COMMON_LDFLAGS
+		-pg
 		-fsanitize=address
 		-fsanitize=undefined
 		-fno-sanitize-recover=all
@@ -31,10 +32,10 @@ set(COMMON_CFLAGS
 		-Wwrite-strings -Wnarrowing
 		-O0
 		-masm=att
-		-fno-exceptions
 		-ffunction-sections
 		-fdata-sections
 		-fno-omit-frame-pointer
+		-pg
 		-fdwarf2-cfi-asm
 		-fcf-protection=none
 		-g3 -gdwarf-3
@@ -63,10 +64,15 @@ add_executable(${TARGET_NAME}
 		${TARGET_HEADERS}
 		${TARGET_SOURCES})
 target_link_libraries(${TARGET_NAME} "${TARGET_LIBRARIES}")
+target_link_options(${TARGET_NAME} PRIVATE ${COMMON_LDFLAGS})
+target_compile_options(${TARGET_NAME} PRIVATE "${COMMON_CFLAGS}")
 target_include_directories(${TARGET_NAME} PRIVATE
 		${PROJECT_SOURCE_DIR}
 		/usr/include
 		/usr/include/x86_64-linux-gnu)
+set_target_properties(${TARGET_NAME} PROPERTIES
+		RUNTIME_OUTPUT_DIRECTORY "${PROJECT_SOURCE_DIR}"
+		OUTPUT_NAME "${PROJECT_NAME}")
 
 #==============================================================================#
 # Custom targets
