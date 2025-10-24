@@ -27,8 +27,9 @@ SRCS			= src/main.cpp \
 				  src/app/TCPServer.cpp \
 				  src/http/HttpRequest.cpp \
 				  src/http/HttpResponse.cpp \
-				  src/utils/Parser.cpp
-
+				  src/utils/Parser.cpp \
+				  src/utils/State.cpp \
+				  src/utils/Utils.cpp
 
 
 OBJS			= $(SRCS:%.cpp=$(BUILD_DIR)/%.o)

@@ -480,7 +480,7 @@ void	printConfig(Config cfg)
                                << ((addr >> 16) & 0xFF) << "."
                                << ((addr >> 8) & 0xFF) << "."
                                << (addr & 0xFF) << std::endl
-              << "Server Name: " << (server_name ? server_name : "NULL") << std::endl; 
+              << "Server Name: " << (server_name != NULL ? server_name : "NULL") << std::endl;
 	
 }
 
@@ -490,6 +490,7 @@ void	printConfig(Config cfg)
 		2. function to print Config struct for testing purposes
 */
 
+/*
 int	main(int argc, char *argv[])
 {
 	Parser*	parse = new Parser();
@@ -502,3 +503,4 @@ int	main(int argc, char *argv[])
 	parse->parse(tokens);
 	printConfig(parse->_config);
 }
+*/
