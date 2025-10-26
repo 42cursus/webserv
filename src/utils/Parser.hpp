@@ -37,7 +37,7 @@ enum	e_token
 	COMMENT,
 	ILLEGAL,
 	NONE,
-} ;
+};
 
 typedef	struct s_token
 {
@@ -46,6 +46,7 @@ typedef	struct s_token
 	int	line;
 	bool	operator==(const s_token& other) const;
 }	t_token;
+
 class Parser
 {
 private:
@@ -62,7 +63,6 @@ private:
 	public:
 	Parser();
 	Parser(const Parser& copy);
-	Parser&	operator=(const Parser& copy);
 	Parser(IState*	currentState);
 	~Parser();
 	
@@ -96,17 +96,22 @@ private:
 	void parse(std::vector<t_token>& tokens);
 	void	parseServer(std::vector<t_token>& tokens);
 	static Config make_default_config();
-	
+
+	bool operator==(const Parser &rhs) const;
+
+	bool operator!=(const Parser &rhs) const;
+
 	class errorException: public std::exception
 	{
 		private:
 			std::string _errorMsg;
 			
 		public:
-			errorException(std::string msg);
+			errorException(const std::string& msg);
 			~errorException() throw() {};
 			const char*	what() const throw();	
 	};
+
 };
 
 char *strDupForConstChar(const char *str);

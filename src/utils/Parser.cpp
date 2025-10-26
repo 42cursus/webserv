@@ -13,6 +13,7 @@
 #include <cstring>
 #include <sstream>
 #include "Parser.hpp"
+#include "Utils.hpp"
 
 /*
 ** -------------------------------- STATIC VARS -------------------------------
@@ -24,8 +25,7 @@
 */
 
 Parser::Parser(IState*	currentState)
-	: _currentState(currentState),
-	  _inBlock(false)
+	: _currentState(currentState), _inBlock(false), _config()
 {
 
 }
@@ -40,7 +40,7 @@ Parser::Parser(const Parser &copy)
 	(void)copy;
 }
 
-Parser::errorException::errorException(std::string msg): _errorMsg(msg) {};
+Parser::errorException::errorException(const std::string& msg): _errorMsg(msg) {};
 
 const char* Parser::errorException::what() const throw()
 {
@@ -64,6 +64,7 @@ Parser::~Parser()
 ** -------------------------------- OPERATORS ---------------------------------
 */
 
+
 /*
 ** --------------------------------- METHODS ----------------------------------
 */
@@ -80,7 +81,7 @@ std::string	Parser::readQuotedString(std::string word)
 
 Config Parser::make_default_config()
 {
-	static const char *index[] = {
+	const std::string index[] = {
 		"index.html",
 		"index.htm"
 	};
@@ -93,15 +94,16 @@ Config Parser::make_default_config()
 					.sin_port = htons(8080),
 					.sin_addr = {
 						.s_addr = htonl(INADDR_ANY)
+//						.s_addr = inet_addr("127.0.0.1")
 					},
 					.sin_zero = {0x00}
 				},
-				.server_name = (char *)"localhost",
+				.server_name = "localhost",
 				.location = {
-					.path = (char *)"/",
+					.path = "/",
 					.config = {
-						.root = (char *)"./resources/web",
-						.index = (char **)index
+						.root = "./resources/web",
+						.index = Utils::to_vector(index)
 					}
 				}
 			}
@@ -296,7 +298,7 @@ std::vector<t_token>	Parser::tokenize()
 				tokens.push_back(makeToken(COMMENT, word, linecount)); // to do: function for storing comments
 				break ;
 			}
-			else if (word == "http" || word == "server" || word == "listen" || word == "location" || word == "root" || word == "index")
+			if (word == "http" || word == "server" || word == "listen" || word == "location" || word == "root" || word == "index")
 				tokens.push_back(makeToken(KEY, word, linecount));
 			else if (word == "{")
 				tokens.push_back(makeToken(BLOCK_START, word, linecount));
@@ -342,11 +344,11 @@ std::map<std::string, std::string> Parser::init_mime_types()
 	std::string line;
 	while (std::getline(file, line))
 	{
-		std::string	mtype, ext;
+		std::string	 mtype;
 		if (line.find(';') == std::string::npos)
 			continue ; // skips lines without semicolons
 		size_t start = line.find_first_not_of(" \t"); // checks for whitespace/indentation
-		size_t	end;
+		size_t	end = 0;
 		if (start != 0)
 		{	
 			// extract substr and store them in map
@@ -380,7 +382,7 @@ void	printTokens(std::vector<t_token> tokens)
 			std::cout << "KEYWORD " << it->literal << " on line " << it->line << std::endl;
 		else if (it->type == VAR)
 			std::cout << "VARIABLE " << it->literal << " on line " << it->line << std::endl;	
-			else if (it->type == QUOTES)
+		else if (it->type == QUOTES)
 			std::cout << "QUOTED STRING " << it->literal << " on line " << it->line << std::endl;
 		else if (it->type == BLOCK_START)
 			std::cout << "BLOCK START " << it->literal << " on line " << it->line << std::endl;
@@ -420,7 +422,7 @@ void	Parser::parseServer(std::vector<t_token>& tokens)
 		}
 		if (it->literal == "server_name" && (it + 1) != tokens.end())
 		{
-			_config.http.server.server_name = strDupForConstChar((it + 1)->literal.c_str());
+			_config.http.server.server_name = (it + 1)->literal;
 			//std::cout << _config.http.server.server_name << std::endl;
 			++it;
 		}
@@ -462,26 +464,44 @@ void Parser::parse(std::vector<t_token>&	tokens)
 	
 }
 
+bool Parser::operator==(const Parser &rhs) const
+{
+	return _key == rhs._key &&
+		   _configRoot == rhs._configRoot &&
+		   _currentToken == rhs._currentToken &&
+		   _nextToken == rhs._nextToken &&
+		   _currentIt == rhs._currentIt &&
+		   _currentState == rhs._currentState &&
+		   _inBlock == rhs._inBlock &&
+		   _blocks == rhs._blocks &&
+		   commentBuf == rhs.commentBuf &&
+		   _config == rhs._config;
+}
+
+bool Parser::operator!=(const Parser &rhs) const
+{
+	return !(rhs == *this);
+}
+
 void	printConfig(Config cfg)
 {
 	int family;
 	uint16_t port;
 	uint32_t addr;
-	char *server_name;
+	std::string server_name;
 
 	family = cfg.http.server.ipv4_listen.sin_family;
 	port = ntohs(cfg.http.server.ipv4_listen.sin_port);
 	addr = ntohl(cfg.http.server.ipv4_listen.sin_addr.s_addr);
 	server_name = cfg.http.server.server_name;
 
-	std::cout << "Address Family: " << family << std::endl 
+	std::cout << "Address Family: " << family << std::endl
               << "Port: " << port << std::endl
               << "IP Address: " << ((addr >> 24) & 0xFF) << "."
                                << ((addr >> 16) & 0xFF) << "."
                                << ((addr >> 8) & 0xFF) << "."
                                << (addr & 0xFF) << std::endl
-              << "Server Name: " << (server_name != NULL ? server_name : "NULL") << std::endl;
-	
+              << "Server Name: " << (server_name.empty() ? server_name : "NULL") << std::endl;
 }
 
 /*
