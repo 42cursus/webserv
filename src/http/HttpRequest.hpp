@@ -16,6 +16,7 @@
 
 #include <string>
 #include <map>
+#include "webserv.hpp"
 
 class HttpRequest {
 
@@ -36,7 +37,8 @@ public:
 
 	void parseRequest(const std::string& rawRequest);
 
-	std::string readHtmlFile(const std::string &, const std::string &);
+	std::string readHtmlFile(const std::string &, const Config &conf);
+	std::string getHtmlResponse(const Config &conf);
 	std::string getMimeType(const std::string &path);
 
 	class GenericException : public  std::exception

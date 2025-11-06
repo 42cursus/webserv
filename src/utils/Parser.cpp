@@ -102,6 +102,7 @@ Config Parser::make_default_config()
 				.location = {
 					.path = "/",
 					.config = {
+						.autoindex = true,
 						.root = "./resources/web",
 						.index = Utils::to_vector(index)
 					}

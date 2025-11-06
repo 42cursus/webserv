@@ -18,6 +18,7 @@
 #include <string>
 #include <vector>
 #include "HttpRequest.hpp"
+#include "webserv.hpp"
 
 HttpRequest::HttpRequest(const std::string &path) : path(path)
 {}
@@ -94,26 +95,33 @@ void HttpRequest::parseRequest(const std::string &rawRequest)
 	}
 }
 
-std::string HttpRequest::readHtmlFile(const std::string &path,
-									  const std::string &root_folder)
+std::string
+HttpRequest::getHtmlResponse(const Config &conf)
 {
-	int flag = 0;
-	std::string filename = path.substr(1, path.length());
-	std::string str = root_folder + "/" + filename;
-	std::ifstream file(str.c_str());
+	std::basic_string<char> filename = path.substr(1, path.length());
+
+	if (filename.empty()) filename = conf.http.server.location.config.index[0];
+
+	return readHtmlFile(filename, conf);
+}
+
+std::string
+HttpRequest::readHtmlFile(const std::string &filename, const Config &conf)
+{
+	const std::string &root_folder = conf.http.server.location.config.root;
+
+	std::string filePath = root_folder + "/" + filename;
+	std::ifstream file(filePath.c_str(), std::ios_base::in);
 
 	if (!file) {
-		flag = 1;
 		std::cerr << "File not found." << std::endl;
+		return "";
 	}
 
-	if (flag == 0) {
-		std::stringstream buffer;
-		buffer << file.rdbuf();
-		return buffer.str();
-	}
+	std::stringstream buffer;
+	buffer << file.rdbuf();
 
-	return "";
+	return buffer.str();
 }
 
 std::string HttpRequest::getMimeType(const std::string &path)

@@ -31,33 +31,30 @@ struct Config
 			struct {
 				std::string path;
 				struct {
+					bool autoindex;
 					std::string root;
 					std::vector<std::string> index;
 				}	config;
-			}	location;
+			}	location; // https://nginx.org/en/docs/http/ngx_http_core_module.html#location
 		}	server;
 	}	http;
 
 	bool operator==(const Config &other) const
 	{
-		// Compare ipv4_listen
+		bool	ret = true;
+
 		if (memcmp(&http.server.ipv4_listen, &other.http.server.ipv4_listen,
 				   sizeof(struct sockaddr_in)) != 0)
-			return false;
-
-		// Compare strings
+			ret = false;
 		if (http.server.server_name != other.http.server.server_name)
-			return false;
+			ret = false;
 		if (http.server.location.path != other.http.server.location.path)
-			return false;
+			ret = false;
 		if (http.server.location.config.root != other.http.server.location.config.root)
-			return false;
-
-		// Compare vector
+			ret = false;
 		if (http.server.location.config.index != other.http.server.location.config.index)
-			return false;
-
-		return true;
+			ret = false;
+		return ret;
 	}
 
 	bool operator!=(const Config &other) const
