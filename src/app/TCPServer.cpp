@@ -133,7 +133,7 @@ int TCPServer::serve(TCPServer &srv)
 			};
 			std::cout << "\e[34;1mfd\e[m: " << it->first << "\t\e[35;1mworker\e[m: " << it->second << std::endl;
 			std::cout << "\e[32;1mRequest\e[m: " << std::endl;;
-			std::cout << it->second->getRawRequest() << "---------------" << std::endl << std::endl;
+			std::cout << it->second->getRawRequest() << std::endl << "---------------" << std::endl << std::endl;
 		}
 
 		poll(pollfds.data(), nfds, -1);
