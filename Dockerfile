@@ -1,7 +1,9 @@
 FROM nginx:1.29
 
 RUN apt-get update && \
-    apt-get install -y --no-install-recommends fcgiwrap spawn-fcgi python3 ca-certificates && \
+    apt-get install -y --no-install-recommends \
+    	fcgiwrap spawn-fcgi python3 ca-certificates \
+    	htop iftop iproute2 procps && \
     rm -rf /var/lib/apt/lists/*
 
 # fcgiwrap socket dir
