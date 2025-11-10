@@ -6,6 +6,7 @@ services:
     ports:
       - "8080:8080"
     volumes:
+      - ./resources/nginx.conf:/etc/nginx/nginx.conf:ro
       - ./resources/default.conf:/etc/nginx/conf.d/default.conf:ro
       - ./resources/web:/usr/share/nginx/html:rw
       - ./resources/cgi-bin:/var/www/cgi-bin:ro
