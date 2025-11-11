@@ -48,6 +48,8 @@ int Worker::handleRequest()
 	int			nread;
 
 	nread = read(_socket_fd, _req_buffer, 1023);
+	if (nread <= 0)
+		return (2);
 	_req_buffer[nread] = '\0';
 	_rawRequest += _req_buffer;
 	if (_rawRequest.find("\r\n\r\n") == _rawRequest.npos)
@@ -63,7 +65,14 @@ int Worker::handleRequest()
 	}
 	std::cout << "\e[m" << std::endl;
 
-	req.parseRequest(_rawRequest);
+	try {
+		req.parseRequest(_rawRequest);
+	}
+	catch (HttpRequest::GenericException &e) {
+		std::cout << e.what() << std::endl;
+		_rawRequest.erase();
+		return (0);
+	}
 	std::map<const std::string, std::string>::iterator it = req.headers.begin();
 	while (it != req.headers.end())
 	{
@@ -80,7 +89,8 @@ int Worker::handleRequest()
 	logServingFile(req.path, mimetype);
 
 	write(_socket_fd, response.c_str(), response.length());
-	close(_socket_fd);
+	// close(_socket_fd);
+	_rawRequest.erase();
 	return (0);
 }
 
