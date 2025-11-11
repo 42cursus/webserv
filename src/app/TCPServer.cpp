@@ -148,8 +148,11 @@ int TCPServer::serve(TCPServer &srv)
 			int	fd = pollfds[i].fd;
 			if (pollfds[i].revents & POLLIN)
 			{
-				if (connections[fd]->handleRequest() == 0)
+				int retval = connections[fd]->handleRequest();
+				if (retval == 2)
 				{
+					std::cout << "error occured on fd: " << pollfds[i].fd << std::endl;
+					close(fd);
 					wrkrPool.free(connections[fd]);
 					connections.erase(fd);
 				}
