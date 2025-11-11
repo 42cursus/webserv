@@ -17,7 +17,6 @@
 */
 
 class Parser;
-class IDirective;
 class   IBlock;
 
 typedef struct Parameter
@@ -26,6 +25,12 @@ typedef struct Parameter
     int rlidx;
 } Parameter;
 
+typedef struct Comment
+{
+    std::string content;
+    int rlidx;
+} Comment;
+
 class IState
 {
     public:
@@ -33,16 +38,34 @@ class IState
         
         virtual void    enter(Parser*   parser) = 0;
         virtual void    toggle(Parser*  parser) = 0;
-        virtual void    exit(Parser*  parser) = 0;
+        //virtual void    exit(Parser*  parser) = 0;
+} ;
+
+class   Start: public IState
+{
+    private:
+        Start(const Start& copy);
+        Start& operator=(const Start& copy);
+    
+        
+    public:
+        Start();
+        ~Start();
+        
+        void    enter(Parser* parser);
+        void    toggle(Parser *parser);
+        void    exit(Parser* parser);
 } ;
 
 class   IBlock: public IState
 {
     private:
         std::string     _name;
+        int _line;
         std::string _code;
-        IDirective* _parent;
-        std::vector<IDirective*> _directives;
+        IState* _parent;
+        std::vector<Parameter> _parameters;
+        std::vector<IState*> _directives;
 
         IBlock();
         IBlock(const IBlock& copy);
@@ -50,51 +73,33 @@ class   IBlock: public IState
 
     public:
         IBlock(std::string name);
+        bool operator==(const IBlock& oth);
         ~IBlock();
 
-        std::string    getName() const;
-        std::string    getCode() const;
-        std::vector<IDirective*> getDirectives() const;
-        IDirective* getParent() const;
-        void    setParent(IDirective*   parentDirective);
-
-        void    enter(Parser* parser);
-        void    toggle(Parser* parser);
-        void    exit(Parser*    parser);
-
-} ;
-
-class   IDirective: public IState
-{
-    private:
-        std::string _name;
-        int _line;
-        std::vector<Parameter> _parameters;
-        std::vector<IDirective*> _directives;
-        IBlock* _block;
-        IDirective* _parent;
-
-        IDirective();
-        IDirective(const IDirective* copy);
-        IDirective& operator=(const IDirective* copy);
-
-    public:
-        IDirective(std::string name);
-        ~IDirective();
-
-        std::string getName() const;
-        std::vector<Parameter>  getParameters() const;
-        std::vector<IDirective*> getDirectives() const;
-        IBlock* getBlock() const;
-        IDirective* getParent() const;
-        void    setParent(IDirective* parentDirective);
         int getLine() const;
         void    setLine(int line);
+        std::string    getName() const;
+        std::string    getCode() const;
+        std::vector<IState*> getDirectives() const;
+        std::vector<Parameter>  getParameters() const;
+        void    addDirective(IState* newDir);
+        IState* getParent() const;
+        void    setParent(IState*   parentDirective);
 
-        void    enter(Parser* parser);
-        void    toggle(Parser* parser);
-        void    exit(Parser*    parser);
+        virtual void    enter(Parser* parser) = 0;
+        virtual void    toggle(Parser* parser) = 0;
+        virtual void    exit(Parser*    parser) = 0;
+
 } ;
+
+/*
+    1. HTTP (context)
+    2. server (context)
+    3. listen 
+    4. location (context)
+    5. root
+    6. index
+*/
 
 class   HTTP: public IBlock
 {
@@ -105,6 +110,32 @@ class   HTTP: public IBlock
     public:
         HTTP();
         ~HTTP();
+
+        void    enter(Parser* parser);
+        void    toggle(Parser* parser);
+        void    exit(Parser* parser);
+        //void    storeCode();
 } ;
+
+class Server: public IBlock
+{
+    private:
+        Server(const Server& copy);
+        Server& operator=(const Server& copy);
+        
+    public:
+        Server();
+        ~Server();
+
+        void    enter(Parser* parser);
+        void    toggle(Parser* parser);
+        void    exit(Parser* parser);
+} ;
+
+typedef struct Listen
+{
+    int port;
+    int line;
+} Listen;
 
 #endif

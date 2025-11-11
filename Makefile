@@ -27,11 +27,20 @@ SRCS			= src/main.cpp \
 				  src/app/TCPServer.cpp \
 				  src/http/HttpRequest.cpp \
 				  src/http/HttpResponse.cpp \
-				  src/utils/Parser.cpp
-
+				  src/utils/Parser.cpp \
+				  src/utils/State.cpp \
+				  src/utils/Utils.cpp
 
 
 OBJS			= $(SRCS:%.cpp=$(BUILD_DIR)/%.o)
+
+
+ifeq ($(MAKELEVEL),0)
+	# Only set --jobs if user didn't already pass a -j option manually
+	ifeq ($(filter -j,$(MAKEFLAGS)),)
+		MAKEFLAGS += --jobs=$(shell nproc) --no-print-directory #--quiet
+	endif
+endif
 
 all: $(NAME)
 
@@ -51,6 +60,7 @@ clean:
 fclean: clean
 		@$(RM) -vf $(NAME)
 
-re: fclean all
+re: fclean
+		+$(MAKE) all
 
 .PHONY: all clean fclean re

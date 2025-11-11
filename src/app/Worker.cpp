@@ -71,9 +71,10 @@ int Worker::handleRequest()
 		it++;
 	}
 	std::string mimetype = req.getMimeType(req.path);
-	std::string body = req.readHtmlFile(req.path, srv.getCfg().http.server.location.config.root);
 
-	HttpResponse res= HttpResponse();
+	std::string body = req.getHtmlResponse(srv.getCfg());
+
+	HttpResponse res = HttpResponse();
 
 	std::string response = res.buildHttpResponse("200", "OK", req.headers, body, mimetype);
 	logServingFile(req.path, mimetype);

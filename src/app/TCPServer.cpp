@@ -58,8 +58,17 @@ int TCPServer::start()
 		std::cerr << "Failed to listen on server socket." << std::endl;
 		throw TCPServer::GenericException();
 	}
-	std::cout << "Server started on port: " << ntohs(in.sin_port) << std::endl;
+
+	struct sockaddr_in inin = in;
+	inin.sin_family = in.sin_family;
+	if (ntohs(in.sin_addr.s_addr) == htonl(INADDR_ANY))
+		inin.sin_addr.s_addr = inet_addr("127.0.0.1");
+
 	std::cout << "Listen socket_fd: " << _socket_fd << std::endl;
+	std::cout << "Server started on: "
+			  << "http://" << inet_ntoa(inin.sin_addr)
+			  << ":" << ntohs(in.sin_port) << "/\n"
+			  << std::endl;
 	return _socket_fd;
 }
 
@@ -106,10 +115,10 @@ int TCPServer::serve(TCPServer &srv)
 
 	pollfds.resize(1024);
 	pollfds.data()[0] = (struct pollfd){.fd = srv.getSocketFd(), .events = POLLIN, .revents = 0};
-	std::cout << "\e[?1049h";
+//	std::cout << "\e[?1049h";
 	while(g_var != SIGINT)
 	{
-		std::cout << "\e[2J\e[H" << std::flush;
+//		std::cout << "\e[2J\e[H" << std::flush;
 		std::map<int , Worker*>::iterator it = connections.begin();
 		for (nfds = 1; it != connections.end(); it++, nfds++)
 		{
@@ -124,7 +133,7 @@ int TCPServer::serve(TCPServer &srv)
 			};
 			std::cout << "\e[34;1mfd\e[m: " << it->first << "\t\e[35;1mworker\e[m: " << it->second << std::endl;
 			std::cout << "\e[32;1mRequest\e[m: " << std::endl;;
-			std::cout << it->second->getRawRequest() << "---------------" << std::endl << std::endl;
+			std::cout << it->second->getRawRequest() << std::endl << "---------------" << std::endl << std::endl;
 		}
 
 		poll(pollfds.data(), nfds, -1);
@@ -154,7 +163,7 @@ int TCPServer::serve(TCPServer &srv)
 			}
 		}
 	}
-	std::cout << "\e[?1049l";
+//	std::cout << "\e[?1049l";
 	std::map<int , Worker*>::iterator it = connections.begin();
 	while (it != connections.end())
 	{

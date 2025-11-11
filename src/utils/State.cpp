@@ -6,20 +6,50 @@
 /*   By: margo <margo@student.42.fr>                +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/08/07 20:47:27 by margo             #+#    #+#             */
-/*   Updated: 2025/08/12 21:35:05 by margo            ###   ########.fr       */
+/*   Updated: 2025/09/16 17:57:48 by margo            ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
 #include "State.hpp"
 #include "Parser.hpp"
 
+Start::Start() {};
+
+Start::~Start() {};
+
+void    Start::enter(Parser* parser)
+{
+    (void)parser;
+}
+
+void    Start::toggle(Parser *parser)
+{
+    if (parser->getCurrentToken().literal == "http")
+    {
+        parser->setCurrentState(new HTTP());
+        parser->getCurrentState()->enter(parser);
+    }
+    // else if for events or other top level directives if needed
+}
+
+void    Start::exit(Parser* parser)
+{
+    (void)parser;
+}
+
+
 IBlock::IBlock(std::string name): _name(name) {};
+
+bool IBlock::operator==(const IBlock& oth)
+{
+    return this->getName() == oth.getName();     
+}
 
 IBlock::~IBlock() 
 {
     delete _parent;
 
-    for (std::vector<IDirective*>::iterator it = _directives.begin(); it != _directives.end(); ++it)
+    for (std::vector<IState*>::iterator it = _directives.begin(); it != _directives.end(); ++it)
         delete *it;
     _directives.clear();
 }
@@ -34,86 +64,90 @@ std::string IBlock::getCode() const
     return _code;
 }
 
-std::vector<IDirective*> IBlock::getDirectives() const
+std::vector<IState*> IBlock::getDirectives() const
 {
     return _directives;
 }
 
-IDirective* IBlock::getParent() const
+void    IBlock::addDirective(IState* newDir)
+{
+    _directives.push_back(newDir);
+}
+
+IState* IBlock::getParent() const
 {
     return _parent;
 }
 
-void    IBlock::setParent(IDirective*   parentDirective)
+void    IBlock::setParent(IState*   parentDirective)
 {
     _parent = parentDirective;
 }
 
 void    IBlock::toggle(Parser* parser)
 {
+    (void)parser;
     //toggle into specific block based on keyword
 }
 
-IDirective::IDirective(std::string name): _name(name) {};
-
-IDirective::~IDirective()
-{
-    delete _block;
-    delete _parent;
-    
-    for (std::vector<IDirective*>::iterator it = _directives.begin(); it != _directives.end(); ++it)
-        delete *it;
-    _directives.clear();
-}
-
-std::string IDirective::getName() const
-{
-    return _name;
-}
-
-std::vector<Parameter>  IDirective::getParameters() const
-{
-    return _parameters;
-}
-
-std::vector<IDirective*> IDirective::getDirectives() const
-{
-    return _directives;
-}
-
-IBlock* IDirective::getBlock() const
-{
-    return _block;
-}
-
-IDirective* IDirective::getParent() const
-{
-    return _parent;
-}
-
-void    IDirective::setParent(IDirective* parentDirective)
-{
-    _parent = parentDirective;
-}
-
-int IDirective::getLine() const
+int IBlock::getLine() const
 {
     return _line;
 }
 
-void    IDirective::setLine(int line)
+void    IBlock::setLine(int line)
 {
     _line = line;
 }
 
-void    IDirective::toggle(Parser*  parser)
-{
-    //set directive according to keyword
-}
+HTTP::HTTP(): IBlock("http") {};
 
-HTTP::HTTP(): IBlock("http")
+HTTP::~HTTP() {};
+
+void    HTTP::enter(Parser* parser)
 {
+    parser->setKey(getName());
+    parser->setInBlock(true);
+    parser->addNewBlock(this);
+    setLine(parser->getCurrentToken().line);
     setParent(NULL);
 }
 
-HTTP::~HTTP() {};
+void    HTTP::toggle(Parser* parser)
+{
+    if (parser->getCurrentToken().literal == "server")
+    {
+        parser->setCurrentState(new Server());
+        exit(parser);
+        parser->getCurrentState()->enter(parser);
+    }
+    
+}
+
+void    HTTP::exit(Parser* parser)
+{
+    addDirective(parser->getCurrentState());
+}
+
+Server::Server(): IBlock("server") {};
+
+Server::~Server() {};
+
+void    Server::enter(Parser *parser)
+{
+    parser->setKey(getName());
+    parser->setInBlock(true);
+    parser->addNewBlock(this);
+    setLine(parser->getCurrentToken().line);
+    setParent(parser->getBlock("http"));
+}
+
+void    Server::toggle(Parser *parser)
+{
+    std::cout << parser->getKey() << std::endl;
+}
+
+void    Server::exit(Parser *parser)
+{
+    addDirective(parser->getCurrentState());
+}

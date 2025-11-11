@@ -20,22 +20,47 @@
 #include <cstring>
 #include <string>
 #include <netinet/in.h>
+#include <vector>
 
 struct Config
 {
 	struct {
 		struct {
-			struct sockaddr_in ipv4_listen;
-			char	*server_name;
+			struct sockaddr_in	ipv4_listen;
+			std::string			server_name;
 			struct {
-				char	*path;
+				std::string path;
 				struct {
-					char	*root;
-					char	**index;
+					bool autoindex;
+					std::string root;
+					std::vector<std::string> index;
 				}	config;
-			}	location;
+			}	location; // https://nginx.org/en/docs/http/ngx_http_core_module.html#location
 		}	server;
 	}	http;
+
+	bool operator==(const Config &other) const
+	{
+		bool	ret = true;
+
+		if (memcmp(&http.server.ipv4_listen, &other.http.server.ipv4_listen,
+				   sizeof(struct sockaddr_in)) != 0)
+			ret = false;
+		if (http.server.server_name != other.http.server.server_name)
+			ret = false;
+		if (http.server.location.path != other.http.server.location.path)
+			ret = false;
+		if (http.server.location.config.root != other.http.server.location.config.root)
+			ret = false;
+		if (http.server.location.config.index != other.http.server.location.config.index)
+			ret = false;
+		return ret;
+	}
+
+	bool operator!=(const Config &other) const
+	{
+		return !(*this == other);
+	}
 };
 
 #endif //WEBSERV_HPP
