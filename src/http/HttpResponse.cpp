@@ -37,6 +37,7 @@ std::string HttpResponse::buildHttpResponse(std::string statuscode,
 		buffer << it->first << ": " << it->second << "\r\n";
 		++it;
 	}
-	buffer << "\r\n" << body << "\r\n";
+	buffer << "\r\n" << body;
+	// buffer << "\r\n";
 	return buffer.str();
 }
