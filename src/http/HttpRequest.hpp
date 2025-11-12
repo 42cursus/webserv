@@ -31,7 +31,7 @@ public:
 	std::string method;
 	std::string path;
 	std::string protocol;
-	std::map<std::string, std::string> headers; //FIXME: we are probably not allowed to use map ???
+	std::map<std::string, std::string> headers;
 
 	explicit HttpRequest(const std::string &path);
 

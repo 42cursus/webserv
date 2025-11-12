@@ -151,7 +151,7 @@ int TCPServer::serve(TCPServer &srv)
 				int retval = connections[fd]->handleRequest();
 				if (retval == 2)
 				{
-					std::cout << "error occured on fd: " << pollfds[i].fd << std::endl;
+					std::cout << "Connection closed on fd: " << pollfds[i].fd << std::endl;
 					close(fd);
 					wrkrPool.free(connections[fd]);
 					connections.erase(fd);

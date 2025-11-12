@@ -17,11 +17,19 @@
 #include <netinet/in.h>
 #include "TCPServer.hpp"
 
+enum {
+	REQ_HEADERS = 0,
+	REQ_BODY,
+	REQ_HANDLED,
+	REQ_MAX,
+};
+
 class Worker
 {
 private:
 	char _req_buffer[1024];
 	std::string _rawRequest;
+	int			_req_status;
 	int _socket_fd;
 	int _request_handled;
 	struct sockaddr_in _addr;

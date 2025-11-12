@@ -17,11 +17,13 @@
 #include <map>
 
 class HttpResponse {
+
+public:
 	std::string statuscode;
 	std::string statusmsg;
 	std::map<std::string, std::string> headers;
 	std::string body;
-public:
+
 	std::string buildHttpResponse(std::string statuscode,
 								  std::string statusmsg,
 								  std::map<std::string,

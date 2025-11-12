@@ -16,6 +16,7 @@
 
 Worker::Worker(TCPServer &srv)
 	: _req_buffer(),
+	_req_status(REQ_BODY),
 	_socket_fd(),
 	_addr(),
 	_addr_size(),
@@ -65,6 +66,12 @@ int Worker::handleRequest()
 	}
 	std::cout << "\e[m" << std::endl;
 
+	HttpResponse res = HttpResponse();
+	res.statuscode = "200";
+	res.statusmsg = "OK";
+	res.headers = req.headers;
+	
+
 	try {
 		req.parseRequest(_rawRequest);
 	}
@@ -80,18 +87,15 @@ int Worker::handleRequest()
 		it++;
 	}
 	std::string mimetype = req.getMimeType(req.path);
+	res.body = req.getHtmlResponse(srv.getCfg());
 
-	std::string body = req.getHtmlResponse(srv.getCfg());
-
-	HttpResponse res = HttpResponse();
-
-	std::string response = res.buildHttpResponse("200", "OK", req.headers, body, mimetype);
+	std::string response = res.buildHttpResponse(res.statuscode, res.statusmsg, res.headers, res.body, mimetype);
 	logServingFile(req.path, mimetype);
 
 	write(_socket_fd, response.c_str(), response.length());
 	// close(_socket_fd);
 	_rawRequest.erase();
-	return (0);
+	return (2);
 }
 
 const char *Worker::GenericException::what() const throw()
@@ -123,5 +127,7 @@ std::string& Worker::getRawRequest()
 
 void	Worker::clearRequest(void)
 {
-	_rawRequest.erase();
+	if (!_rawRequest.empty())
+		_rawRequest.erase();
+	_req_status = REQ_BODY;
 }
