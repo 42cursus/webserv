@@ -28,9 +28,10 @@ private:
 public:
 	HttpRequest();
 
-	std::string method;
-	std::string path;
-	std::string protocol;
+	std::string			method;
+	std::string			path;
+	std::string			protocol;
+	std::vector<char>	body;
 	std::map<std::string, std::string> headers;
 
 	explicit HttpRequest(const std::string &path);
