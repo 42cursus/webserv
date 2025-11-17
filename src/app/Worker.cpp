@@ -13,8 +13,11 @@
 #include "Worker.hpp"
 #include "src/http/HttpRequest.hpp"
 #include "src/http/HttpResponse.hpp"
-#include <array>
+#include <cctype>
+#include <cstring>
+#include <iomanip>
 #include <sys/types.h>
+#include <cstdlib>
 
 Worker::Worker(TCPServer &srv)
 	: _req_buffer(),
@@ -46,46 +49,41 @@ void logServingFile(const std::string& path, const std::string& mimetype) {
 	std::cout << "Serving file: " << path << " with MIME type: " << mimetype << std::endl;
 }
 
-size_t	Worker::extract_body(size_t nread)
+size_t	Worker::extract_body(size_t nread, size_t old_size, size_t clcr_pos)
 {
-	std::array<char, 1024>::iterator	it = _req_buffer.begin();
-	size_t								consumed;
-	
-	while ((consumed = std::distance(_req_buffer.begin(), it + 3)) < nread)
-	{
-		if (*it == '\r' && *(it + 1) == '\n'
-			&& *(it + 2) == '\r' && *(it + 3) == '\n')
-		{
-			_req->body.insert(_req->body.begin(), it + 4, _req_buffer.begin() + nread);
-			return (nread - consumed);
-		}
-		it++;
-	}
-	return (-1);
+	size_t	body_start = clcr_pos + 4 - old_size;
+	size_t	body_size = nread - body_start;
+
+	_req->body.resize(body_size);
+	std::memcpy(_req->body.data(), &_req_buffer[body_start], body_size);
+	return (body_size);
 }
 
 int Worker::handleRequest()
 {
 	int			nread;
 
-	nread = read(_socket_fd, _req_buffer.data(), 1023);
+	nread = read(_socket_fd, _req_buffer, 1023);
 	if (nread <= 0)
 		return (2);
 	_req_buffer[nread] = '\0';
 	switch (_req_status) {
-		case (REQ_HEADERS):
-			_rawRequest += static_cast<char *>(_req_buffer.data());
-			if (_rawRequest.find("\r\n\r\n") == _rawRequest.npos)
+		case (REQ_HEADERS): {
+			size_t	old_size = _rawRequest.size();
+			_rawRequest += _req_buffer;
+
+			size_t	clcr_pos = _rawRequest.find("\r\n\r\n");
+			if (clcr_pos == _rawRequest.npos)
 				return (1);
 			std::cout << "\e[35m" << "Request ready on fd: " << _socket_fd << std::endl;
-			std::cout << "\e[32m" << _rawRequest << "\e[31m" << std::endl;
-			for (int i = 0; _rawRequest[i] != 0 && i < 1024; i++)
-			{
-				std::cout << (int)_rawRequest[i] << ' ';
-				if (_rawRequest[i] == '\n')
-					std::cout << std::endl;
-			}
-			std::cout << "\e[m" << std::endl;
+			std::cout << "\e[32m" << _rawRequest.substr(0, clcr_pos + 4) << "\e[31m" << std::endl;
+			// for (int i = 0; _rawRequest[i] != 0 && i < 1024; i++)
+			// {
+			// 	std::cout << (int)_rawRequest[i] << ' ';
+			// 	if (_rawRequest[i] == '\n')
+			// 		std::cout << std::endl;
+			// }
+			// std::cout << "\e[m" << std::endl;
 			_req = new HttpRequest();
 			try {
 				_req->parseRequest(_rawRequest);
@@ -96,13 +94,52 @@ int Worker::handleRequest()
 				delete _req;
 				return (0);
 			}
-			if (std::atoi(_req->headers["content-length"].c_str()) > 0)
+			_req->content_length = std::atoi(_req->headers["content-length"].c_str());
+			if (_req->content_length > 0)
 			{
 				_req_status = REQ_BODY;
-				size_t	body_size = extract_body(nread);
-				for (size_t i = 0; i < body_size; i++)
-					std::cout << _req->body[i];
+				size_t	body_size = extract_body(nread, old_size, clcr_pos);
+				if (body_size < _req->content_length)
+					return (1);
+				size_t i;
+				for (i = 0; i < _req->body.size() && i < 1000; i++)
+				{
+					char c = _req->body[i];
+					if (std::isprint(c))
+						// std::cout << "\e[32m" << std::setw(2) << c << ' ';
+						std::cout << "\e[32m" << c;
+					else
+						std::cout << "\e[31m " << std::hex << std::setw(2) << std::setfill(' ') << std::setfill('0') << (int)(u_char)c << ' ';
+				}
+				if (i < _req->body.size())
+					std::cout << "\e[34;1m [...]";
+				std::cout << "\e[m" << std::endl;
+				}
+			break ;
+		}
+		case (REQ_BODY): {
+			size_t old_size = _req->body.size();
+			_req->body.resize(old_size + nread);
+			std::memcpy(_req->body.data() + old_size, _req_buffer, nread);
+			if (_req->body.size() < _req->content_length)
+				return (1);
+			size_t i;
+			for (i = 0; i < _req->body.size() && i < 1000; i++)
+			{
+				char c = _req->body[i];
+				if (std::isprint(c))
+					// std::cout << "\e[32m" << std::setw(2) << std::setfill(' ') << c << ' ';
+					std::cout << "\e[32m" << c;
+				else
+					std::cout << "\e[31m " << std::hex << std::setw(2) << std::setfill('0') << (int)(u_char)c << ' ';
 			}
+			if (i < _req->body.size())
+				std::cout << "\e[34;1m [...]";
+			std::cout << "\e[m" << std::endl;
+			break ;
+		}
+		default:
+			break ;
 	}
 
 	HttpResponse res = HttpResponse();
@@ -126,7 +163,8 @@ int Worker::handleRequest()
 	write(_socket_fd, response.c_str(), response.length());
 	// close(_socket_fd);
 	_rawRequest.erase();
-	return (2);
+	delete _req;
+	return (0);
 }
 
 const char *Worker::GenericException::what() const throw()
@@ -160,5 +198,5 @@ void	Worker::clearRequest(void)
 {
 	if (!_rawRequest.empty())
 		_rawRequest.erase();
-	_req_status = REQ_BODY;
+	_req_status = REQ_HEADERS;
 }

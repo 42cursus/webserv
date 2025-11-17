@@ -14,7 +14,6 @@
 #define WORKER_HPP
 
 
-#include <array>
 #include <netinet/in.h>
 #include <sys/types.h>
 #include <vector>
@@ -31,7 +30,7 @@ enum {
 class Worker
 {
 private:
-	std::array<char, 1024>	_req_buffer;
+	char					_req_buffer[1024];
 	std::string				_rawRequest;
 	HttpRequest*			_req;
 	int						_req_status;
@@ -57,7 +56,7 @@ public:
 	std::string& getRawRequest();
 	int requestHandled() const;
 	void clearRequest();
-	size_t	extract_body(size_t nread);
+	size_t	extract_body(size_t nread, size_t old_size, size_t clcr_pos);
 };
 
 
