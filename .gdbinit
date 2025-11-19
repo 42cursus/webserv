@@ -11,14 +11,14 @@
 # **************************************************************************** #
 
 #layout reg
-set disassemble-next-line on
-set print static-members off
-set print pretty on
+#set disassemble-next-line on
+#set print static-members off
+#set print pretty on
+#set debug auto-load on
 set height unlimited
 set pagination off
 set confirm off
 set max-value-size unlimited
-
 
 directory ~/staging/glibc-2.31
 directory ~/staging/glibc-2.31/elf

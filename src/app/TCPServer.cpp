@@ -6,14 +6,20 @@
 /*   By: abelov <abelov@student.42london.com>       +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/07/18 19:12:40 by abelov            #+#    #+#             */
-/*   Updated: 2025/07/23 21:01:03 by abelov           ###   ########.fr       */
+/*   Updated: 2025/08/24 14:35:55 by fsmyth           ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
 #include <cstring>
+#include <map>
+#include <sys/poll.h>
+#include <sys/select.h>
+#include <poll.h>
+#include <vector>
 #include "TCPServer.hpp"
 #include "src/utils/Parser.hpp"
 #include "Worker.hpp"
+#include "WorkerPool.hpp"
 
 Config TCPServer::default_config = Parser::make_default_config();
 
@@ -52,7 +58,17 @@ int TCPServer::start()
 		std::cerr << "Failed to listen on server socket." << std::endl;
 		throw TCPServer::GenericException();
 	}
-	std::cout << "Server started on port: " << ntohs(in.sin_port) << std::endl;
+
+	struct sockaddr_in inin = in;
+	inin.sin_family = in.sin_family;
+	if (ntohs(in.sin_addr.s_addr) == htonl(INADDR_ANY))
+		inin.sin_addr.s_addr = inet_addr("127.0.0.1");
+
+	std::cout << "Listen socket_fd: " << _socket_fd << std::endl;
+	std::cout << "Server started on: "
+			  << "http://" << inet_ntoa(inin.sin_addr)
+			  << ":" << ntohs(in.sin_port) << "/\n"
+			  << std::endl;
 	return _socket_fd;
 }
 
@@ -76,15 +92,86 @@ const Config &TCPServer::getCfg() const
 	return cfg;
 }
 
+// int TCPServer::serve(TCPServer &srv)
+// {
+// 	extern sig_atomic_t g_var;
+//
+// 	while(g_var != SIGINT)
+// 	{
+// 		Worker wrkr(srv);
+// 		wrkr.acceptConnection();
+// 		wrkr.handleRequest();
+// 	}
+// 	return 0;
+// }
+
 int TCPServer::serve(TCPServer &srv)
 {
-	extern sig_atomic_t g_var;
+	extern sig_atomic_t			g_var;
+	std::map<int , Worker*>		connections;
+	WorkerPool					wrkrPool(srv);
+	std::vector<struct pollfd>	pollfds;
+	size_t						nfds;
 
+	pollfds.resize(1024);
+	pollfds.data()[0] = (struct pollfd){.fd = srv.getSocketFd(), .events = POLLIN, .revents = 0};
+//	std::cout << "\e[?1049h";
 	while(g_var != SIGINT)
 	{
-		Worker wrkr(srv);
-		wrkr.acceptConnection();
-		wrkr.handleRequest();
+//		std::cout << "\e[2J\e[H" << std::flush;
+		std::map<int , Worker*>::iterator it = connections.begin();
+		for (nfds = 1; it != connections.end(); it++, nfds++)
+		{
+			if (nfds == pollfds.size())
+			{
+				pollfds.resize(pollfds.size() + 1024);
+			}
+			pollfds.data()[nfds] = (struct pollfd){
+				.fd = it->first,
+				.events = POLLIN,
+				.revents = 0
+			};
+			std::cout << "\e[34;1mfd\e[m: " << it->first << "\t\e[35;1mworker\e[m: " << it->second << std::endl;
+			std::cout << "\e[32;1mRequest\e[m: " << std::endl;;
+			std::cout << it->second->getRawRequest() << std::endl << "---------------" << std::endl << std::endl;
+		}
+
+		poll(pollfds.data(), nfds, -1);
+		if (pollfds[0].revents & POLLIN)
+		{
+			Worker* wrkr = wrkrPool.alloc();
+			wrkr->acceptConnection();
+			connections[wrkr->getSocketFd()] = wrkr;
+		}
+		for (size_t i = 1; i < nfds; i++)
+		{
+			int	fd = pollfds[i].fd;
+			if (pollfds[i].revents & POLLIN)
+			{
+				int retval = connections[fd]->handleRequest();
+				if (retval == 2)
+				{
+					std::cout << "error occured on fd: " << pollfds[i].fd << std::endl;
+					close(fd);
+					wrkrPool.free(connections[fd]);
+					connections.erase(fd);
+				}
+			}
+			if (pollfds[i].revents & (POLLHUP | POLLERR))
+			{
+				std::cout << "error occured on fd: " << pollfds[i].fd << std::endl;
+				close(fd);
+				wrkrPool.free(connections[fd]);
+				connections.erase(fd);
+			}
+		}
+	}
+//	std::cout << "\e[?1049l";
+	std::map<int , Worker*>::iterator it = connections.begin();
+	while (it != connections.end())
+	{
+		close(it->first);
+		it++;
 	}
 	return 0;
 }

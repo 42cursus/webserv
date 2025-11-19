@@ -6,7 +6,7 @@
 #    By: margo <margo@student.42.fr>                +#+  +:+       +#+         #
 #                                                 +#+#+#+#+#+   +#+            #
 #    Created: 2025/07/17 22:30:53 by abelov            #+#    #+#              #
-#    Updated: 2025/07/23 18:14:33 by margo            ###   ########.fr        #
+#    Updated: 2025/08/20 20:21:46 by fsmyth           ###   ########.fr        #
 #                                                                              #
 # **************************************************************************** #
 
@@ -23,14 +23,24 @@ INCLUDE_FLAGS	:= -I. -I$(INC_DIR) -I/usr/include
 
 SRCS			= src/main.cpp \
 				  src/app/Worker.cpp \
+				  src/app/WorkerPool.cpp \
 				  src/app/TCPServer.cpp \
 				  src/http/HttpRequest.cpp \
 				  src/http/HttpResponse.cpp \
-				  src/utils/Parser.cpp
-
+				  src/utils/Parser.cpp \
+				  src/utils/State.cpp \
+				  src/utils/Utils.cpp
 
 
 OBJS			= $(SRCS:%.cpp=$(BUILD_DIR)/%.o)
+
+
+ifeq ($(MAKELEVEL),0)
+	# Only set --jobs if user didn't already pass a -j option manually
+	ifeq ($(filter -j,$(MAKEFLAGS)),)
+		MAKEFLAGS += --jobs=$(shell nproc) --no-print-directory #--quiet
+	endif
+endif
 
 all: $(NAME)
 
@@ -50,6 +60,7 @@ clean:
 fclean: clean
 		@$(RM) -vf $(NAME)
 
-re: fclean all
+re: fclean
+		+$(MAKE) all
 
 .PHONY: all clean fclean re

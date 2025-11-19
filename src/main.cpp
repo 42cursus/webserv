@@ -51,8 +51,7 @@ int	main(int argc, char **argv)
 		filename = argv[1];
 	try {
 		std::cout << "Wello horld!" << std::endl;
-		Config conf = Parser::parse(filename);
-		conf = Parser::make_default_config();
+		Config conf = Parser::make_default_config();
 		TCPServer srv = TCPServer(conf);
 		srv.start();
 		srv.serve(srv);
@@ -63,4 +62,5 @@ int	main(int argc, char **argv)
 		std::cerr << e.what() << std::endl;
 	}
     return (0);
+	(void)filename;
 }
