@@ -6,7 +6,7 @@
 /*   By: margo <margo@student.42.fr>                +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/08/07 20:47:27 by margo             #+#    #+#             */
-/*   Updated: 2025/09/16 22:31:40 by margo            ###   ########.fr       */
+/*   Updated: 2025/10/01 23:50:49 by margo            ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -20,7 +20,7 @@ Start::~Start() {};
 void    Start::enter(Parser* parser)
 {
     (void)parser;
-}
+};
 
 void    Start::toggle(Parser *parser)
 {
@@ -177,16 +177,33 @@ void Location::enter(Parser* parser)
     root.value = parser->getNextToken().literal;
     root.rlidx = parser->getNextToken().line;
     addParameter(root);
+    parser->_config.http.server.location.path = strDupForConstChar(root.value.c_str());
 }
 
 void    Location::toggle(Parser *parser)
 {
     if (parser->getCurrentToken().literal == "root")
     {
-        // get root path
+        const char *rootPath = strDupForConstChar(parser->getNextToken().literal.c_str());
+        parser->_config.http.server.location.config.root = strDupForConstChar(rootPath);
     }
     else if (parser->getCurrentToken().literal == "index")
     {
-       // get all index paths 
+        char *indexBuf = strDupForConstChar(parser->getNextToken().literal.c_str());
+        char  **indexArr = parser->_config.http.server.location.config.index;
+
+        int i = 0;
+        while (strnCmp(indexBuf, ";", 2) != 0)
+        {
+            indexArr[i] = strDupForConstChar(indexBuf);
+            i++;
+            parser->toggleCurrentToken();
+            indexBuf = strDupForConstChar(parser->getNextToken().literal.c_str());  
+        }
     }
+}
+
+void    Location::exit(Parser* parser)
+{
+    addDirective(parser->getCurrentState());
 }

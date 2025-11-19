@@ -6,7 +6,7 @@
 /*   By: margo <margo@student.42.fr>                +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/07/18 20:22:49 by abelov            #+#    #+#             */
-/*   Updated: 2025/09/16 21:47:56 by margo            ###   ########.fr       */
+/*   Updated: 2025/10/01 23:51:47 by margo            ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -27,12 +27,19 @@ Parser::Parser(IState*	currentState)
 	: _currentState(currentState),
 	  _inBlock(false)
 {
-
+	memSet(&_config, 0, sizeof(_config));
+	
+	for (int i = 0; i < 5; i++)
+        _config.http.server.location.config.index[i] = NULL;
 }
 
 Parser::Parser()
 {
-
+	memSet(&_config, 0, sizeof(_config));
+	_config = make_default_config();
+	
+	for (int i = 0; i < 5; i++)
+        _config.http.server.location.config.index[i] = NULL;
 }
 
 Parser::Parser(const Parser &copy)
@@ -205,6 +212,13 @@ t_token	Parser::getNextToken() const
 void	Parser::setNextToken(t_token token)
 {
 	_nextToken = token;
+}
+
+void	Parser::toggleCurrentToken()
+{
+	_currentIt++;
+	_currentToken = _nextToken;
+	_nextToken = *_currentIt;
 }
 
 void	Parser::addNewBlock(IBlock* newBlock)
@@ -416,22 +430,23 @@ void Parser::parse(std::vector<t_token>&	tokens)
 		_currentIt = it;
 		_currentToken = *it;
 		if (it + 1 != tokens.end())
-		_nextToken = *(it + 1);
+			_nextToken = *(it + 1);
 		
-		std::cout << getCurrentToken().literal << std::endl << getCurrentToken().line << std::endl;
+		//std::cout << getCurrentToken().literal << ", " << getCurrentToken().line << std::endl;
 		toggle();
 		if (dynamic_cast<Server*>(_currentState) != NULL)
 		{
 			// populate Config struct w sockaddr_in and server_name
 			parseServer(tokens);
 			it = _currentIt;
-			break ;
 		}
-		/*
 		else if (dynamic_cast<Location*>(_currentState) != NULL)
 		{
 			// populate Config struct w path
+			toggle();
+			it = _currentIt;
 		}
+		/*
 		else if (dynamic_cast<locConfig*>(_currentState) != NULL)
 		{
 			// populate Config struct w root and index
@@ -447,11 +462,15 @@ void	printConfig(Config cfg)
 	uint16_t port;
 	uint32_t addr;
 	char *server_name;
+	char	*locationPath;
+	char	*configRoot;
 
 	family = cfg.http.server.ipv4_listen.sin_family;
 	port = ntohs(cfg.http.server.ipv4_listen.sin_port);
 	addr = ntohl(cfg.http.server.ipv4_listen.sin_addr.s_addr);
 	server_name = cfg.http.server.server_name;
+	locationPath = cfg.http.server.location.path;
+	configRoot = cfg.http.server.location.config.root;
 
 	std::cout << "Address Family: " << family << std::endl 
               << "Port: " << port << std::endl
@@ -459,8 +478,18 @@ void	printConfig(Config cfg)
                                << ((addr >> 16) & 0xFF) << "."
                                << ((addr >> 8) & 0xFF) << "."
                                << (addr & 0xFF) << std::endl
-              << "Server Name: " << (server_name ? server_name : "NULL") << std::endl; 
-	
+              << "Server Name: " << (server_name ? server_name : "NULL") << std::endl
+			  << "Location Path: " << locationPath << std::endl
+			  << "Config Root: " << configRoot << std::endl
+			  << "Index Files: ";
+			  
+	for (int i = 0; cfg.http.server.location.config.index[i] != NULL; i++)
+	{
+		std::cout << cfg.http.server.location.config.index[i];
+		if (cfg.http.server.location.config.index[i + 1] != NULL)
+			std::cout << ", ";
+	}
+	std::cout << std::endl;	
 }
 
 /*

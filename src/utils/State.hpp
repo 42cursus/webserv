@@ -31,18 +31,6 @@ typedef struct Comment
     int rlidx;
 } Comment;
 
-typedef struct Root
-{
-    std::string path;
-    int rlidx;
-} Root;
-
-typedef struct Index
-{
-    std::string paths[2]; // change this in case it needs more
-    int rlidx;
-} Index ;
-
 class IState
 {
     public:
