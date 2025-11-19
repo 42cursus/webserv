@@ -6,13 +6,14 @@
 /*   By: margo <margo@student.42.fr>                +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/07/18 20:22:36 by abelov            #+#    #+#             */
-/*   Updated: 2025/09/16 21:14:53 by margo            ###   ########.fr       */
+/*   Updated: 2025/10/01 23:39:18 by margo            ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
 #ifndef PARSER_HPP
 #define PARSER_HPP
 
+#include <cstdlib>
 #include <iostream>
 #include <fstream>
 #include <map>
@@ -21,8 +22,6 @@
 //#include "webserv.hpp"
 #include "State.hpp"
 #include "../../include/webserv.hpp"
-
-
 
 enum	e_token
 {
@@ -49,23 +48,23 @@ typedef	struct s_token
 
 class Parser
 {
-private:
-	std::string	_key;
-	std::string	_configRoot;
-	t_token	_currentToken;
-	t_token	_nextToken;
-	std::vector<t_token>::iterator _currentIt;
-	IState*	_currentState;
-	bool	_inBlock;
-	std::vector<IBlock*>	_blocks;
-	std::string commentBuf;	
-	
+	private:
+		std::string	_key;
+		std::string	_configRoot;
+		t_token	_currentToken;
+		t_token	_nextToken;
+		std::vector<t_token>::iterator _currentIt;
+		IState*	_currentState;
+		bool	_inBlock;
+		std::vector<IBlock*>	_blocks;
+		std::string commentBuf;
+
 	public:
-	Parser();
-	Parser(const Parser& copy);
-	Parser(IState*	currentState);
+		Parser();
+		Parser(const Parser& copy);
+		Parser(IState*	currentState);
 	~Parser();
-	
+
 	Config	_config;
 
 	std::string getKey() const;
@@ -80,13 +79,14 @@ private:
 	t_token	getCurrentToken() const;
 	void	setCurrentToken(t_token token);
 	t_token	getNextToken() const;
-	void	setNextToken(t_token token);
-	IBlock* getBlock(std::string key);
-	void	addNewBlock(IBlock* newBlock);
+	void	setNextToken(t_token token);void	toggleCurrentToken();
+		IBlock* getBlock(std::string key);
+		void	addNewBlock(IBlock* newBlock);
 
-	std::string	readUntil(std::string line, char delim);
-	std::string readQuotedString(std::string word);
-	void	toggle();
+		std::string	readUntil(std::string line, char delim);
+		std::string	getFullLine(int line);
+		std::string readQuotedString(std::string word);
+		void	toggle();
 
 	static std::string read_file(const char *filename);
 	t_token	makeToken(e_token key, std::string word, int linecount);
@@ -105,15 +105,19 @@ private:
 	{
 		private:
 			std::string _errorMsg;
-			
+
 		public:
 			errorException(const std::string& msg);
 			~errorException() throw() {};
 			const char*	what() const throw();	
 	};
-
 };
 
+// PARSER UTILS
+
 char *strDupForConstChar(const char *str);
+int strnCmp(const char *s1, const char *s2, int n);
+int strLenForConstChar(const char *str);
+void    *memSet(void *s, int c, size_t n);
 
 #endif //PARSER_HPP
