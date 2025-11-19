@@ -57,12 +57,12 @@ int Worker::handleRequest()
 	std::cout << "\e[35m" << "Request ready on fd: " << _socket_fd << std::endl;
 	HttpRequest req = HttpRequest();
 	std::cout << "\e[32m" << _rawRequest << "\e[31m" << std::endl;
-	for (int i = 0; _rawRequest[i] != 0 && i < 1024; i++)
-	{
-		std::cout << (int)_rawRequest[i] << ' ';
-		if (_rawRequest[i] == '\n')
-			std::cout << std::endl;
-	}
+	// for (int i = 0; _rawRequest[i] != 0 && i < 1024; i++)
+	// {
+	// 	std::cout << (int)_rawRequest[i] << ' ';
+	// 	if (_rawRequest[i] == '\n')
+	// 		std::cout << std::endl;
+	// }
 	std::cout << "\e[m" << std::endl;
 
 	try {

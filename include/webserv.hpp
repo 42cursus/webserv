@@ -22,6 +22,11 @@
 #include <netinet/in.h>
 #include <vector>
 
+#define FT_RED		"\e[31m"
+#define FT_GREEN	"\e[32m"
+#define FT_BLUE		"\e[33m"
+#define FT_RESET	"\e[0m"
+
 struct Config
 {
 	struct {
