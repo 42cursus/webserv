@@ -179,25 +179,25 @@ void Location::enter(Parser* parser)
     root.value = parser->getNextToken().literal;
     root.rlidx = parser->getNextToken().line;
     addParameter(root);
-    parser->_config.http.server.location.path = strDupForConstChar(root.value.c_str());
+    parser->_config.http.server.location.path = root.value;
 }
 
 void    Location::toggle(Parser *parser)
 {
     if (parser->getCurrentToken().literal == "root")
     {
-        const char *rootPath = strDupForConstChar(parser->getNextToken().literal.c_str());
-        parser->_config.http.server.location.config.root = strDupForConstChar(rootPath);
+        std::string rootPath = parser->getNextToken().literal;
+        parser->_config.http.server.location.config.root = rootPath;
     }
     else if (parser->getCurrentToken().literal == "index")
     {
-        char *indexBuf = strDupForConstChar(parser->getNextToken().literal.c_str());
-        std::vector<std::string>indexArr = parser->_config.http.server.location.config.index;
+        std::string indexBuf = parser->getNextToken().literal;
+        std::vector<std::string> indexArr = parser->_config.http.server.location.config.index;
 
         int i = 0;
-        while (strnCmp(indexBuf, ";", 2) != 0)
+        while (strnCmp(indexBuf.c_str(), ";", 2) != 0)
         {
-            indexArr[i] = strDupForConstChar(indexBuf);
+            indexArr[i] = indexBuf;
             i++;
             parser->toggleCurrentToken();
             indexBuf = strDupForConstChar(parser->getNextToken().literal.c_str());  

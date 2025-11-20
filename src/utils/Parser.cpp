@@ -6,7 +6,7 @@
 /*   By: margo <margo@student.42.fr>                +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/07/18 20:22:49 by abelov            #+#    #+#             */
-/*   Updated: 2025/10/01 23:51:47 by margo            ###   ########.fr       */
+/*   Updated: 2025/11/19 23:45:12 by abelov           ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -83,7 +83,8 @@ Config Parser::make_default_config()
 {
 	const std::string index[] = {
 		"index.html",
-		"index.htm"
+		"index.htm",
+		""
 	};
 
 	Config cfg = {
@@ -501,7 +502,7 @@ void	printConfig(Config cfg)
 			  << "Config Root: " << configRoot << std::endl
 			  << "Index Files: ";
 
-	for (int i = 0; !cfg.http.server.location.config.index.empty(); i++)
+	for (int i = 0; !cfg.http.server.location.config.index[i].empty(); i++)
 	{
 		std::cout << cfg.http.server.location.config.index[i];
 		if (!cfg.http.server.location.config.index[i + 1].empty())
@@ -522,9 +523,11 @@ int	main(int argc, char *argv[])
 {
 	Parser*	parse = new Parser();
 	std::vector<t_token> tokens;
+	const char *config_root = "../../resources/webserv.conf";
 
-	(void)argc;
-	parse->setConfigRoot(argv[1]);
+	if (argc == 2)
+		config_root = argv[1];
+	parse->setConfigRoot(config_root);
 	tokens = parse->tokenize();
 	//printTokens(tokens);
 	parse->parse(tokens);

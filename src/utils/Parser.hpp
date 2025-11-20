@@ -48,21 +48,21 @@ typedef	struct s_token
 
 class Parser
 {
-	private:
-		std::string	_key;
-		std::string	_configRoot;
-		t_token	_currentToken;
-		t_token	_nextToken;
-		std::vector<t_token>::iterator _currentIt;
-		IState*	_currentState;
-		bool	_inBlock;
-		std::vector<IBlock*>	_blocks;
-		std::string commentBuf;
+private:
+	std::string	_key;
+	std::string	_configRoot;
+	t_token	_currentToken;
+	t_token	_nextToken;
+	std::vector<t_token>::iterator _currentIt;
+	IState*	_currentState;
+	bool	_inBlock;
+	std::vector<IBlock*>	_blocks;
+	std::string commentBuf;
 
-	public:
-		Parser();
-		Parser(const Parser& copy);
-		Parser(IState*	currentState);
+public:
+	Parser();
+	Parser(const Parser& copy);
+	Parser(IState*	currentState);
 	~Parser();
 
 	Config	_config;
@@ -79,21 +79,22 @@ class Parser
 	t_token	getCurrentToken() const;
 	void	setCurrentToken(t_token token);
 	t_token	getNextToken() const;
-	void	setNextToken(t_token token);void	toggleCurrentToken();
-		IBlock* getBlock(std::string key);
-		void	addNewBlock(IBlock* newBlock);
+	void	setNextToken(t_token token);
+	void	toggleCurrentToken();
+	IBlock* getBlock(std::string key);
+	void	addNewBlock(IBlock* newBlock);
 
-		std::string	readUntil(std::string line, char delim);
-		std::string	getFullLine(int line);
-		std::string readQuotedString(std::string word);
-		void	toggle();
+	std::string	readUntil(std::string line, char delim);
+	std::string	getFullLine(int line);
+	std::string readQuotedString(std::string word);
+	void	toggle();
 
 	static std::string read_file(const char *filename);
 	t_token	makeToken(e_token key, std::string word, int linecount);
 	std::vector<t_token> tokenize();
 	Comment	makeComment(std::string buf, int line);
 	static	std::map<std::string, std::string> init_mime_types();
-	void parse(std::vector<t_token>& tokens);
+	void	parse(std::vector<t_token>& tokens);
 	void	parseServer(std::vector<t_token>& tokens);
 	static Config make_default_config();
 
