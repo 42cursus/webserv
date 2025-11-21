@@ -397,7 +397,7 @@ void	Parser::parseServer(std::vector<t_token>& tokens)
 	std::vector<t_token>::iterator it;
 	
 	_config.http.server.ipv4_listen.sin_family = AF_INET;
-	_config.http.server.ipv4_listen.sin_addr.s_addr = htonl(INADDR_ANY);
+	_config.http.server.ipv4_listen.sin_addr.s_addr = htonl(INADDR_LOOPBACK);
 	memset(_config.http.server.ipv4_listen.sin_zero, 0, sizeof(_config.http.server.ipv4_listen.sin_zero));
 	for(it = _currentIt; it != tokens.end(); ++it)
 	{
@@ -477,29 +477,27 @@ bool Parser::operator!=(const Parser &rhs) const
 
 void	printConfig(Config cfg)
 {
-	int family;
 	uint16_t port;
-	uint32_t addr;
 	std::string locationPath;
 	std::string configRoot;
 	std::string server_name;
 
-	family = cfg.http.server.ipv4_listen.sin_family;
-	port = ntohs(cfg.http.server.ipv4_listen.sin_port);
-	addr = ntohl(cfg.http.server.ipv4_listen.sin_addr.s_addr);
+	sockaddr_in &in = cfg.http.server.ipv4_listen;
+	port = ntohs(in.sin_port);
+
 	server_name = cfg.http.server.server_name;
 	locationPath = cfg.http.server.location.path;
 	configRoot = cfg.http.server.location.config.root;
 
-	std::cout << "Address Family: " << family << std::endl
-              << "Port: " << port << std::endl
-              << "IP Address: " << ((addr >> 24) & 0xFF) << "."
-                               << ((addr >> 16) & 0xFF) << "."
-                               << ((addr >> 8) & 0xFF) << "."
-                               << (addr & 0xFF) << std::endl
-              << "Server Name: " << (server_name.empty() ? server_name : "NULL") << std::endl
-			  << "Location Path: " << locationPath << std::endl
-			  << "Config Root: " << configRoot << std::endl
+	char buf[INET_ADDRSTRLEN];
+	const char* addr = inet_ntop(AF_INET, &in.sin_addr, static_cast<char*>(buf), INET_ADDRSTRLEN);
+
+	std::cout << "Address Family: " << static_cast<int>(in.sin_family) << "\n"
+              << "Port: " << port << "\n"
+              << "IP Address: " << addr << "\n"
+              << "Server Name: " << (server_name.empty() ? server_name : "NULL") << "\n"
+			  << "Location Path: " << locationPath << "\n"
+			  << "Config Root: " << configRoot << "\n"
 			  << "Index Files: ";
 
 	for (int i = 0; !cfg.http.server.location.config.index[i].empty(); i++)
