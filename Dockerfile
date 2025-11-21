@@ -8,6 +8,9 @@ RUN apt-get update && \
 
 # fcgiwrap socket dir
 RUN mkdir -p /run
+#&& mkdir -p /var/www/uploads 
+# RUN chown 101:101 /var/www/uploads
+# RUN chmod a+w /var/www/uploads
 
 # nginx config goes in here at build time or via a bind mount
 # COPY resources/default.conf /etc/nginx/conf.d/default.conf
