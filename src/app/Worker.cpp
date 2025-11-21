@@ -15,9 +15,11 @@
 #include "src/http/HttpResponse.hpp"
 #include <cctype>
 #include <cstring>
+#include <fcntl.h>
 #include <iomanip>
 #include <sys/types.h>
 #include <cstdlib>
+#include <unistd.h>
 
 Worker::Worker(TCPServer &srv)
 	: _req_buffer(),
@@ -142,7 +144,22 @@ int Worker::handleRequest()
 			break ;
 	}
 
-	HttpResponse res = HttpResponse();
+	std::string response = Worker::prepareResponse();
+
+	write(_socket_fd, response.c_str(), response.length());
+	return (0);
+	// close(_socket_fd);
+	_rawRequest.erase();
+	delete _req;
+	return (0);
+}
+
+std::string	Worker::prepareResponse(void)
+{
+	HttpResponse	res = HttpResponse();
+	std::string		response;
+	std::string		mimetype;
+
 	res.statuscode = "200";
 	res.statusmsg = "OK";
 	res.headers = _req->headers;
@@ -154,17 +171,42 @@ int Worker::handleRequest()
 		std::cout << it->first << " : " << it->second << std::endl;
 		it++;
 	}
-	std::string mimetype = _req->getMimeType(_req->path);
-	res.body = _req->getHtmlResponse(srv.getCfg());
 
-	std::string response = res.buildHttpResponse(res.statuscode, res.statusmsg, res.headers, res.body, mimetype);
+	mimetype = _req->getMimeType(_req->path);
+	if (_req->method == "GET")
+	{
+		res.body = _req->getHtmlResponse(srv.getCfg());
+	}
+	else if (_req->method == "PUT")
+	{
+		std::string	rel_path = _req->path.substr(1, _req->path.length());
+		if (rel_path.empty())
+			rel_path = "default";
+		std::string	path = srv.getCfg().http.server.location.config.root + "/put_test/" + rel_path;
+		if (access(path.c_str(), F_OK) == 0)
+		{
+			res.statuscode = "204";
+			res.statusmsg = "No Content";
+		}
+		else
+		{
+			res.statuscode = "201";
+			res.statusmsg = "Created";
+		}
+		int	fd = open(path.c_str(), O_WRONLY | O_CREAT, S_IRWXU | S_IROTH | S_IRGRP);
+		write(fd, _req->body.data(), _req->body.size());
+		close(fd);
+	}
+
+	response = res.buildHttpResponse(
+		res.statuscode,
+		res.statusmsg,
+		res.headers,
+		res.body,
+		mimetype
+	);
 	logServingFile(_req->path, mimetype);
-
-	write(_socket_fd, response.c_str(), response.length());
-	// close(_socket_fd);
-	_rawRequest.erase();
-	delete _req;
-	return (0);
+	return (response);
 }
 
 const char *Worker::GenericException::what() const throw()

@@ -52,6 +52,7 @@ public:
 
 	void acceptConnection();
 	int handleRequest();
+	std::string prepareResponse();
 	int getSocketFd() const;
 	std::string& getRawRequest();
 	int requestHandled() const;
