@@ -22,20 +22,36 @@
 #include <netinet/in.h>
 #include <vector>
 
+#define FT_RED		"\e[31m"
+#define FT_GREEN	"\e[32m"
+#define FT_BLUE		"\e[33m"
+#define FT_RESET	"\e[0m"
+
 struct Config
 {
-	struct {
-		struct {
-			struct sockaddr_in	ipv4_listen;
+	struct Http {
+		struct Server {
+			Server& operator=(const Server& other)
+			{
+				if (this == &other)
+					return *this;
+				ipv4_listen = other.ipv4_listen;
+				server_name = other.server_name;
+				location = other.location;
+				return *this;
+			}
+
+			sockaddr_in	ipv4_listen;
 			std::string			server_name;
-			struct {
+			struct Location {
 				std::string path;
-				struct {
+				struct Conf {
 					bool autoindex;
 					std::string root;
 					std::vector<std::string> index;
 				}	config;
 			}	location; // https://nginx.org/en/docs/http/ngx_http_core_module.html#location
+
 		}	server;
 	}	http;
 
@@ -44,7 +60,7 @@ struct Config
 		bool	ret = true;
 
 		if (memcmp(&http.server.ipv4_listen, &other.http.server.ipv4_listen,
-				   sizeof(struct sockaddr_in)) != 0)
+				   sizeof(sockaddr_in)) != 0)
 			ret = false;
 		if (http.server.server_name != other.http.server.server_name)
 			ret = false;

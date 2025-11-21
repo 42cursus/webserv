@@ -13,6 +13,13 @@ curl -v -X POST --data-binary @- \
      http://127.0.0.1:8080/directory/youpi.bla | xxd
 ```
 
+```bash
+dd if=/dev/zero bs=100 count=2 status=none | \
+  curl -v -X POST --data-binary @- \
+  -H "Content-Type: application/octet-stream" \
+  --no-progress-meter \
+  http://127.0.0.1:8080/post_body
+```
 
 ```bash
 docker exec -it -u root webserv-nginx-1 bash

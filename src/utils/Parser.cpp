@@ -6,7 +6,7 @@
 /*   By: margo <margo@student.42.fr>                +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/07/18 20:22:49 by abelov            #+#    #+#             */
-/*   Updated: 2025/09/16 21:14:37 by margo            ###   ########.fr       */
+/*   Updated: 2025/11/19 23:45:12 by abelov           ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -27,11 +27,13 @@
 Parser::Parser(IState*	currentState)
 	: _currentState(currentState), _inBlock(false), _config()
 {
-
+	memSet(&_config, 0, sizeof(_config));
 }
 
 Parser::Parser()
 {
+	memSet(&_config, 0, sizeof(_config));
+	_config = make_default_config();
 
 }
 
@@ -69,8 +71,6 @@ Parser::~Parser()
 ** --------------------------------- METHODS ----------------------------------
 */
 
-
-
 std::string	Parser::readQuotedString(std::string word)
 {
 	if (word.length() >= 2 && word[0] == '"' && word[word.size() - 1] == '"')
@@ -83,7 +83,8 @@ Config Parser::make_default_config()
 {
 	const std::string index[] = {
 		"index.html",
-		"index.htm"
+		"index.htm",
+		""
 	};
 
 	Config cfg = {
@@ -135,29 +136,13 @@ std::string Parser::read_file(const char *filename)
 ** -------------------------------- ACCESSORS ---------------------------------
 */
 
-
 /*
-struct Config
-{
-	struct {
-		struct {
-			struct sockaddr_in ipv4_listen;
-			struct {
-				char *path;
-				struct {
-					char *root;
-					char **index;
-				}	config;
-			} location;
-		} server;
-	} http;
-};
 
 		TO DO:
 			//1. open and read config file (copy in buf stream and close)
 			2. read http 
-			3. read server 
-			4. read listening port > hostname/IP and TCP port
+			//3. read server
+			//4. read listening port > hostname/IP and TCP port
 			5. read config stuff (root +  index + anything else)
 			6. construct config struct
  */
@@ -226,6 +211,13 @@ t_token	Parser::getNextToken() const
 void	Parser::setNextToken(t_token token)
 {
 	_nextToken = token;
+}
+
+void	Parser::toggleCurrentToken()
+{
+	_currentIt++;
+	_currentToken = _nextToken;
+	_nextToken = *_currentIt;
 }
 
 void	Parser::addNewBlock(IBlock* newBlock)
@@ -366,8 +358,6 @@ std::map<std::string, std::string> Parser::init_mime_types()
 	return (std::map<std::string, std::string>());
 }
 
-
-
 bool	t_token::operator==(const t_token&	other) const
 {
 	return (type == other.type && literal == other.literal && line == other.line);
@@ -440,22 +430,23 @@ void Parser::parse(std::vector<t_token>&	tokens)
 		_currentIt = it;
 		_currentToken = *it;
 		if (it + 1 != tokens.end())
-		_nextToken = *(it + 1);
+			_nextToken = *(it + 1);
 		
-		std::cout << getCurrentToken().literal << std::endl << getCurrentToken().line << std::endl;
+		//std::cout << getCurrentToken().literal << ", " << getCurrentToken().line << std::endl;
 		toggle();
 		if (dynamic_cast<Server*>(_currentState) != NULL)
 		{
 			// populate Config struct w sockaddr_in and server_name
 			parseServer(tokens);
 			it = _currentIt;
-			break ;
 		}
-		/*
 		else if (dynamic_cast<Location*>(_currentState) != NULL)
 		{
 			// populate Config struct w path
+			toggle();
+			it = _currentIt;
 		}
+		/*
 		else if (dynamic_cast<locConfig*>(_currentState) != NULL)
 		{
 			// populate Config struct w root and index
@@ -489,12 +480,16 @@ void	printConfig(Config cfg)
 	int family;
 	uint16_t port;
 	uint32_t addr;
+	std::string locationPath;
+	std::string configRoot;
 	std::string server_name;
 
 	family = cfg.http.server.ipv4_listen.sin_family;
 	port = ntohs(cfg.http.server.ipv4_listen.sin_port);
 	addr = ntohl(cfg.http.server.ipv4_listen.sin_addr.s_addr);
 	server_name = cfg.http.server.server_name;
+	locationPath = cfg.http.server.location.path;
+	configRoot = cfg.http.server.location.config.root;
 
 	std::cout << "Address Family: " << family << std::endl
               << "Port: " << port << std::endl
@@ -502,13 +497,25 @@ void	printConfig(Config cfg)
                                << ((addr >> 16) & 0xFF) << "."
                                << ((addr >> 8) & 0xFF) << "."
                                << (addr & 0xFF) << std::endl
-              << "Server Name: " << (server_name.empty() ? server_name : "NULL") << std::endl;
+              << "Server Name: " << (server_name.empty() ? server_name : "NULL") << std::endl
+			  << "Location Path: " << locationPath << std::endl
+			  << "Config Root: " << configRoot << std::endl
+			  << "Index Files: ";
+
+	for (int i = 0; !cfg.http.server.location.config.index[i].empty(); i++)
+	{
+		std::cout << cfg.http.server.location.config.index[i];
+		if (!cfg.http.server.location.config.index[i + 1].empty())
+			std::cout << ", ";
+	}
+	std::cout << std::endl;
 }
 
 /*
 	TO DO:
 		1. finish parsing function
-		2. function to print Config struct for testing purposes
+		//2. function to print Config struct for testing purposes
+		3. update Config to be able to handle multiple servers
 */
 
 /*
@@ -516,9 +523,11 @@ int	main(int argc, char *argv[])
 {
 	Parser*	parse = new Parser();
 	std::vector<t_token> tokens;
+	const char *config_root = "../../resources/webserv.conf";
 
-	(void)argc;
-	parse->setConfigRoot(argv[1]);
+	if (argc == 2)
+		config_root = argv[1];
+	parse->setConfigRoot(config_root);
 	tokens = parse->tokenize();
 	//printTokens(tokens);
 	parse->parse(tokens);

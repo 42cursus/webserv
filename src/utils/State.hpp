@@ -72,7 +72,7 @@ class   IBlock: public IState
         IBlock& operator=(const IBlock& copy);
 
     public:
-        IBlock(std::string name);
+        IBlock(const std::string& name);
         bool operator==(const IBlock& oth);
         ~IBlock();
 
@@ -82,6 +82,7 @@ class   IBlock: public IState
         std::string    getCode() const;
         std::vector<IState*> getDirectives() const;
         std::vector<Parameter>  getParameters() const;
+        void    addParameter(Parameter newParameter);
         void    addDirective(IState* newDir);
         IState* getParent() const;
         void    setParent(IState*   parentDirective);
@@ -95,7 +96,7 @@ class   IBlock: public IState
 /*
     1. HTTP (context)
     2. server (context)
-    3. listen 
+    //3. listen 
     4. location (context)
     5. root
     6. index
@@ -132,10 +133,18 @@ class Server: public IBlock
         void    exit(Parser* parser);
 } ;
 
-typedef struct Listen
+class Location: public IBlock
 {
-    int port;
-    int line;
-} Listen;
+    private:
+        Location(const Location& copy);
+        Location& operator=(const Location& copy);
+    public:
+        Location();
+        ~Location();
+
+        void enter(Parser* parser);
+        void toggle(Parser* parser);
+        void exit(Parser* parser);
+} ;
 
 #endif

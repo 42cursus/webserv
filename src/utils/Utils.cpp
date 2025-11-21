@@ -6,7 +6,7 @@
 /*   By: margo <margo@student.42.fr>                +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/09/16 19:27:13 by margo             #+#    #+#             */
-/*   Updated: 2025/09/16 20:58:27 by margo            ###   ########.fr       */
+/*   Updated: 2025/10/01 23:37:18 by margo            ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -34,3 +34,32 @@ char *strDupForConstChar(const char *str)
     
     return newStr;
 }
+
+int strnCmp(const char *s1, const char *s2, int n)
+{
+    for (int i = 0; i < n; i++)
+    {
+        if (s1[i] != s2[i])
+            return s1[i] - s2[i];
+    }
+
+    return 0;
+}
+
+void    *memSet(void *s, int c, size_t n)
+{
+    unsigned char *ptr;
+
+    ptr = (unsigned char *)s;
+    for (size_t i = 0; i < n; i++)
+        ptr[i] = c;
+
+    return (s);
+}
+
+/*
+std::string Parser::getFullLine(int line)
+{
+    
+}
+*/
