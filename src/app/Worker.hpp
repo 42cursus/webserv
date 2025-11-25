@@ -54,6 +54,7 @@ public:
 	int handleRequest();
 	std::string prepareResponse();
 	int getSocketFd() const;
+	void	closeSocketFd();
 	std::string& getRawRequest();
 	int requestHandled() const;
 	void clearRequest();

@@ -24,7 +24,7 @@
 Worker::Worker(TCPServer &srv)
 	: _req_buffer(),
 	_req_status(REQ_BODY),
-	_socket_fd(),
+	_socket_fd(-1),
 	_addr(),
 	_addr_size(),
 	srv(srv)
@@ -77,8 +77,8 @@ int Worker::handleRequest()
 			size_t	clcr_pos = _rawRequest.find("\r\n\r\n");
 			if (clcr_pos == _rawRequest.npos)
 				return (1);
-			std::cout << "\e[35m" << "Request ready on fd: " << _socket_fd << std::endl;
-			std::cout << "\e[32m" << _rawRequest.substr(0, clcr_pos + 4) << "\e[31m" << std::endl;
+			// std::cout << "\e[35m" << "Request ready on fd: " << _socket_fd << std::endl;
+			// std::cout << "\e[32m" << _rawRequest.substr(0, clcr_pos + 4) << "\e[31m" << std::endl;
 			_req = new HttpRequest();
 			try {
 				_req->parseRequest(_rawRequest);
@@ -97,7 +97,7 @@ int Worker::handleRequest()
 				size_t	body_size = extract_body(nread, old_size, clcr_pos);
 				if (body_size < _req->content_length)
 					return (1);
-				_req->printBody();
+				// _req->printBody();
 			}
 			break ;
 		}
@@ -107,7 +107,7 @@ int Worker::handleRequest()
 			std::memcpy(_req->body.data() + old_size, _req_buffer, nread);
 			if (_req->body.size() < _req->content_length)
 				return (1);
-			_req->printBody();
+			// _req->printBody();
 			break ;
 		}
 		default:
@@ -194,6 +194,12 @@ const char *Worker::GenericException::what() const throw()
 int Worker::getSocketFd() const
 {
 	return _socket_fd;
+}
+
+void	Worker::closeSocketFd(void)
+{
+	close(_socket_fd);
+	_socket_fd = -1;
 }
 
 int Worker::requestHandled() const

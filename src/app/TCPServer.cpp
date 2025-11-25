@@ -11,7 +11,7 @@
 /* ************************************************************************** */
 
 #include <cstring>
-#include <map>
+#include <sys/epoll.h>
 #include <sys/poll.h>
 #include <sys/select.h>
 #include <poll.h>
@@ -110,69 +110,56 @@ const Config &TCPServer::getCfg() const
 
 int TCPServer::serve(TCPServer &srv)
 {
-	extern sig_atomic_t			g_var;
-	std::map<int , Worker*>		connections;
-	WorkerPool					wrkrPool(srv);
-	std::vector<struct pollfd>	pollfds;
-	size_t						nfds;
+	extern sig_atomic_t				g_var;
+	WorkerPool						wrkrPool(srv);
+	int								epoll_fd = epoll_create(1);
+	std::vector<struct epoll_event>	evs;
+	int								nfds;
+	int								sockfd = srv.getSocketFd();
+	Worker*							wrkr;
 
-	pollfds.resize(1024);
-	pollfds.data()[0] = (struct pollfd){.fd = srv.getSocketFd(), .events = POLLIN, .revents = 0};
+	evs.resize(1024);
+	evs[0].events = EPOLLIN;
+	evs[0].data.fd = sockfd;
+	epoll_ctl(epoll_fd, EPOLL_CTL_ADD, sockfd, &evs[0]);
+
 	while(g_var != SIGINT)
 	{
-		std::map<int , Worker*>::iterator it = connections.begin();
-		for (nfds = 1; it != connections.end(); it++, nfds++)
+		nfds = epoll_wait(epoll_fd, evs.data(), 1024, -1);
+		for (int i = 0; i < nfds; i++)
 		{
-			if (nfds == pollfds.size())
+			if (evs[i].events & EPOLLIN)
 			{
-				pollfds.resize(pollfds.size() + 1024);
-			}
-			pollfds.data()[nfds] = (struct pollfd){
-				.fd = it->first,
-				.events = POLLIN,
-				.revents = 0
-			};
-			// std::cout << "\e[34;1mfd\e[m: " << it->first << "\t\e[35;1mworker\e[m: " << it->second << std::endl;
-			// std::cout << "\e[32;1mRequest\e[m: " << std::endl;;
-			// std::cout << it->second->getRawRequest().substr(0, it->second->getRawRequest().find("\r\n\r\n")) << std::endl << "---------------" << std::endl << std::endl;
-		}
-
-		poll(pollfds.data(), nfds, -1);
-		if (pollfds[0].revents & POLLIN)
-		{
-			Worker* wrkr = wrkrPool.alloc();
-			wrkr->acceptConnection();
-			connections[wrkr->getSocketFd()] = wrkr;
-		}
-		for (size_t i = 1; i < nfds; i++)
-		{
-			int	fd = pollfds[i].fd;
-			if (pollfds[i].revents & POLLIN)
-			{
-				int retval = connections[fd]->handleRequest();
-				if (retval == 2)
+				if (evs[i].data.fd == sockfd)
 				{
-					std::cout << "Connection closed on fd: " << pollfds[i].fd << std::endl;
-					close(fd);
-					wrkrPool.free(connections[fd]);
-					connections.erase(fd);
+					wrkr = wrkrPool.alloc();
+					wrkr->acceptConnection();
+					struct epoll_event ev;
+					ev.data.ptr = wrkr;
+					ev.events = EPOLLIN;
+					epoll_ctl(epoll_fd, EPOLL_CTL_ADD, wrkr->getSocketFd(), &ev);
+				}
+				else
+				{
+					wrkr = reinterpret_cast<Worker*>(evs[i].data.ptr);
+					int retval = wrkr->handleRequest();
+					if (retval == 2)
+					{
+						std::cout << "Connection closed on fd: " << wrkr->getSocketFd() << std::endl;
+						epoll_ctl(epoll_fd, EPOLL_CTL_DEL, wrkr->getSocketFd(), NULL);
+						wrkrPool.free(wrkr);
+					}
 				}
 			}
-			else if (pollfds[i].revents & (POLLHUP | POLLERR))
+			else if (evs[i].events & (EPOLLERR | EPOLLHUP))
 			{
-				std::cout << "error occured on fd: " << pollfds[i].fd << std::endl;
-				close(fd);
-				wrkrPool.free(connections[fd]);
-				connections.erase(fd);
+				std::cout << "error occured on fd: " << wrkr->getSocketFd() << std::endl;
+				epoll_ctl(epoll_fd, EPOLL_CTL_DEL, wrkr->getSocketFd(), NULL);
+				wrkrPool.free(wrkr);
 			}
 		}
 	}
-	std::map<int , Worker*>::iterator it = connections.begin();
-	while (it != connections.end())
-	{
-		close(it->first);
-		it++;
-	}
+	close(epoll_fd);
 	return 0;
 }
 
