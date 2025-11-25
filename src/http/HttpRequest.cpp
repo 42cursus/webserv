@@ -11,6 +11,7 @@
 /* ************************************************************************** */
 
 #include <cctype>
+#include <iomanip>
 #include <iostream>
 #include <fstream>
 #include <list>
@@ -150,4 +151,21 @@ const char *HttpRequest::GenericException::what() const throw()
 HttpRequest::HttpRequest()
 {
 
+}
+
+void	HttpRequest::printBody(void) const
+{
+	size_t i;
+	for (i = 0; i < this->body.size() && i < 1000; i++)
+	{
+		char c = this->body[i];
+		if (std::isprint(c))
+			// std::cout << "\e[32m" << std::setw(2) << c << ' ';
+			std::cout << "\e[32m" << c;
+		else
+			std::cout << "\e[31m " << std::hex << std::setw(2) << std::setfill(' ') << std::setfill('0') << (int)(u_char)c << ' ';
+	}
+	if (i < this->body.size())
+		std::cout << "\e[34;1m [...]";
+	std::cout << "\e[m" << std::endl;
 }

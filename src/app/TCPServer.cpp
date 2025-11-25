@@ -35,6 +35,8 @@ TCPServer::TCPServer() : cfg(default_config)
 
 int TCPServer::start()
 {
+	requests_handled = 0;
+	requests_failed = 0;
 	sockaddr_in in = cfg.http.server.ipv4_listen;
 	_socket_fd = socket(in.sin_family, SOCK_STREAM, 0);
 	if (_socket_fd < 0) {
@@ -74,7 +76,8 @@ int TCPServer::start()
 
 TCPServer::~TCPServer()
 {
-
+	std::cout << "Requests handled: " << requests_handled << std::endl;
+	std::cout << "Requests failed: " << requests_failed << std::endl;
 }
 
 int TCPServer::getSocketFd() const
@@ -115,10 +118,8 @@ int TCPServer::serve(TCPServer &srv)
 
 	pollfds.resize(1024);
 	pollfds.data()[0] = (struct pollfd){.fd = srv.getSocketFd(), .events = POLLIN, .revents = 0};
-//	std::cout << "\e[?1049h";
 	while(g_var != SIGINT)
 	{
-//		std::cout << "\e[2J\e[H" << std::flush;
 		std::map<int , Worker*>::iterator it = connections.begin();
 		for (nfds = 1; it != connections.end(); it++, nfds++)
 		{
@@ -131,9 +132,9 @@ int TCPServer::serve(TCPServer &srv)
 				.events = POLLIN,
 				.revents = 0
 			};
-			std::cout << "\e[34;1mfd\e[m: " << it->first << "\t\e[35;1mworker\e[m: " << it->second << std::endl;
-			std::cout << "\e[32;1mRequest\e[m: " << std::endl;;
-			std::cout << it->second->getRawRequest().substr(0, it->second->getRawRequest().find("\r\n\r\n")) << std::endl << "---------------" << std::endl << std::endl;
+			// std::cout << "\e[34;1mfd\e[m: " << it->first << "\t\e[35;1mworker\e[m: " << it->second << std::endl;
+			// std::cout << "\e[32;1mRequest\e[m: " << std::endl;;
+			// std::cout << it->second->getRawRequest().substr(0, it->second->getRawRequest().find("\r\n\r\n")) << std::endl << "---------------" << std::endl << std::endl;
 		}
 
 		poll(pollfds.data(), nfds, -1);
@@ -166,7 +167,6 @@ int TCPServer::serve(TCPServer &srv)
 			}
 		}
 	}
-//	std::cout << "\e[?1049l";
 	std::map<int , Worker*>::iterator it = connections.begin();
 	while (it != connections.end())
 	{

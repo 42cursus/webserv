@@ -79,19 +79,13 @@ int Worker::handleRequest()
 				return (1);
 			std::cout << "\e[35m" << "Request ready on fd: " << _socket_fd << std::endl;
 			std::cout << "\e[32m" << _rawRequest.substr(0, clcr_pos + 4) << "\e[31m" << std::endl;
-			// for (int i = 0; _rawRequest[i] != 0 && i < 1024; i++)
-			// {
-			// 	std::cout << (int)_rawRequest[i] << ' ';
-			// 	if (_rawRequest[i] == '\n')
-			// 		std::cout << std::endl;
-			// }
-			// std::cout << "\e[m" << std::endl;
 			_req = new HttpRequest();
 			try {
 				_req->parseRequest(_rawRequest);
 			}
 			catch (HttpRequest::GenericException &e) {
 				std::cout << e.what() << std::endl;
+				srv.requests_failed++;
 				_rawRequest.erase();
 				delete _req;
 				return (0);
@@ -103,20 +97,8 @@ int Worker::handleRequest()
 				size_t	body_size = extract_body(nread, old_size, clcr_pos);
 				if (body_size < _req->content_length)
 					return (1);
-				size_t i;
-				for (i = 0; i < _req->body.size() && i < 1000; i++)
-				{
-					char c = _req->body[i];
-					if (std::isprint(c))
-						// std::cout << "\e[32m" << std::setw(2) << c << ' ';
-						std::cout << "\e[32m" << c;
-					else
-						std::cout << "\e[31m " << std::hex << std::setw(2) << std::setfill(' ') << std::setfill('0') << (int)(u_char)c << ' ';
-				}
-				if (i < _req->body.size())
-					std::cout << "\e[34;1m [...]";
-				std::cout << "\e[m" << std::endl;
-				}
+				_req->printBody();
+			}
 			break ;
 		}
 		case (REQ_BODY): {
@@ -125,19 +107,7 @@ int Worker::handleRequest()
 			std::memcpy(_req->body.data() + old_size, _req_buffer, nread);
 			if (_req->body.size() < _req->content_length)
 				return (1);
-			size_t i;
-			for (i = 0; i < _req->body.size() && i < 1000; i++)
-			{
-				char c = _req->body[i];
-				if (std::isprint(c))
-					// std::cout << "\e[32m" << std::setw(2) << std::setfill(' ') << c << ' ';
-					std::cout << "\e[32m" << c;
-				else
-					std::cout << "\e[31m " << std::hex << std::setw(2) << std::setfill('0') << (int)(u_char)c << ' ';
-			}
-			if (i < _req->body.size())
-				std::cout << "\e[34;1m [...]";
-			std::cout << "\e[m" << std::endl;
+			_req->printBody();
 			break ;
 		}
 		default:
@@ -147,7 +117,7 @@ int Worker::handleRequest()
 	std::string response = Worker::prepareResponse();
 
 	write(_socket_fd, response.c_str(), response.length());
-	return (0);
+	srv.requests_handled++;
 	// close(_socket_fd);
 	_rawRequest.erase();
 	delete _req;
@@ -165,12 +135,12 @@ std::string	Worker::prepareResponse(void)
 	res.headers = _req->headers;
 	
 
-	std::map<const std::string, std::string>::iterator it = _req->headers.begin();
-	while (it != _req->headers.end())
-	{
-		std::cout << it->first << " : " << it->second << std::endl;
-		it++;
-	}
+	// std::map<const std::string, std::string>::iterator it = _req->headers.begin();
+	// while (it != _req->headers.end())
+	// {
+	// 	std::cout << it->first << " : " << it->second << std::endl;
+	// 	it++;
+	// }
 
 	mimetype = _req->getMimeType(_req->path);
 	if (_req->method == "GET")
@@ -205,7 +175,7 @@ std::string	Worker::prepareResponse(void)
 		res.body,
 		mimetype
 	);
-	logServingFile(_req->path, mimetype);
+	// logServingFile(_req->path, mimetype);
 	return (response);
 }
 

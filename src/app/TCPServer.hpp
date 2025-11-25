@@ -49,6 +49,8 @@ public:
 	int start();
 	int serve(TCPServer &);
 	void stop();
+	unsigned long	requests_handled;
+	unsigned long	requests_failed;
 };
 
 
