@@ -13,6 +13,7 @@
 #include "WorkerPool.hpp"
 #include "TCPServer.hpp"
 #include "Worker.hpp"
+#include <cstddef>
 #include <vector>
 
 WorkerPool::WorkerPool(TCPServer& srv, size_t size) : _srv(srv), _allocp(0)
@@ -27,12 +28,17 @@ WorkerPool::WorkerPool(TCPServer& srv, size_t size) : _srv(srv), _allocp(0)
 
 WorkerPool::~WorkerPool(void)
 {
-	// std::cout << std::endl;
-	// std::cout << "WorkerPool {" << std::endl;
-	// std::cout << "\tsize: " << _size << std::endl;
-	// std::cout << "\tfreeList len: " << _freeList.size() << std::endl;
-	// std::cout << "\tallocp: " << _allocp << std::endl;
-	// std::cout << '}' << std::endl;
+	Worker*	wrkr;
+
+	for (size_t i = 0; i < _size; i++)
+	{
+		wrkr = _getWorker(i);
+		if (wrkr->getSocketFd() != -1)
+		{
+			std::cout << "Pruning orphaned worker with fd " << wrkr->getSocketFd() << std::endl;
+			wrkr->closeSocketFd();
+		}
+	}
 }
 
 Worker*	WorkerPool::alloc(void)
@@ -80,4 +86,5 @@ void	WorkerPool::free(Worker* wrkr)
 		_allocp--;
 	else
 		_freeList.push_front(wrkr);
+	wrkr->closeSocketFd();
 }
