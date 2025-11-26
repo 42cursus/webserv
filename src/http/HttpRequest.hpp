@@ -42,7 +42,7 @@ public:
 	std::string readHtmlFile(const std::string &, const Config &conf);
 	std::string getHtmlResponse(const Config &conf);
 	std::string getMimeType(const std::string &path);
-	void		printBody(void) const;
+	void		printBody() const;
 
 	class GenericException : public  std::exception
 	{

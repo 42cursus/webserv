@@ -149,23 +149,12 @@ std::string	Worker::prepareResponse() const
 	res.statusmsg = "OK";
 	res.headers = _req->headers;
 
-
-	// std::map<const std::string, std::string>::iterator it = _req->headers.begin();
-	// while (it != _req->headers.end())
-	// {
-	// 	std::cout << it->first << " : " << it->second << std::endl;
-	// 	it++;
-	// }
-
 	for (StringMap::iterator it = _req->headers.begin(); it != _req->headers.end(); ++it)
 		std::cout << it->first << ": " << it->second << "\r\n";
 
-
 	mimetype = _req->getMimeType(_req->path);
 	if (_req->method == "GET")
-	{
 		res.body = _req->getHtmlResponse(srv.getCfg());
-	}
 	else if (_req->method == "PUT")
 	{
 		std::string	rel_path = _req->path.substr(1, _req->path.length());

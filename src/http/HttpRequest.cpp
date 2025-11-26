@@ -20,6 +20,8 @@
 #include <vector>
 #include "HttpRequest.hpp"
 #include "webserv.hpp"
+#include "src/cgi/CgiHandler.hpp"
+#include "src/utils/LocationConfig.hpp"
 
 HttpRequest::HttpRequest(const std::string &path) : path(path)
 {}
@@ -96,14 +98,33 @@ void HttpRequest::parseRequest(const std::string &rawRequest)
 	}
 }
 
+
+static bool ends_with(const std::string &s, const std::string &suffix) {
+	if (suffix.size() > s.size())
+		return false;
+	const size_t offset = s.size() - suffix.size();
+	return s.compare(offset, suffix.size(), suffix) == 0;
+}
+
 std::string
 HttpRequest::getHtmlResponse(const Config &conf)
 {
+	Config::Http::Server::Location location = conf.http.server.location;
 	std::basic_string<char> filename = path.substr(1, path.length());
 
-	if (filename.empty()) filename = conf.http.server.location.config.index[0];
+	if (filename.empty())
+		filename = location.config.index[0];
 
-	return readHtmlFile(filename, conf);
+	LocationConfig lc(location);
+	std::string output;
+	if (!ends_with(filename, ".bla"))
+	{
+		CgiHandler handler(*this, lc, filename);
+		output = handler.raw_output();
+	}
+	else
+		output = readHtmlFile(filename, conf);
+	return output;
 }
 
 std::string
