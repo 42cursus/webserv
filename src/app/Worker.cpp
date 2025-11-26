@@ -17,10 +17,8 @@
 #include "webserv.hpp"
 #include "HttpRequest.hpp"
 #include "HttpResponse.hpp"
-#include <cctype>
 #include <cstring>
 #include <fcntl.h>
-#include <iomanip>
 #include <sys/types.h>
 #include <cstdlib>
 #include <unistd.h>
@@ -28,8 +26,8 @@
 Worker::Worker(TCPServer &srv)
 	: _req_buffer(), _req(),
 	_req_status(REQ_BODY),
-	_request_handled(),
 	_socket_fd(-1),
+	_request_handled(),
 	_addr(),
 	_addr_size(),
 	srv(srv)
@@ -196,7 +194,7 @@ std::string	Worker::prepareResponse() const
 		res.body,
 		mimetype
 	);
-	logServingFile(_req->path, mimetype);
+	// logServingFile(_req->path, mimetype);
 	return (response);
 }
 
