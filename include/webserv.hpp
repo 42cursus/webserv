@@ -80,4 +80,6 @@ struct Config
 	}
 };
 
+std::string itoa(int value);
+
 #endif //WEBSERV_HPP

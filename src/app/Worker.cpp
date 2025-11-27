@@ -132,6 +132,7 @@ int Worker::handleRequest()
 
 	std::string response = Worker::prepareResponse();
 
+	write(STDERR_FILENO, response.c_str(), response.length());
 	write(_socket_fd, response.c_str(), response.length());
 	srv.requests_handled++;
 	// close(_socket_fd);
@@ -147,14 +148,14 @@ std::string	Worker::prepareResponse() const
 
 	res.statuscode = "200";
 	res.statusmsg = "OK";
-	res.headers = _req->headers;
+	// res.headers = _req->headers;
 
 	for (StringMap::iterator it = _req->headers.begin(); it != _req->headers.end(); ++it)
 		std::cout << it->first << ": " << it->second << "\r\n";
 
 	mimetype = _req->getMimeType(_req->path);
 	if (_req->method == "GET")
-		res.body = _req->getHtmlResponse(srv.getCfg());
+		res.body = _req->getHtmlResponse(srv.getCfg(), res);
 	else if (_req->method == "PUT")
 	{
 		std::string	rel_path = _req->path.substr(1, _req->path.length());

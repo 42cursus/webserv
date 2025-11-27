@@ -19,6 +19,7 @@
 #include <string>
 #include <vector>
 #include "HttpRequest.hpp"
+#include "HttpResponse.hpp"
 #include "webserv.hpp"
 #include "src/cgi/CgiHandler.hpp"
 #include "src/utils/LocationConfig.hpp"
@@ -107,7 +108,7 @@ static bool ends_with(const std::string &s, const std::string &suffix) {
 }
 
 std::string
-HttpRequest::getHtmlResponse(const Config &conf)
+HttpRequest::getHtmlResponse(const Config &conf, HttpResponse& res)
 {
 	Config::Http::Server::Location location = conf.http.server.location;
 	std::basic_string<char> filename = path.substr(1, path.length());
@@ -117,13 +118,18 @@ HttpRequest::getHtmlResponse(const Config &conf)
 
 	LocationConfig lc(location);
 	std::string output;
-	if (!ends_with(filename, ".bla"))
+	if (ends_with(filename, ".bla"))
 	{
-		CgiHandler handler(*this, lc, filename);
+		CgiHandler handler(*this, lc, filename, res);
+		res.statuscode = itoa(handler.do_run());
 		output = handler.raw_output();
 	}
 	else
+	{
 		output = readHtmlFile(filename, conf);
+		res.headers["content-type"] = getMimeType(filename);
+	}
+	res.headers["content-length"] = ::itoa(output.length());
 	return output;
 }
 

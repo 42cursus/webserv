@@ -11,12 +11,13 @@
 /* ************************************************************************** */
 
 #include "CgiHandler.hpp"
+#include "HttpResponse.hpp"
 
-CgiHandler::CgiHandler(const HttpRequest& req, const LocationConfig& loc, const std::string& script_path) :
+CgiHandler::CgiHandler(HttpRequest& req, const LocationConfig& loc, const std::string& script_path, HttpResponse& res) :
     _state(), _pid(0),
-    _stdin_pipe(), _stdout_pipe()
+    _stdin_pipe(), _stdout_pipe(),
+	 _res(res), _req(req)
 {
-    (void)req;
     (void)loc;
     (void)script_path;
 }
@@ -27,4 +28,17 @@ void CgiHandler::_build_env(std::vector<std::string>& env)
     env.push_back("SCRIPT_NAME=" + this->_req.path);
     env.push_back("CONTENT_TYPE=" + _req.headers["Content-Type"]);
     env.push_back("CONTENT_LENGTH=" + _req.headers["Content-Length"]);
+}
+
+std::string	CgiHandler::raw_output(void) const
+{
+	return (_raw_output);
+}
+
+int	CgiHandler::do_run(void)
+{
+	_raw_output = "blahblahblah";
+	_res.headers["Content-Type"] = "text/plain";
+	_res.headers["Hey"] = "ho";
+	return (200);
 }

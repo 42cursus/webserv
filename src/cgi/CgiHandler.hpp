@@ -31,29 +31,29 @@ public:
         ERROR
     };
 
-    CgiHandler(const HttpRequest &req,
+    CgiHandler(HttpRequest &req,
                const LocationConfig &loc,
-               const std::string &script_path);
+               const std::string &script_path,
+			   HttpResponse& res);
 
     std::string body_buffer() const
     {
         return _body_buffer;
     }
 
-    std::string raw_output() const
-    {
-        return _raw_output;
-    }
+    std::string raw_output() const;
 
-    HttpResponse res() const
+    HttpResponse& res() const
     {
         return _res;
     }
 
-    HttpRequest req() const
+    HttpRequest& req() const
     {
         return _req;
     }
+
+	int	do_run(void);
 
 private:
     State           _state;
@@ -62,8 +62,8 @@ private:
     int             _stdout_pipe[2];  // CGI -> server
     std::string     _body_buffer;
     std::string     _raw_output;
-    HttpResponse    _res;
-    HttpRequest     _req;
+    HttpResponse&    _res;
+    HttpRequest&	_req;
 
     void _build_env(std::vector<std::string> &env);
     void _parse_output_into_response();
