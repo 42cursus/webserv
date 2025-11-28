@@ -132,6 +132,8 @@ int TCPServer::serve(TCPServer &srv)
 			{
 				if (evs[i].data.fd == sockfd)
 				{
+					if (wrkrPool.getNumAlloced() > 900)
+						continue ;
 					wrkr = wrkrPool.alloc();
 					wrkr->acceptConnection();
 					struct epoll_event ev;

@@ -19,6 +19,7 @@
 WorkerPool::WorkerPool(TCPServer& srv, size_t size) : _srv(srv), _allocp(0)
 {
 	_size = size;
+	_num_alloced = 0;
 	_nodesize = size;
 	_pool.push_front(std::vector<Worker>());
 	_pool.front().reserve(_nodesize);
@@ -65,6 +66,7 @@ Worker*	WorkerPool::alloc(void)
 		out = _freeList.front();
 		_freeList.pop_front();
 	}
+	_num_alloced++;
 	out->clearRequest();
 	return (out);
 }
@@ -87,4 +89,10 @@ void	WorkerPool::free(Worker* wrkr)
 	else
 		_freeList.push_front(wrkr);
 	wrkr->closeSocketFd();
+	_num_alloced--;
+}
+
+size_t	WorkerPool::getNumAlloced(void) const
+{
+	return (_num_alloced);
 }
