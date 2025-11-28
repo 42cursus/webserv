@@ -124,6 +124,13 @@ HttpRequest::getHtmlResponse(const Config &conf, HttpResponse& res)
 		res.statuscode = itoa(handler.do_run());
 		output = handler.raw_output();
 	}
+	else if (filename == "teapot")
+	{
+		res.statuscode = "418";
+		res.statusmsg = "I'm a Teapot";
+		output = "{\"msg\" = \"I'm a Teapot\"}";
+		res.headers["content-type"] = "application/json";
+	}
 	else
 	{
 		output = readHtmlFile(filename, conf);
@@ -193,5 +200,5 @@ void	HttpRequest::printBody(void) const
 	}
 	if (i < this->body.size())
 		std::cout << FT_BOLD << FT_BLUE << " [...]";
-	std::cout << FT_RESET << std::fixed << std::endl << std::endl;
+	std::cout << FT_RESET << std::setbase(10) << std::endl << std::endl;
 }
