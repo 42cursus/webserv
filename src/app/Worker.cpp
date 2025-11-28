@@ -170,7 +170,7 @@ std::string	Worker::prepareResponse() const
 			res.statuscode = "201";
 			res.statusmsg = "Created";
 		}
-		int	fd = open(path.c_str(), O_WRONLY | O_CREAT, S_IRWXU | S_IROTH | S_IRGRP);
+		int	fd = open(path.c_str(), O_WRONLY | O_TRUNC | O_CREAT, S_IRWXU | S_IROTH | S_IRGRP);
 		write(fd, _req->body.data(), _req->body.size());
 		close(fd);
 	}
