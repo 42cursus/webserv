@@ -23,8 +23,12 @@
 
 #define FT_RED		"\e[31m"
 #define FT_GREEN	"\e[32m"
-#define FT_BLUE		"\e[33m"
-#define FT_RESET	"\e[0m"
+#define FT_YELLOW	"\e[33m"
+#define FT_BLUE		"\e[34m"
+#define FT_MAGENTA	"\e[35m"
+#define FT_CYAN		"\e[36m"
+#define FT_BOLD		"\e[1m"
+#define FT_RESET	"\e[m"
 
 typedef std::map<const std::string, std::string> StringMap;
 

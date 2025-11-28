@@ -70,7 +70,7 @@ size_t	HttpRequest::_parseHeader(const std::string &line)
 			break;
 		if (line[i] == ' ')
 		{
-			std::cerr << "Malformed request in header: " << "\e[34m" << line.substr(0, line_end) << "\e[m" << std::endl;
+			std::cerr << "Malformed request in header: " << FT_BLUE << line.substr(0, line_end) << FT_RESET << std::endl;
 			throw HttpRequest::GenericException();
 		}
 		field += std::tolower(line[i++]);
@@ -129,7 +129,6 @@ HttpRequest::getHtmlResponse(const Config &conf, HttpResponse& res)
 		output = readHtmlFile(filename, conf);
 		res.headers["content-type"] = getMimeType(filename);
 	}
-	res.headers["content-length"] = ::itoa(output.length());
 	return output;
 }
 
@@ -188,11 +187,11 @@ void	HttpRequest::printBody(void) const
 		char c = this->body[i];
 		if (std::isprint(c))
 			// std::cout << "\e[32m" << std::setw(2) << c << ' ';
-			std::cout << "\e[32m" << c;
+			std::cout << FT_GREEN << c;
 		else
-			std::cout << "\e[31m " << std::hex << std::setw(2) << std::setfill(' ') << std::setfill('0') << (int)(u_char)c << ' ';
+			std::cout << FT_RED << ' ' << std::hex << std::setw(2) << std::setfill(' ') << std::setfill('0') << (int)(u_char)c << ' ';
 	}
 	if (i < this->body.size())
-		std::cout << "\e[34;1m [...]";
-	std::cout << "\e[m" << std::endl;
+		std::cout << FT_BOLD << FT_BLUE << " [...]";
+	std::cout << FT_RESET << std::fixed << std::endl << std::endl;
 }

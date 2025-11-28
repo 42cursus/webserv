@@ -93,8 +93,8 @@ int Worker::handleRequest()
 			size_t	clcr_pos = _rawRequest.find("\r\n\r\n");
 			if (clcr_pos == _rawRequest.npos)
 				return (1);
-			std::cout << "\e[35m" << "Request ready on fd: " << _socket_fd << std::endl;
-			std::cout << "\e[32m" << _rawRequest.substr(0, clcr_pos + 4) << "\e[31m" << std::endl;
+			std::cout << FT_MAGENTA << "Request ready on fd: " << _socket_fd << std::endl;
+			std::cout << FT_GREEN << _rawRequest.substr(0, clcr_pos + 2) << FT_RESET << std::endl;
 			_req = new HttpRequest();
 			try {
 				_req->parseRequest(_rawRequest);
@@ -132,7 +132,7 @@ int Worker::handleRequest()
 
 	std::string response = Worker::prepareResponse();
 
-	write(STDERR_FILENO, response.c_str(), response.length());
+	std::cout << FT_BLUE << response << FT_RESET << std::endl;
 	write(_socket_fd, response.c_str(), response.length());
 	srv.requests_handled++;
 	// close(_socket_fd);
@@ -149,9 +149,7 @@ std::string	Worker::prepareResponse() const
 	res.statuscode = "200";
 	res.statusmsg = "OK";
 	// res.headers = _req->headers;
-
-	for (StringMap::iterator it = _req->headers.begin(); it != _req->headers.end(); ++it)
-		std::cout << it->first << ": " << it->second << "\r\n";
+	res.headers["Server"] = "Webserv/0.69";
 
 	mimetype = _req->getMimeType(_req->path);
 	if (_req->method == "GET")
@@ -177,6 +175,7 @@ std::string	Worker::prepareResponse() const
 		close(fd);
 	}
 
+	res.headers["content-length"] = ::itoa(res.body.length());
 	std::string response = res.buildHttpResponse(
 		res.statuscode,
 		res.statusmsg,

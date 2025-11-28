@@ -37,7 +37,7 @@ std::string	CgiHandler::raw_output(void) const
 
 int	CgiHandler::do_run(void)
 {
-	_raw_output = "blahblahblah";
+	_raw_output = "blahblahblah\n";
 	_res.headers["Content-Type"] = "text/plain";
 	_res.headers["Hey"] = "ho";
 	return (200);
