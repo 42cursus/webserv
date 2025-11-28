@@ -13,7 +13,6 @@
 #ifndef HTTPRESPONSE_HPP
 #define HTTPRESPONSE_HPP
 
-#include "src/http/HttpRequest.hpp"
 #include <string>
 #include <map>
 
@@ -31,7 +30,6 @@ public:
 								  std::string> headers,
 								  std::string body,
 								  std::string mimetype);
-
 };
 
 

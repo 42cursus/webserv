@@ -14,10 +14,9 @@
 #define WEBSERV_HPP
 
 #include <iostream>
-#include <unistd.h>
 #include <cerrno>
-#include <csignal>
 #include <cstring>
+#include <map>
 #include <string>
 #include <netinet/in.h>
 #include <vector>
@@ -26,6 +25,8 @@
 #define FT_GREEN	"\e[32m"
 #define FT_BLUE		"\e[33m"
 #define FT_RESET	"\e[0m"
+
+typedef std::map<const std::string, std::string> StringMap;
 
 struct Config
 {
@@ -78,5 +79,7 @@ struct Config
 		return !(*this == other);
 	}
 };
+
+std::string itoa(int value);
 
 #endif //WEBSERV_HPP

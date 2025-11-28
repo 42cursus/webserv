@@ -1,15 +1,16 @@
 Checks: >
+  -*,
   bugprone-*,
   performance-*,
   readability-*,
-  cppcoreguidelines-*,
   clang-analyzer-*,
   modernize-*,
+  cppcoreguidelines-avoid-magic-numbers,
   -readability-magic-numbers,
   -readability-braces-around-statements,  
   -readability-identifier-length,
+  -readability-implicit-bool-conversion,
   -readability-convert-member-functions-to-static,
-  -cppcoreguidelines-avoid-magic-numbers,
   -cppcoreguidelines-owning-memory,
   -performance-avoid-endl,
   -modernize-use-trailing-return-type,
@@ -19,3 +20,4 @@ Checks: >
 
 WarningsAsErrors: ''
 HeaderFilterRegex: '.*'
+FormatStyle: none

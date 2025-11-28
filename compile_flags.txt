@@ -4,3 +4,7 @@
 ./include/
 -I
 .
+-I
+./src/http
+-I
+./src/utils/

@@ -18,22 +18,21 @@ INC_DIR			= ./include
 CFLAGS 			:= -Wall -Wextra -Werror -std=c++98 -g3 -gdwarf-3 -O0
 CPP 			= c++
 
-INCLUDE_FLAGS	:= -I. -I$(INC_DIR) -I/usr/include
-
+INCLUDE_FLAGS	:= -I. -I./src/http -I./src/utils -I$(INC_DIR) -I/usr/include
 
 SRCS			= src/main.cpp \
 				  src/app/Worker.cpp \
 				  src/app/WorkerPool.cpp \
 				  src/app/TCPServer.cpp \
+				  src/cgi/CgiHandler.cpp \
 				  src/http/HttpRequest.cpp \
 				  src/http/HttpResponse.cpp \
+				  src/utils/LocationConfig.cpp \
 				  src/utils/Parser.cpp \
 				  src/utils/State.cpp \
 				  src/utils/Utils.cpp
 
-
 OBJS			= $(SRCS:%.cpp=$(BUILD_DIR)/%.o)
-
 
 ifeq ($(MAKELEVEL),0)
 	# Only set --jobs if user didn't already pass a -j option manually

@@ -28,3 +28,7 @@ docker exec -it -u root webserv-nginx-1 bash
 ```bash
 echo 12346 | dd bs=1 count=3 status=none
 ```
+
+```bash
+sudo apt install docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin
+```

@@ -11,20 +11,23 @@
 /* ************************************************************************** */
 
 #include "Worker.hpp"
-#include "src/http/HttpRequest.hpp"
-#include "src/http/HttpResponse.hpp"
-#include <cctype>
+
+#include <cassert>
+
+#include "webserv.hpp"
+#include "HttpRequest.hpp"
+#include "HttpResponse.hpp"
 #include <cstring>
 #include <fcntl.h>
-#include <iomanip>
 #include <sys/types.h>
 #include <cstdlib>
 #include <unistd.h>
 
 Worker::Worker(TCPServer &srv)
-	: _req_buffer(),
+	: _req_buffer(), _req(),
 	_req_status(REQ_BODY),
 	_socket_fd(-1),
+	_request_handled(),
 	_addr(),
 	_addr_size(),
 	srv(srv)
@@ -37,12 +40,24 @@ Worker::~Worker()
 
 }
 
+/**
+ * `::` = "start lookup in the global namespace"
+ * C++ normally searches for a name in the following order:
+ *	- Local scope
+ *	- Class scope
+ *	- Namespace scope(s)
+ *	- Global scope
+ *	- Argument-dependent lookup (ADL)
+ *
+ *	with `::` it skips all above and directly jumps to the global namespace.
+ */
 void Worker::acceptConnection()
 {
-	_socket_fd = accept(srv.getSocketFd(), (struct sockaddr*)&_addr, &_addr_size);
+	struct sockaddr *addr = reinterpret_cast<struct sockaddr*>(&_addr); // NOLINT(*-pro-type-reinterpret-cast)
+	_socket_fd = /* global namespace */ ::accept(srv.getSocketFd(), addr, &_addr_size);
 	if (_socket_fd < 0) {
 		std::cerr << "Failed to accept client request." << std::endl;
-		throw Worker::GenericException();
+		throw GenericException();
 	}
 	std::cout << "Accepted connection. fd: " << _socket_fd << std::endl;
 }
@@ -51,13 +66,14 @@ void logServingFile(const std::string& path, const std::string& mimetype) {
 	std::cout << "Serving file: " << path << " with MIME type: " << mimetype << std::endl;
 }
 
-size_t	Worker::extract_body(size_t nread, size_t old_size, size_t clcr_pos)
+size_t	Worker::extract_body(size_t nread, size_t old_size, size_t clcr_pos) const
 {
-	size_t	body_start = clcr_pos + 4 - old_size;
-	size_t	body_size = nread - body_start;
+	const size_t	body_start = clcr_pos + 4 - old_size;
+	const size_t	body_size = nread - body_start;
+	const char		*src = &_req_buffer[0] + body_start;
 
 	_req->body.resize(body_size);
-	std::memcpy(_req->body.data(), &_req_buffer[body_start], body_size);
+	std::memcpy(_req->body.data(), src, body_size);
 	return (body_size);
 }
 
@@ -116,6 +132,7 @@ int Worker::handleRequest()
 
 	std::string response = Worker::prepareResponse();
 
+	write(STDERR_FILENO, response.c_str(), response.length());
 	write(_socket_fd, response.c_str(), response.length());
 	srv.requests_handled++;
 	// close(_socket_fd);
@@ -124,29 +141,21 @@ int Worker::handleRequest()
 	return (0);
 }
 
-std::string	Worker::prepareResponse(void)
+std::string	Worker::prepareResponse() const
 {
 	HttpResponse	res = HttpResponse();
-	std::string		response;
 	std::string		mimetype;
 
 	res.statuscode = "200";
 	res.statusmsg = "OK";
-	res.headers = _req->headers;
-	
+	// res.headers = _req->headers;
 
-	// std::map<const std::string, std::string>::iterator it = _req->headers.begin();
-	// while (it != _req->headers.end())
-	// {
-	// 	std::cout << it->first << " : " << it->second << std::endl;
-	// 	it++;
-	// }
+	for (StringMap::iterator it = _req->headers.begin(); it != _req->headers.end(); ++it)
+		std::cout << it->first << ": " << it->second << "\r\n";
 
 	mimetype = _req->getMimeType(_req->path);
 	if (_req->method == "GET")
-	{
-		res.body = _req->getHtmlResponse(srv.getCfg());
-	}
+		res.body = _req->getHtmlResponse(srv.getCfg(), res);
 	else if (_req->method == "PUT")
 	{
 		std::string	rel_path = _req->path.substr(1, _req->path.length());
@@ -168,7 +177,7 @@ std::string	Worker::prepareResponse(void)
 		close(fd);
 	}
 
-	response = res.buildHttpResponse(
+	std::string response = res.buildHttpResponse(
 		res.statuscode,
 		res.statusmsg,
 		res.headers,

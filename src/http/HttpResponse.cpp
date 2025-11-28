@@ -12,6 +12,7 @@
 
 #include <sstream>
 #include "HttpResponse.hpp"
+#include "webserv.hpp"
 
 std::string itoa(int value)
 {
@@ -27,17 +28,13 @@ std::string HttpResponse::buildHttpResponse(std::string statuscode,
 {
 	std::ostringstream buffer;
 
-	headers["content-type"] = mimetype;
-	headers["content-length"] = itoa(body.length());
+	// headers["content-type"] = mimetype;
+	// headers["content-length"] = itoa(body.length());
 	buffer << "HTTP/1.1 " << statuscode << " " << statusmsg << "\r\n";
 
-	std::map<const std::string, std::string>::iterator it = headers.begin();
-	while (it != headers.end())
-	{
+	for (StringMap::iterator it = headers.begin(); it != headers.end(); ++it)
 		buffer << it->first << ": " << it->second << "\r\n";
-		++it;
-	}
 	buffer << "\r\n" << body;
-	// buffer << "\r\n";
 	return buffer.str();
+	(void)mimetype;
 }

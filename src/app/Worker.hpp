@@ -15,8 +15,6 @@
 
 
 #include <netinet/in.h>
-#include <sys/types.h>
-#include <vector>
 #include "TCPServer.hpp"
 #include "src/http/HttpRequest.hpp"
 
@@ -42,7 +40,6 @@ private:
 public:
 	explicit Worker(TCPServer &);
 	~Worker();
-	// Worker&	operator=(Worker const &src);
 
 	class GenericException : public  std::exception
 	{
@@ -52,13 +49,13 @@ public:
 
 	void acceptConnection();
 	int handleRequest();
-	std::string prepareResponse();
+	std::string prepareResponse() const;
 	int getSocketFd() const;
 	void	closeSocketFd();
 	std::string& getRawRequest();
 	int requestHandled() const;
 	void clearRequest();
-	size_t	extract_body(size_t nread, size_t old_size, size_t clcr_pos);
+	size_t	extract_body(size_t nread, size_t old_size, size_t clcr_pos) const;
 };
 
 

@@ -18,6 +18,7 @@ set(CMAKE_CXX_COMPILER g++)
 project(webserv CXX)
 
 set(CMAKE_CXX_STANDARD 98)
+set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
 include_directories(include)
 
@@ -68,6 +69,8 @@ target_compile_options(${TARGET_NAME} PRIVATE "${COMMON_CFLAGS}")
 
 target_include_directories(${TARGET_NAME} PRIVATE
 		${PROJECT_SOURCE_DIR}
+		${PROJECT_SOURCE_DIR}/src/http
+		${PROJECT_SOURCE_DIR}/src/utils
 		/usr/include
 		/usr/include/x86_64-linux-gnu)
 

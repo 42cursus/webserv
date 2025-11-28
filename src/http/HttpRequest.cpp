@@ -19,7 +19,10 @@
 #include <string>
 #include <vector>
 #include "HttpRequest.hpp"
+#include "HttpResponse.hpp"
 #include "webserv.hpp"
+#include "src/cgi/CgiHandler.hpp"
+#include "src/utils/LocationConfig.hpp"
 
 HttpRequest::HttpRequest(const std::string &path) : path(path)
 {}
@@ -96,14 +99,38 @@ void HttpRequest::parseRequest(const std::string &rawRequest)
 	}
 }
 
+
+static bool ends_with(const std::string &s, const std::string &suffix) {
+	if (suffix.size() > s.size())
+		return false;
+	const size_t offset = s.size() - suffix.size();
+	return s.compare(offset, suffix.size(), suffix) == 0;
+}
+
 std::string
-HttpRequest::getHtmlResponse(const Config &conf)
+HttpRequest::getHtmlResponse(const Config &conf, HttpResponse& res)
 {
+	Config::Http::Server::Location location = conf.http.server.location;
 	std::basic_string<char> filename = path.substr(1, path.length());
 
-	if (filename.empty()) filename = conf.http.server.location.config.index[0];
+	if (filename.empty())
+		filename = location.config.index[0];
 
-	return readHtmlFile(filename, conf);
+	LocationConfig lc(location);
+	std::string output;
+	if (ends_with(filename, ".bla"))
+	{
+		CgiHandler handler(*this, lc, filename, res);
+		res.statuscode = itoa(handler.do_run());
+		output = handler.raw_output();
+	}
+	else
+	{
+		output = readHtmlFile(filename, conf);
+		res.headers["content-type"] = getMimeType(filename);
+	}
+	res.headers["content-length"] = ::itoa(output.length());
+	return output;
 }
 
 std::string
