@@ -23,13 +23,9 @@ public:
 	std::string statusmsg;
 	std::map<std::string, std::string> headers;
 	std::string body;
+	std::string filename;
 
-	std::string buildHttpResponse(std::string statuscode,
-								  std::string statusmsg,
-								  std::map<std::string,
-								  std::string> headers,
-								  std::string body,
-								  std::string mimetype);
+	std::string buildHttpResponse(void) const;
 };
 
 

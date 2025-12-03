@@ -21,10 +21,7 @@ std::string itoa(int value)
 	return oss.str();
 }
 
-std::string HttpResponse::buildHttpResponse(std::string statuscode,
-								std::string statusmsg, std::map<std::string,
-								std::string> headers, std::string body,
-								std::string mimetype)
+std::string HttpResponse::buildHttpResponse(void) const
 {
 	std::ostringstream buffer;
 
@@ -32,9 +29,8 @@ std::string HttpResponse::buildHttpResponse(std::string statuscode,
 	// headers["content-length"] = itoa(body.length());
 	buffer << "HTTP/1.1 " << statuscode << " " << statusmsg << "\r\n";
 
-	for (StringMap::iterator it = headers.begin(); it != headers.end(); ++it)
+	for (StringMap::const_iterator it = headers.begin(); it != headers.end(); ++it)
 		buffer << it->first << ": " << it->second << "\r\n";
 	buffer << "\r\n" << body;
 	return buffer.str();
-	(void)mimetype;
 }

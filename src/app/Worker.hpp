@@ -15,6 +15,7 @@
 
 
 #include <netinet/in.h>
+#include "HttpResponse.hpp"
 #include "TCPServer.hpp"
 #include "src/http/HttpRequest.hpp"
 
@@ -49,7 +50,7 @@ public:
 
 	void acceptConnection();
 	int handleRequest();
-	std::string prepareResponse() const;
+	HttpResponse* prepareResponse() const;
 	int getSocketFd() const;
 	void	closeSocketFd();
 	std::string& getRawRequest();

@@ -26,8 +26,8 @@ void CgiHandler::_build_env(std::vector<std::string>& env)
 {
     env.push_back("REQUEST_METHOD=" + _req.method);
     env.push_back("SCRIPT_NAME=" + this->_req.path);
-    env.push_back("CONTENT_TYPE=" + _req.headers["Content-Type"]);
-    env.push_back("CONTENT_LENGTH=" + _req.headers["Content-Length"]);
+    env.push_back("CONTENT_TYPE=" + _req.headers["content-type"]);
+    env.push_back("CONTENT_LENGTH=" + _req.headers["content-length"]);
 }
 
 std::string	CgiHandler::raw_output(void) const
@@ -38,7 +38,7 @@ std::string	CgiHandler::raw_output(void) const
 int	CgiHandler::do_run(void)
 {
 	_raw_output = "blahblahblah\n";
-	_res.headers["Content-Type"] = "text/plain";
+	_res.headers["content-type"] = "text/plain";
 	_res.headers["Hey"] = "ho";
 	return (200);
 }

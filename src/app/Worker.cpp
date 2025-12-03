@@ -130,30 +130,37 @@ int Worker::handleRequest()
 			break ;
 	}
 
-	std::string response = Worker::prepareResponse();
+	HttpResponse* res = Worker::prepareResponse();
 
-	std::cout << FT_BLUE << response << FT_RESET << std::endl;
+	std::string response = res->buildHttpResponse();
+	std::string& type = res->headers["content-type"];
+	if (!res->body.empty())
+		logServingFile(res->filename, type);
+	if (type.substr(0, type.find_first_of("/")) == "text")
+		std::cout << FT_BLUE << response << FT_RESET << std::endl;
+	else
+		std::cout << FT_BLUE << response.substr(0, response.find("\r\n\r\n")) << "\n<Binary file>" << FT_RESET << std::endl;
 	write(_socket_fd, response.c_str(), response.length());
 	srv.requests_handled++;
 	// close(_socket_fd);
 	_rawRequest.erase();
 	delete _req;
+	delete res;
 	return (0);
 }
 
-std::string	Worker::prepareResponse() const
+HttpResponse*	Worker::prepareResponse() const
 {
-	HttpResponse	res = HttpResponse();
+	HttpResponse*	res = new HttpResponse();
 	std::string		mimetype;
 
-	res.statuscode = "200";
-	res.statusmsg = "OK";
-	// res.headers = _req->headers;
-	res.headers["Server"] = "Webserv/0.69";
+	res->statuscode = "200";
+	res->statusmsg = "OK";
+	// res->headers = _req->headers;
+	res->headers["Server"] = "Webserv/0.69";
 
-	mimetype = _req->getMimeType(_req->path);
 	if (_req->method == "GET")
-		res.body = _req->getHtmlResponse(srv.getCfg(), res);
+		res->body = _req->getHtmlResponse(srv.getCfg(), *res);
 	else if (_req->method == "PUT")
 	{
 		std::string	rel_path = _req->path.substr(1, _req->path.length());
@@ -162,29 +169,21 @@ std::string	Worker::prepareResponse() const
 		std::string	path = srv.getCfg().http.server.location.config.root + "/put_test/" + rel_path;
 		if (access(path.c_str(), F_OK) == 0)
 		{
-			res.statuscode = "204";
-			res.statusmsg = "No Content";
+			res->statuscode = "204";
+			res->statusmsg = "No Content";
 		}
 		else
 		{
-			res.statuscode = "201";
-			res.statusmsg = "Created";
+			res->statuscode = "201";
+			res->statusmsg = "Created";
 		}
 		int	fd = open(path.c_str(), O_WRONLY | O_TRUNC | O_CREAT, S_IRWXU | S_IROTH | S_IRGRP);
 		write(fd, _req->body.data(), _req->body.size());
 		close(fd);
 	}
 
-	res.headers["content-length"] = ::itoa(res.body.length());
-	std::string response = res.buildHttpResponse(
-		res.statuscode,
-		res.statusmsg,
-		res.headers,
-		res.body,
-		mimetype
-	);
-	// logServingFile(_req->path, mimetype);
-	return (response);
+	res->headers["content-length"] = ::itoa(res->body.length());
+	return (res);
 }
 
 const char *Worker::GenericException::what() const throw()

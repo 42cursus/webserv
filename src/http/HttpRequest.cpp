@@ -14,7 +14,6 @@
 #include <iomanip>
 #include <iostream>
 #include <fstream>
-#include <list>
 #include <sstream>
 #include <string>
 #include <vector>
@@ -117,6 +116,7 @@ HttpRequest::getHtmlResponse(const Config &conf, HttpResponse& res)
 		filename = location.config.index[0];
 
 	LocationConfig lc(location);
+	res.filename = filename;
 	std::string output;
 	if (ends_with(filename, ".bla"))
 	{
