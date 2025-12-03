@@ -23,6 +23,8 @@
 #include <sys/wait.h>
 #include "webserv.hpp"
 
+class WorkerPool;
+
 class TCPServer
 {
 private:
@@ -48,6 +50,7 @@ public:
 	int getSocketFd() const;
 	int start();
 	int serve(TCPServer &);
+	void assignWorker(WorkerPool& wrkrPool, int epoll_fd) const;
 	void stop();
 	unsigned long	requests_handled;
 	unsigned long	requests_failed;

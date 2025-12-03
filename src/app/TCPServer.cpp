@@ -108,6 +108,21 @@ const Config &TCPServer::getCfg() const
 // 	return 0;
 // }
 
+void	TCPServer::assignWorker(WorkerPool& wrkrPool, int epoll_fd) const
+{
+	Worker* wrkr;
+
+	// if (wrkrPool.getNumAlloced() > 900)
+	// 	continue ;
+	wrkr = wrkrPool.alloc();
+	wrkr->acceptConnection();
+	struct epoll_event ev;
+	ev.data.ptr = wrkr;
+	ev.events = EPOLLIN;
+	epoll_ctl(epoll_fd, EPOLL_CTL_ADD, wrkr->getSocketFd(), &ev);
+
+};
+
 int TCPServer::serve(TCPServer &srv)
 {
 	extern sig_atomic_t				g_var;
@@ -131,16 +146,7 @@ int TCPServer::serve(TCPServer &srv)
 			if (evs[i].events & EPOLLIN)
 			{
 				if (evs[i].data.fd == sockfd)
-				{
-					if (wrkrPool.getNumAlloced() > 900)
-						continue ;
-					wrkr = wrkrPool.alloc();
-					wrkr->acceptConnection();
-					struct epoll_event ev;
-					ev.data.ptr = wrkr;
-					ev.events = EPOLLIN;
-					epoll_ctl(epoll_fd, EPOLL_CTL_ADD, wrkr->getSocketFd(), &ev);
-				}
+					assignWorker(wrkrPool, epoll_fd);
 				else
 				{
 					wrkr = reinterpret_cast<Worker*>(evs[i].data.ptr);
