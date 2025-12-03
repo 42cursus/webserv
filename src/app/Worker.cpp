@@ -25,8 +25,7 @@
 
 Worker::Worker(TCPServer &srv)
 	: _req_buffer(), _req(),
-	_req_status(REQ_BODY),
-	_socket_fd(-1),
+	_conn_fd(-1),
 	_request_handled(),
 	_addr(),
 	_addr_size(),
@@ -54,12 +53,12 @@ Worker::~Worker()
 void Worker::acceptConnection()
 {
 	struct sockaddr *addr = reinterpret_cast<struct sockaddr*>(&_addr); // NOLINT(*-pro-type-reinterpret-cast)
-	_socket_fd = /* global namespace */ ::accept(srv.getSocketFd(), addr, &_addr_size);
-	if (_socket_fd < 0) {
+	_conn_fd = /* global namespace */ ::accept(srv.getSocketFd(), addr, &_addr_size);
+	if (_conn_fd < 0) {
 		std::cerr << "Failed to accept client request." << std::endl;
 		throw GenericException();
 	}
-	std::cout << "Accepted connection. fd: " << _socket_fd << std::endl;
+	std::cout << "Accepted connection. fd: " << _conn_fd << std::endl;
 }
 
 void logServingFile(const std::string& path, const std::string& mimetype) {
@@ -81,11 +80,11 @@ int Worker::handleRequest()
 {
 	int			nread;
 
-	nread = read(_socket_fd, _req_buffer, 1023);
+	nread = read(_conn_fd, _req_buffer, 1023);
 	if (nread <= 0)
 		return (2);
 	_req_buffer[nread] = '\0';
-	switch (_req_status) {
+	switch (_status) {
 		case (REQ_HEADERS): {
 			size_t	old_size = _rawRequest.size();
 			_rawRequest += _req_buffer;
@@ -93,7 +92,7 @@ int Worker::handleRequest()
 			size_t	clcr_pos = _rawRequest.find("\r\n\r\n");
 			if (clcr_pos == _rawRequest.npos)
 				return (1);
-			std::cout << FT_MAGENTA << "Request ready on fd: " << _socket_fd << std::endl;
+			std::cout << FT_MAGENTA << "Request ready on fd: " << _conn_fd << std::endl;
 			std::cout << FT_GREEN << _rawRequest.substr(0, clcr_pos + 2) << FT_RESET << std::endl;
 			_req = new HttpRequest();
 			try {
@@ -109,7 +108,7 @@ int Worker::handleRequest()
 			_req->content_length = std::atoi(_req->headers["content-length"].c_str());
 			if (_req->content_length > 0)
 			{
-				_req_status = REQ_BODY;
+				_status = REQ_BODY;
 				size_t	body_size = extract_body(nread, old_size, clcr_pos);
 				if (body_size < _req->content_length)
 					return (1);
@@ -134,17 +133,19 @@ int Worker::handleRequest()
 
 	std::string response = res->buildHttpResponse();
 	std::string& type = res->headers["content-type"];
+
 	if (!res->body.empty())
 		logServingFile(res->filename, type);
 	if (type.substr(0, type.find_first_of("/")) == "text")
 		std::cout << FT_BLUE << response << FT_RESET << std::endl;
 	else
 		std::cout << FT_BLUE << response.substr(0, response.find("\r\n\r\n")) << "\n<Binary file>" << FT_RESET << std::endl;
-	write(_socket_fd, response.c_str(), response.length());
+	write(_conn_fd, response.c_str(), response.length());
 	srv.requests_handled++;
 	// close(_socket_fd);
 	_rawRequest.erase();
 	delete _req;
+	setReq(NULL);
 	delete res;
 	return (0);
 }
@@ -181,6 +182,10 @@ HttpResponse*	Worker::prepareResponse() const
 		write(fd, _req->body.data(), _req->body.size());
 		close(fd);
 	}
+	else if (_req->method == "DELETE")
+	{
+
+	}
 
 	res->headers["content-length"] = ::itoa(res->body.length());
 	return (res);
@@ -200,13 +205,13 @@ const char *Worker::GenericException::what() const throw()
 
 int Worker::getSocketFd() const
 {
-	return _socket_fd;
+	return _conn_fd;
 }
 
 void	Worker::closeSocketFd(void)
 {
-	close(_socket_fd);
-	_socket_fd = -1;
+	close(_conn_fd);
+	_conn_fd = -1;
 }
 
 int Worker::requestHandled() const
@@ -219,9 +224,13 @@ std::string& Worker::getRawRequest()
 	return _rawRequest;
 }
 
+void	Worker::setReq(HttpRequest* req)
+{
+	_req = req;
+}
+
 void	Worker::clearRequest(void)
 {
 	if (!_rawRequest.empty())
 		_rawRequest.erase();
-	_req_status = REQ_HEADERS;
 }

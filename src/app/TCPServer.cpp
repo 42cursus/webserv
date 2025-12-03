@@ -17,6 +17,7 @@
 #include <poll.h>
 #include <vector>
 #include "TCPServer.hpp"
+#include "HttpRequest.hpp"
 #include "src/utils/Parser.hpp"
 #include "Worker.hpp"
 #include "WorkerPool.hpp"
@@ -117,6 +118,7 @@ void	TCPServer::assignWorker(WorkerPool& wrkrPool, int epoll_fd) const
 	wrkr = wrkrPool.alloc();
 	wrkr->acceptConnection();
 	struct epoll_event ev;
+	// wrkr->setReq(new HttpRequest());
 	ev.data.ptr = wrkr;
 	ev.events = EPOLLIN;
 	epoll_ctl(epoll_fd, EPOLL_CTL_ADD, wrkr->getSocketFd(), &ev);

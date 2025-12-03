@@ -17,27 +17,29 @@
 #include <netinet/in.h>
 #include "HttpResponse.hpp"
 #include "TCPServer.hpp"
-#include "src/http/HttpRequest.hpp"
-
-enum {
-	REQ_HEADERS = 0,
-	REQ_BODY,
-	REQ_HANDLED,
-	REQ_MAX,
-};
+#include "HttpRequest.hpp"
 
 class Worker
 {
+public:
+
+	enum e_status {
+		REQ_HEADERS = 0,
+		REQ_BODY,
+		REQ_HANDLED,
+		REQ_MAX,
+	};
+
 private:
 	char					_req_buffer[1024];
 	std::string				_rawRequest;
 	HttpRequest*			_req;
-	int						_req_status;
-	int						_socket_fd;
+	int						_conn_fd;
 	int						_request_handled;
 	struct sockaddr_in		_addr;
 	socklen_t				_addr_size;
 	TCPServer				&srv;
+	e_status				_status;
 public:
 	explicit Worker(TCPServer &);
 	~Worker();
@@ -51,6 +53,8 @@ public:
 	void acceptConnection();
 	int handleRequest();
 	HttpResponse* prepareResponse() const;
+	HttpRequest* getReq() const;
+	void setReq(HttpRequest* req);
 	int getSocketFd() const;
 	void	closeSocketFd();
 	std::string& getRawRequest();

@@ -27,6 +27,7 @@ private:
 	size_t	_parseHeader(const std::string &line);
 
 public:
+
 	HttpRequest();
 
 	std::string			method;
