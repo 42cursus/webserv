@@ -30,8 +30,8 @@ Worker::Worker(TCPServer &srv)
 	_request_handled(),
 	_addr(),
 	_addr_size(),
-	_status(REQ_HEADERS),
-	srv(srv)
+	srv(srv),
+	_status(REQ_HEADERS)
 {
 
 }
@@ -147,7 +147,7 @@ int Worker::handleRequest()
 	// close(_socket_fd);
 	_rawRequest.erase();
 	delete _req;
-//	setReq(NULL);
+	setReq(NULL);
 	delete res;
 	return (0);
 }
