@@ -1,13 +1,21 @@
 /* ************************************************************************** */
 /*                                                                            */
 /*                                                        :::      ::::::::   */
-/*   Utils.cpp                                          :+:      :+:    :+:   */
+/*   RequestParser.hpp                                  :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By: margo <margo@student.42.fr>                +#+  +:+       +#+        */
+/*   By: abelov <abelov@student.42london.com>       +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
-/*   Created: 2025/09/16 19:27:13 by margo             #+#    #+#             */
-/*   Updated: 2025/10/01 23:37:18 by margo            ###   ########.fr       */
+/*   Created: 2025/12/03 23:12:28 by abelov            #+#    #+#             */
+/*   Updated: 2025/12/03 23:12:32 by abelov           ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
-#include "Utils.hpp"
+#pragma once
+#ifndef REQUESTPARSER_HPP
+#define REQUESTPARSER_HPP
+
+class RequestParser {
+
+};
+
+#endif //REQUESTPARSER_HPP

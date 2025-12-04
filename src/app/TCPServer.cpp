@@ -12,13 +12,10 @@
 
 #include <cstring>
 #include <sys/epoll.h>
-#include <sys/poll.h>
-#include <sys/select.h>
-#include <poll.h>
 #include <vector>
 #include "TCPServer.hpp"
 #include "HttpRequest.hpp"
-#include "src/utils/Parser.hpp"
+#include "ConfigParser.hpp"
 #include "Worker.hpp"
 #include "WorkerPool.hpp"
 

@@ -25,12 +25,14 @@
 #include <unistd.h>
 
 Worker::Worker(TCPServer &srv)
-	: _req_buffer(), _req(),
+	: _req_buffer(),
+    _req(),
 	_conn_fd(-1),
 	_request_handled(),
 	_addr(),
 	_addr_size(),
-	srv(srv)
+	srv(srv),
+	_status(REQ_HEADERS)
 {
 
 }

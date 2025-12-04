@@ -1,13 +1,22 @@
 /* ************************************************************************** */
 /*                                                                            */
 /*                                                        :::      ::::::::   */
-/*   Utils.cpp                                          :+:      :+:    :+:   */
+/*   Connection.hpp                                     :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By: margo <margo@student.42.fr>                +#+  +:+       +#+        */
+/*   By: abelov <abelov@student.42london.com>       +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
-/*   Created: 2025/09/16 19:27:13 by margo             #+#    #+#             */
-/*   Updated: 2025/10/01 23:37:18 by margo            ###   ########.fr       */
+/*   Created: 2025/12/04 01:32:53 by abelov            #+#    #+#             */
+/*   Updated: 2025/12/04 01:32:54 by abelov           ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
-#include "Utils.hpp"
+#ifndef CONNECTION_HPP
+#define CONNECTION_HPP
+
+
+class Connection {
+
+};
+
+
+#endif //CONNECTION_HPP

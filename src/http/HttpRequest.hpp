@@ -19,6 +19,9 @@
 #include "HttpResponse.hpp"
 #include "webserv.hpp"
 
+#define MAX_BODY_SIZE 1000
+#define DECIMAL_BASE 10
+
 class HttpRequest {
 
 private:
