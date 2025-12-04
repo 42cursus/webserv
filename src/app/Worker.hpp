@@ -19,7 +19,7 @@
 #include "TCPServer.hpp"
 #include "HttpRequest.hpp"
 
-#define REQUEST_BUF_SIZE 1024
+#define REQUEST_BUF_SIZE 1023
 
 class Worker
 {
@@ -33,7 +33,7 @@ public:
 	};
 
 private:
-	char					_req_buffer[REQUEST_BUF_SIZE];
+	char					_req_buffer[REQUEST_BUF_SIZE + 1];
 	std::string				_rawRequest;
 	HttpRequest*			_req;
 	int						_conn_fd;
@@ -42,6 +42,7 @@ private:
 	socklen_t				_addr_size;
 	TCPServer				&srv;
 	e_status				_status;
+	std::vector<class Connection> _conns;
 public:
 	explicit Worker(TCPServer &);
 	~Worker();

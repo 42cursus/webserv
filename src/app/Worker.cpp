@@ -1,3 +1,5 @@
+#pragma clang diagnostic push
+#pragma ide diagnostic ignored "modernize-use-nullptr"
 /* ************************************************************************** */
 /*                                                                            */
 /*                                                        :::      ::::::::   */
@@ -80,9 +82,9 @@ size_t	Worker::extract_body(size_t nread, size_t old_size, size_t clcr_pos) cons
 
 int Worker::handleRequest()
 {
-	int			nread;
+	ssize_t	nread;
 
-	nread = read(_conn_fd, _req_buffer, 1023);
+	nread = read(_conn_fd, _req_buffer, REQUEST_BUF_SIZE);
 	if (nread <= 0)
 		return (2);
 	_req_buffer[nread] = '\0';
@@ -92,7 +94,7 @@ int Worker::handleRequest()
 			_rawRequest += _req_buffer;
 
 			size_t	clcr_pos = _rawRequest.find("\r\n\r\n");
-			if (clcr_pos == _rawRequest.npos)
+			if (clcr_pos == std::string::npos)
 				return (1);
 			std::cout << FT_MAGENTA << "Request ready on fd: " << _conn_fd << std::endl;
 			std::cout << FT_GREEN << _rawRequest.substr(0, clcr_pos + 2) << FT_RESET << std::endl;
@@ -138,10 +140,13 @@ int Worker::handleRequest()
 
 	if (!res->body.empty())
 		logServingFile(res->filename, type);
-	if (type.substr(0, type.find_first_of("/")) == "text")
+	if (type.substr(0, type.find_first_of('/')) == "text")
 		std::cout << FT_BLUE << response << FT_RESET << std::endl;
 	else
-		std::cout << FT_BLUE << response.substr(0, response.find("\r\n\r\n")) << "\n<Binary file>" << FT_RESET << std::endl;
+		std::cout << FT_BLUE
+				  << response.substr(0, response.find("\r\n\r\n"))
+				  << "\n<Binary file>"
+				  << FT_RESET << std::endl;
 	write(_conn_fd, response.c_str(), response.length());
 	srv.requests_handled++;
 	// close(_socket_fd);
@@ -236,3 +241,5 @@ void	Worker::clearRequest(void)
 	if (!_rawRequest.empty())
 		_rawRequest.erase();
 }
+
+#pragma clang diagnostic pop

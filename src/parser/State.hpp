@@ -150,6 +150,11 @@ class Location: public IBlock
     private:
         Location(const Location& copy);
         Location& operator=(const Location& copy);
+        std::string path_prefix;     // "/cgi-bin", "/static", "/"
+        bool        is_cgi;
+        bool        autoindex;
+        std::string cgi_script;
+        std::vector<> allowed_methods;
     public:
         Location();
         ~Location();

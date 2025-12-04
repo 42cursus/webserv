@@ -13,9 +13,31 @@
 #ifndef CONNECTION_HPP
 #define CONNECTION_HPP
 
+#include "HttpRequest.hpp"
+#include "HttpResponse.hpp"
+#include "State.hpp"
+#include "HttpTransaction.hpp"
+
+class Listener;
+class VirtualHost;
 
 class Connection {
+private:
+    static char _inBuffer[1024];
+    static char _outBuffer[1024];
+    int                  fd;
+    Listener            *listener;   // which listener accepted this connection
+    HttpTransaction     tx;
+    const VirtualHost   *current_vhost;
+    const Location      *current_location;
 
+    bool keep_alive;
+    bool has_request;
+    bool response_ready;
+
+    void onRequestParsed();
+    void onReadable();
+    void onWritable();
 };
 
 
