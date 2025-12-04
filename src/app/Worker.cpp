@@ -101,7 +101,7 @@ int Worker::handleRequest()
 {
 	int			nread;
 
-	nread = read(_conn_fd, _req_buffer, REQ_BUFSIZE - 1);
+	nread = read(_conn_fd, _req_buffer, REQUEST_BUF_SIZE);
 	if (nread <= 0)
 		return (2);
 	_req_buffer[nread] = '\0';
