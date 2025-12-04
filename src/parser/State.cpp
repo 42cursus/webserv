@@ -11,7 +11,7 @@
 /* ************************************************************************** */
 
 #include "State.hpp"
-#include "Parser.hpp"
+#include "ConfigParser.hpp"
 
 Start::Start() {};
 
@@ -106,6 +106,14 @@ void    IBlock::setLine(int line)
     _line = line;
 }
 
+IBlock::IBlock() {
+
+}
+
+std::vector<Parameter> IBlock::getParameters() const {
+    return _parameters;
+}
+
 HTTP::HTTP(): IBlock("http") {};
 
 HTTP::~HTTP() {};
@@ -195,12 +203,12 @@ void    Location::toggle(Parser *parser)
         std::vector<std::string> indexArr = parser->_config.http.server.location.config.index;
 
         int i = 0;
-        while (strnCmp(indexBuf.c_str(), ";", 2) != 0)
+        while (std::strncmp(indexBuf.c_str(), ";", 2) != 0) // while (indexBuf.rfind(';', 0) != 0)
         {
             indexArr[i] = indexBuf;
             i++;
             parser->toggleCurrentToken();
-            indexBuf = strDupForConstChar(parser->getNextToken().literal.c_str());  
+            indexBuf = parser->getNextToken().literal;
         }
     }
 }

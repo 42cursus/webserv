@@ -10,11 +10,9 @@
 /*                                                                            */
 /* ************************************************************************** */
 
-
 #include "webserv.hpp"
-#include "app/TCPServer.hpp"
-#include "app/Worker.hpp"
-#include "utils/Parser.hpp"
+#include "TCPServer.hpp"
+#include "ConfigParser.hpp"
 #include <csignal>
 #include <cstdlib>
 

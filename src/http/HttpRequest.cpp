@@ -21,7 +21,7 @@
 #include "HttpResponse.hpp"
 #include "webserv.hpp"
 #include "src/cgi/CgiHandler.hpp"
-#include "src/utils/LocationConfig.hpp"
+#include "LocationConfig.hpp"
 
 HttpRequest::HttpRequest(const std::string &path) : path(path)
 {}
@@ -186,10 +186,10 @@ HttpRequest::HttpRequest()
 
 }
 
-void	HttpRequest::printBody(void) const
+void	HttpRequest::printBody(/* ... */) const
 {
 	size_t i;
-	for (i = 0; i < this->body.size() && i < 1000; i++)
+	for (i = 0; i < this->body.size() && i < MAX_BODY_SIZE; i++)
 	{
 		char c = this->body[i];
 		if (std::isprint(c))
@@ -200,5 +200,5 @@ void	HttpRequest::printBody(void) const
 	}
 	if (i < this->body.size())
 		std::cout << FT_BOLD << FT_BLUE << " [...]";
-	std::cout << FT_RESET << std::setbase(10) << std::endl << std::endl;
+	std::cout << FT_RESET << std::setbase(DECIMAL_BASE) << std::endl << std::endl;
 }

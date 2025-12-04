@@ -10,14 +10,16 @@
 /*                                                                            */
 /* ************************************************************************** */
 
+#pragma once
 #ifndef WORKER_HPP
 #define WORKER_HPP
-
 
 #include <netinet/in.h>
 #include "HttpResponse.hpp"
 #include "TCPServer.hpp"
 #include "HttpRequest.hpp"
+
+#define REQUEST_BUF_SIZE 1024
 
 class Worker
 {
@@ -31,7 +33,7 @@ public:
 	};
 
 private:
-	char					_req_buffer[1024];
+	char					_req_buffer[REQUEST_BUF_SIZE];
 	std::string				_rawRequest;
 	HttpRequest*			_req;
 	int						_conn_fd;
@@ -62,6 +64,5 @@ public:
 	void clearRequest();
 	size_t	extract_body(size_t nread, size_t old_size, size_t clcr_pos) const;
 };
-
 
 #endif //WORKER_HPP

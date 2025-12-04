@@ -69,6 +69,8 @@ target_compile_options(${TARGET_NAME} PRIVATE "${COMMON_CFLAGS}")
 
 target_include_directories(${TARGET_NAME} PRIVATE
 		${PROJECT_SOURCE_DIR}
+		${PROJECT_SOURCE_DIR}/src/app
+		${PROJECT_SOURCE_DIR}/src/parser
 		${PROJECT_SOURCE_DIR}/src/http
 		${PROJECT_SOURCE_DIR}/src/utils
 		/usr/include
