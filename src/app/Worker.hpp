@@ -18,6 +18,8 @@
 #include "HttpResponse.hpp"
 #include "TCPServer.hpp"
 #include "HttpRequest.hpp"
+// #define REQ_BUFSIZE 1024
+#define REQ_BUFSIZE 8192
 
 class Worker
 {
@@ -31,7 +33,7 @@ public:
 	};
 
 private:
-	char					_req_buffer[1024];
+	char					_req_buffer[REQ_BUFSIZE];
 	std::string				_rawRequest;
 	HttpRequest*			_req;
 	int						_conn_fd;
@@ -60,7 +62,10 @@ public:
 	std::string& getRawRequest();
 	int requestHandled() const;
 	void clearRequest();
+	e_status getStatus(void) const;
+	void	setStatus(e_status status);
 	size_t	extract_body(size_t nread, size_t old_size, size_t clcr_pos) const;
+	void	parse_range(HttpResponse& res) const;
 };
 
 

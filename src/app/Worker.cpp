@@ -17,6 +17,7 @@
 #include "webserv.hpp"
 #include "HttpRequest.hpp"
 #include "HttpResponse.hpp"
+#include <cstddef>
 #include <cstring>
 #include <fcntl.h>
 #include <sys/types.h>
@@ -76,11 +77,29 @@ size_t	Worker::extract_body(size_t nread, size_t old_size, size_t clcr_pos) cons
 	return (body_size);
 }
 
+void	Worker::parse_range(HttpResponse& res) const
+{
+	std::string	rangestr = _req->headers["range"];
+	size_t		i = rangestr.find('=');
+	char		*endptr;
+	size_t		start = std::strtol(&rangestr.c_str()[i + 1], &endptr, 10);
+
+	if (*endptr != '-')
+		return ;
+	endptr++;
+	size_t		end = std::strtol(endptr, &endptr, 10);
+	if (end == 0)
+		end = res.body.length() - 1;
+	res.headers["content-range"] = "bytes " + ::itoa(start) + "-" + ::itoa(end) + "/" + ::itoa(res.body.length());
+	res.body.erase(end);
+	res.body.erase(0, start);
+}
+
 int Worker::handleRequest()
 {
 	int			nread;
 
-	nread = read(_conn_fd, _req_buffer, 1023);
+	nread = read(_conn_fd, _req_buffer, REQ_BUFSIZE - 1);
 	if (nread <= 0)
 		return (2);
 	_req_buffer[nread] = '\0';
@@ -129,6 +148,7 @@ int Worker::handleRequest()
 			break ;
 	}
 
+	setStatus(REQ_HEADERS);
 	HttpResponse* res = Worker::prepareResponse();
 
 	std::string response = res->buildHttpResponse();
@@ -161,7 +181,21 @@ HttpResponse*	Worker::prepareResponse() const
 	res->headers["Server"] = "Webserv/0.69";
 
 	if (_req->method == "GET")
+	{
 		res->body = _req->getHtmlResponse(srv.getCfg(), *res);
+		// if (res->headers["content-type"] == "video/mp4" )
+		// {
+			if (_req->headers["range"].empty())
+				res->headers["accept-ranges"] = "bytes";
+			else if (_req->headers["range"].find("bytes") == 0)
+			{
+				parse_range(*res);
+				res->statuscode = "206";
+				res->statusmsg = "Partial Content";
+			}
+		// }
+		res->headers["content-length"] = ::itoa(res->body.length());
+	}
 	else if (_req->method == "PUT")
 	{
 		std::string	rel_path = _req->path.substr(1, _req->path.length());
@@ -187,7 +221,6 @@ HttpResponse*	Worker::prepareResponse() const
 
 	}
 
-	res->headers["content-length"] = ::itoa(res->body.length());
 	return (res);
 }
 
@@ -233,4 +266,14 @@ void	Worker::clearRequest(void)
 {
 	if (!_rawRequest.empty())
 		_rawRequest.erase();
+}
+
+void	Worker::setStatus(e_status status)
+{
+	_status = status;
+}
+
+Worker::e_status	Worker::getStatus(void) const
+{
+	return (_status);
 }
