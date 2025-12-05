@@ -12,6 +12,7 @@
 
 #include "Worker.hpp"
 
+#include <asm-generic/socket.h>
 #include <cassert>
 
 #include "webserv.hpp"
@@ -23,10 +24,12 @@
 #include <sys/types.h>
 #include <cstdlib>
 #include <unistd.h>
+#include <sys/socket.h>
 
 Worker::Worker(TCPServer &srv)
 	: _req_buffer(),
-    _req(),
+    _req(NULL),
+    _res(NULL),
 	_conn_fd(-1),
 	_request_handled(),
 	_addr(),
@@ -62,6 +65,28 @@ void Worker::acceptConnection()
 		throw GenericException();
 	}
 	std::cout << "Accepted connection. fd: " << _conn_fd << std::endl;
+	struct timeval timeout;
+	timeout.tv_sec = 0;  // 5 seconds timeout
+	timeout.tv_usec = 20;
+
+	setsockopt(_conn_fd, SOL_SOCKET, SO_SNDTIMEO, (char *)&timeout, sizeof(timeout));
+	// fcntl(_conn_fd, F_SETFL, O_NONBLOCK);
+	// int	rcvbuf_size;
+	// int	sndbuf_size;
+	// socklen_t len = sizeof(rcvbuf_size);
+	//    if (getsockopt(_conn_fd, SOL_SOCKET, SO_RCVBUF, &rcvbuf_size, &len) < 0) {
+	//        close(_conn_fd);
+	//        return ;
+	//    }
+	// std::cout << "SO_RCVBUF (Receive Buffer Capacity): " << rcvbuf_size << std::endl;
+	//
+	//    // Get Send Buffer Size
+	//    len = sizeof(sndbuf_size);
+	//    if (getsockopt(_conn_fd, SOL_SOCKET, SO_SNDBUF, &sndbuf_size, &len) < 0) {
+	//        close(_conn_fd);
+	//        return ;
+	//    }
+	// std::cout << "SO_SNDBUF (Receive Buffer Capacity): " << sndbuf_size << std::endl;
 }
 
 void logServingFile(const std::string& path, const std::string& mimetype) {
@@ -93,7 +118,8 @@ void	Worker::parse_range(HttpResponse& res) const
 	if (end == 0)
 		end = res.body.length() - 1;
 	res.headers["content-range"] = "bytes " + ::itoa(start) + "-" + ::itoa(end) + "/" + ::itoa(res.body.length());
-	res.body.erase(end + 1);
+	if (end < res.body.length() - 1)
+		res.body.erase(end + 1);
 	res.body.erase(0, start);
 }
 
@@ -150,26 +176,58 @@ int Worker::handleRequest()
 			break ;
 	}
 
-	setStatus(REQ_HEADERS);
-	HttpResponse* res = Worker::prepareResponse();
+	_res = Worker::prepareResponse();
+	_res->buildHttpResponse();
 
-	std::string response = res->buildHttpResponse();
-	std::string& type = res->headers["content-type"];
+	setStatus(REQ_RESPONSE_READY);
 
-	if (!res->body.empty())
-		logServingFile(res->filename, type);
-	if (type.substr(0, type.find_first_of("/")) == "text")
-		std::cout << FT_BLUE << response << FT_RESET << std::endl;
-	else
-		std::cout << FT_BLUE << response.substr(0, response.find("\r\n\r\n")) << "\n<Binary file>" << FT_RESET << std::endl;
-	write(_conn_fd, response.c_str(), response.length());
-	srv.requests_handled++;
-	// close(_socket_fd);
-	_rawRequest.erase();
-	delete _req;
-	setReq(NULL);
-	delete res;
 	return (0);
+}
+
+void	resize_socket_buffer(int sockfd, size_t size)
+{
+	int	sndbuf_size;
+	socklen_t len = sizeof(sndbuf_size);
+
+	getsockopt(sockfd, SOL_SOCKET, SO_SNDBUF, &sndbuf_size, &len);
+	std::cout << "Old sock_buf_size: " << sndbuf_size << std::endl;
+	if (size < static_cast<size_t>(sndbuf_size))
+		return ;
+	setsockopt(sockfd, SOL_SOCKET, SO_SNDBUF, &sndbuf_size, len);
+	getsockopt(sockfd, SOL_SOCKET, SO_SNDBUF, &sndbuf_size, &len);
+	std::cout << "New sock_buf_size: " << sndbuf_size << std::endl;
+}
+
+int	Worker::sendResponse(void)
+{
+	std::string& response = _res->response;
+
+	if (_res->start == 0)
+	{
+		std::string& type = _res->headers["content-type"];
+		if (!_res->body.empty())
+			logServingFile(_res->filename, type);
+		if (type.substr(0, type.find_first_of("/")) == "text")
+			std::cout << FT_BLUE << response << FT_RESET << std::endl;
+		else
+			std::cout << FT_BLUE << response.substr(0, response.find("\r\n\r\n")) << "\n<Binary file>" << FT_RESET << std::endl;
+	}
+	// size_t	msg_size = RESPONSE_MSG_SIZE;
+	size_t	msg_size = response.length() - _res->start;
+	// resize_socket_buffer(_conn_fd, msg_size);
+	if (msg_size > response.length() - _res->start)
+		msg_size = response.length() - _res->start;
+	msg_size = write(_conn_fd, &response.c_str()[_res->start], msg_size);
+	std::cout << "on fd: " << _conn_fd << " wrote: " << msg_size << std::endl;
+	_res->start += msg_size;
+	if (_res->start >= response.length())
+	{
+		srv.requests_handled++;
+		_rawRequest.erase();
+		reset();
+		return (0);
+	}
+	return (1);
 }
 
 HttpResponse*	Worker::prepareResponse() const
@@ -238,7 +296,7 @@ const char *Worker::GenericException::what() const throw()
 // 	return (*this);
 // }
 
-int Worker::getSocketFd() const
+int Worker::getConnFd() const
 {
 	return _conn_fd;
 }
@@ -264,6 +322,21 @@ void	Worker::setReq(HttpRequest* req)
 	_req = req;
 }
 
+void	Worker::setRes(HttpResponse* res)
+{
+	_res = res;
+}
+
+HttpResponse*	Worker::getRes() const
+{
+	return _res;
+}
+
+HttpRequest*	Worker::getReq() const
+{
+	return _req;
+}
+
 void	Worker::clearRequest(void)
 {
 	if (!_rawRequest.empty())
@@ -273,6 +346,15 @@ void	Worker::clearRequest(void)
 void	Worker::setStatus(e_status status)
 {
 	_status = status;
+}
+
+void	Worker::reset()
+{
+	delete _res;
+	delete _req;
+	_res = NULL;
+	_req = NULL;
+	_status = REQ_HEADERS;
 }
 
 Worker::e_status	Worker::getStatus(void) const

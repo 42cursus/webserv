@@ -21,7 +21,7 @@ std::string itoa(int value)
 	return oss.str();
 }
 
-std::string HttpResponse::buildHttpResponse(void) const
+void HttpResponse::buildHttpResponse(void)
 {
 	std::ostringstream buffer;
 
@@ -32,5 +32,10 @@ std::string HttpResponse::buildHttpResponse(void) const
 	for (StringMap::const_iterator it = headers.begin(); it != headers.end(); ++it)
 		buffer << it->first << ": " << it->second << "\r\n";
 	buffer << "\r\n" << body;
-	return buffer.str();
+	response = buffer.str();
+}
+
+HttpResponse::HttpResponse() : start(0)
+{
+
 }

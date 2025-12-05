@@ -20,6 +20,7 @@
 #include "HttpRequest.hpp"
 
 #define REQUEST_BUF_SIZE 4096
+#define RESPONSE_MSG_SIZE 4096
 
 class Worker
 {
@@ -28,7 +29,7 @@ public:
 	enum e_status {
 		REQ_HEADERS = 0,
 		REQ_BODY,
-		REQ_HANDLED,
+		REQ_RESPONSE_READY,
 		REQ_MAX,
 	};
 
@@ -36,7 +37,9 @@ private:
 	char					_req_buffer[REQUEST_BUF_SIZE + 1];
 	std::string				_rawRequest;
 	HttpRequest*			_req;
+	HttpResponse*			_res;
 	int						_conn_fd;
+	int						_epoll_fd;
 	int						_request_handled;
 	struct sockaddr_in		_addr;
 	socklen_t				_addr_size;
@@ -57,7 +60,9 @@ public:
 	HttpResponse* prepareResponse() const;
 	HttpRequest* getReq() const;
 	void setReq(HttpRequest* req);
-	int getSocketFd() const;
+	HttpResponse* getRes() const;
+	void setRes(HttpResponse* res);
+	int getConnFd() const;
 	void	closeSocketFd();
 	std::string& getRawRequest();
 	int requestHandled() const;
@@ -66,6 +71,8 @@ public:
 	void	setStatus(e_status status);
 	size_t	extract_body(size_t nread, size_t old_size, size_t clcr_pos) const;
 	void	parse_range(HttpResponse& res) const;
+	int	sendResponse();
+	void	reset();
 };
 
 #endif //WORKER_HPP

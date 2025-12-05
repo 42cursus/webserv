@@ -24,8 +24,11 @@ public:
 	std::map<std::string, std::string> headers;
 	std::string body;
 	std::string filename;
+	std::string	response;
+	size_t		start;
 
-	std::string buildHttpResponse(void) const;
+	void buildHttpResponse(void);
+	HttpResponse();
 };
 
 

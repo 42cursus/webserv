@@ -34,9 +34,9 @@ WorkerPool::~WorkerPool(void)
 	for (size_t i = 0; i < _size; i++)
 	{
 		wrkr = _getWorker(i);
-		if (wrkr->getSocketFd() != -1)
+		if (wrkr->getConnFd() != -1)
 		{
-			std::cout << "Pruning orphaned worker with fd " << wrkr->getSocketFd() << std::endl;
+			std::cout << "Pruning orphaned worker with fd " << wrkr->getConnFd() << std::endl;
 			wrkr->closeSocketFd();
 		}
 	}
