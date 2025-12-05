@@ -93,7 +93,7 @@ void	Worker::parse_range(HttpResponse& res) const
 	if (end == 0)
 		end = res.body.length() - 1;
 	res.headers["content-range"] = "bytes " + ::itoa(start) + "-" + ::itoa(end) + "/" + ::itoa(res.body.length());
-	res.body.erase(end);
+	res.body.erase(end + 1);
 	res.body.erase(0, start);
 }
 
