@@ -12,6 +12,7 @@
 
 #include <cstring>
 #include <sys/epoll.h>
+#include <sys/socket.h>
 #include <vector>
 #include "TCPServer.hpp"
 #include "HttpRequest.hpp"
@@ -118,7 +119,7 @@ void	TCPServer::assignWorker(WorkerPool& wrkrPool, int epoll_fd) const
 	// wrkr->setReq(new HttpRequest());
 	ev.data.ptr = wrkr;
 	ev.events = EPOLLIN;
-	epoll_ctl(epoll_fd, EPOLL_CTL_ADD, wrkr->getSocketFd(), &ev);
+	epoll_ctl(epoll_fd, EPOLL_CTL_ADD, wrkr->getConnFd(), &ev);
 
 };
 
@@ -142,27 +143,53 @@ int TCPServer::serve(TCPServer &srv)
 		nfds = epoll_wait(epoll_fd, evs.data(), 1024, -1);
 		for (int i = 0; i < nfds; i++)
 		{
-			if (evs[i].events & EPOLLIN)
+			wrkr = reinterpret_cast<Worker*>(evs[i].data.ptr);
+			// if (evs[i].data.fd == sockfd)
+			// 	std::cout << "event on fd: " << sockfd << std::endl;
+			// else
+			// 	std::cout << "event on fd: " << wrkr->getConnFd() << std::endl;
+			if (evs[i].events & (EPOLLERR | EPOLLHUP))
 			{
+				std::cout << "error occured on fd: " << wrkr->getConnFd() << std::endl;
+				epoll_ctl(epoll_fd, EPOLL_CTL_DEL, wrkr->getConnFd(), NULL);
+				wrkr->reset();
+				wrkrPool.free(wrkr);
+			}
+			else if (evs[i].events & EPOLLOUT && wrkr->getStatus() == Worker::REQ_RESPONSE_READY)
+			{
+				// std::cout << "Write ready on fd: " << wrkr->getConnFd() << std::endl;
+				int retval = wrkr->sendResponse();
+				if (retval == 0)
+				{
+					struct epoll_event ev;
+					ev.data.ptr = wrkr;
+					ev.events = EPOLLIN;
+					epoll_ctl(epoll_fd, EPOLL_CTL_MOD, wrkr->getConnFd(), &ev);
+				}
+			}
+			else if (evs[i].events & EPOLLIN)
+			{
+				// std::cout << "Read ready on fd " << std::endl;
 				if (evs[i].data.fd == sockfd)
 					assignWorker(wrkrPool, epoll_fd);
 				else
 				{
-					wrkr = reinterpret_cast<Worker*>(evs[i].data.ptr);
 					int retval = wrkr->handleRequest();
+					if (wrkr->getStatus() == Worker::REQ_RESPONSE_READY)
+					{
+						struct epoll_event ev;
+						ev.data.ptr = wrkr;
+						ev.events = EPOLLOUT;
+						epoll_ctl(epoll_fd, EPOLL_CTL_MOD, wrkr->getConnFd(), &ev);
+					}
 					if (retval == 2)
 					{
-						std::cout << "Connection closed on fd: " << wrkr->getSocketFd() << std::endl;
-						epoll_ctl(epoll_fd, EPOLL_CTL_DEL, wrkr->getSocketFd(), NULL);
+						std::cout << "Connection closed on fd: " << wrkr->getConnFd() << std::endl;
+						epoll_ctl(epoll_fd, EPOLL_CTL_DEL, wrkr->getConnFd(), NULL);
+						wrkr->reset();
 						wrkrPool.free(wrkr);
 					}
 				}
-			}
-			else if (evs[i].events & (EPOLLERR | EPOLLHUP))
-			{
-				std::cout << "error occured on fd: " << wrkr->getSocketFd() << std::endl;
-				epoll_ctl(epoll_fd, EPOLL_CTL_DEL, wrkr->getSocketFd(), NULL);
-				wrkrPool.free(wrkr);
 			}
 		}
 	}
