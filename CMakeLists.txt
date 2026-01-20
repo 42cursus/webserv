@@ -91,3 +91,5 @@ add_custom_target(re
 
 add_custom_target(norm
 		COMMAND make -C ${PROJECT_SOURCE_DIR} norm)
+
+add_subdirectory(doodle)
