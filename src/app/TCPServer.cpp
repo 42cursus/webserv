@@ -133,7 +133,7 @@ int TCPServer::serve(TCPServer &srv)
 			};
 			std::cout << "\e[34;1mfd\e[m: " << it->first << "\t\e[35;1mworker\e[m: " << it->second << std::endl;
 			std::cout << "\e[32;1mRequest\e[m: " << std::endl;;
-			std::cout << it->second->getRawRequest() << std::endl << "---------------" << std::endl << std::endl;
+			std::cout << it->second->getRawRequest().substr(0, it->second->getRawRequest().find("\r\n\r\n")) << std::endl << "---------------" << std::endl << std::endl;
 		}
 
 		poll(pollfds.data(), nfds, -1);
@@ -151,13 +151,13 @@ int TCPServer::serve(TCPServer &srv)
 				int retval = connections[fd]->handleRequest();
 				if (retval == 2)
 				{
-					std::cout << "error occured on fd: " << pollfds[i].fd << std::endl;
+					std::cout << "Connection closed on fd: " << pollfds[i].fd << std::endl;
 					close(fd);
 					wrkrPool.free(connections[fd]);
 					connections.erase(fd);
 				}
 			}
-			if (pollfds[i].revents & (POLLHUP | POLLERR))
+			else if (pollfds[i].revents & (POLLHUP | POLLERR))
 			{
 				std::cout << "error occured on fd: " << pollfds[i].fd << std::endl;
 				close(fd);

@@ -15,18 +15,30 @@
 
 
 #include <netinet/in.h>
+#include <sys/types.h>
+#include <vector>
 #include "TCPServer.hpp"
+#include "src/http/HttpRequest.hpp"
+
+enum {
+	REQ_HEADERS = 0,
+	REQ_BODY,
+	REQ_HANDLED,
+	REQ_MAX,
+};
 
 class Worker
 {
 private:
-	char _req_buffer[1024];
-	std::string _rawRequest;
-	int _socket_fd;
-	int _request_handled;
-	struct sockaddr_in _addr;
-	socklen_t _addr_size;
-	TCPServer &srv;
+	char					_req_buffer[1024];
+	std::string				_rawRequest;
+	HttpRequest*			_req;
+	int						_req_status;
+	int						_socket_fd;
+	int						_request_handled;
+	struct sockaddr_in		_addr;
+	socklen_t				_addr_size;
+	TCPServer				&srv;
 public:
 	explicit Worker(TCPServer &);
 	~Worker();
@@ -44,6 +56,7 @@ public:
 	std::string& getRawRequest();
 	int requestHandled() const;
 	void clearRequest();
+	size_t	extract_body(size_t nread, size_t old_size, size_t clcr_pos);
 };
 
 
