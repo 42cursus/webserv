@@ -39,7 +39,7 @@ private:
 	HttpRequest*			_req;
 	HttpResponse*			_res;
 	int						_conn_fd;
-	int						_epoll_fd;
+	// int						_epoll_fd;
 	int						_request_handled;
 	struct sockaddr_in		_addr;
 	socklen_t				_addr_size;
