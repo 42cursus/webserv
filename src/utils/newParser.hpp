@@ -34,7 +34,8 @@ enum    e_line_type
     EMPTY, // empty line
     DIRECTIVE, // semicolon
     BLOCK_IN, // { > beginning of block
-    BLOCK_OUT // } > end of block
+    BLOCK_OUT, // } > end of block
+    ERROR
 } ;
 
 
@@ -98,10 +99,17 @@ class   Parser
         void    setCurrentIt(std::vector<t_token>::iterator current_it) { _current_it = current_it; };
         void    setCurrentBlock(IBlock* current) { _current_block = current; };
         
-        t_token makeToken(e_token   key, std::string word, int linecount);
+        // main loop
         void    tokenise();
         void    toggle();
         void    parse();
+
+        // utils
+        e_line_type checkLineType(std::string line);
+        t_token makeToken(e_token   key, std::string word, int linecount);
+        void    handleDirective();
+        void    handleBlockIn();
+        void    hangleBlockOut();
 
         class   Error: public std::exception
         {
