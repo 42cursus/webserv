@@ -26,7 +26,7 @@
 #include <unistd.h>
 #include <sys/socket.h>
 
-Worker::Worker(TCPServer &srv)
+Worker::Worker()
 	: _req_buffer(),
     _req(NULL),
     _res(NULL),
@@ -34,7 +34,7 @@ Worker::Worker(TCPServer &srv)
 	_request_handled(),
 	_addr(),
 	_addr_size(),
-	srv(srv),
+	_srv(NULL),
 	_status(REQ_HEADERS)
 {
 
@@ -59,7 +59,7 @@ Worker::~Worker()
 void Worker::acceptConnection()
 {
 	struct sockaddr *addr = reinterpret_cast<struct sockaddr*>(&_addr); // NOLINT(*-pro-type-reinterpret-cast)
-	_conn_fd = /* global namespace */ ::accept(srv.getSocketFd(), addr, &_addr_size);
+	_conn_fd = /* global namespace */ ::accept(_srv->getSocketFd(), addr, &_addr_size);
 	if (_conn_fd < 0) {
 		std::cerr << "Failed to accept client request." << std::endl;
 		throw GenericException();
@@ -87,6 +87,11 @@ void Worker::acceptConnection()
 	//        return ;
 	//    }
 	// std::cout << "SO_SNDBUF (Receive Buffer Capacity): " << sndbuf_size << std::endl;
+}
+
+void	Worker::setSrv(TCPServer *srv)
+{
+	_srv = srv;
 }
 
 void logServingFile(const std::string& path, const std::string& mimetype) {
@@ -147,7 +152,7 @@ int Worker::handleRequest()
 			}
 			catch (HttpRequest::GenericException &e) {
 				std::cout << e.what() << std::endl;
-				srv.requests_failed++;
+				_srv->requests_failed++;
 				_rawRequest.erase();
 				delete _req;
 				return (0);
@@ -222,7 +227,7 @@ int	Worker::sendResponse(void)
 	_res->start += msg_size;
 	if (_res->start >= response.length())
 	{
-		srv.requests_handled++;
+		_srv->requests_handled++;
 		_rawRequest.erase();
 		reset();
 		return (0);
@@ -242,7 +247,7 @@ HttpResponse*	Worker::prepareResponse() const
 
 	if (_req->method == "GET")
 	{
-		res->body = _req->getHtmlResponse(srv.getCfg(), *res);
+		res->body = _req->getHtmlResponse(_srv->getCfg(), *res);
 		// if (res->headers["content-type"] == "video/mp4" )
 		// {
 			if (_req->headers["range"].empty())
@@ -261,7 +266,7 @@ HttpResponse*	Worker::prepareResponse() const
 		std::string	rel_path = _req->path.substr(1, _req->path.length());
 		if (rel_path.empty())
 			rel_path = "default";
-		std::string	path = srv.getCfg().http.server.location.config.root + "/put_test/" + rel_path;
+		std::string	path = _srv->getCfg().http.server.location.config.root + "/put_test/" + rel_path;
 		if (access(path.c_str(), F_OK) == 0)
 		{
 			res->statuscode = "204";

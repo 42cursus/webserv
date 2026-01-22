@@ -6,7 +6,7 @@
 /*   By: abelov <abelov@student.42london.com>       +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/07/18 19:12:40 by abelov            #+#    #+#             */
-/*   Updated: 2025/08/24 14:35:55 by fsmyth           ###   ########.fr       */
+/*   Updated: 2026/01/22 15:51:35 by fsmyth           ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -19,6 +19,7 @@
 #include "ConfigParser.hpp"
 #include "Worker.hpp"
 #include "WorkerPool.hpp"
+#include "serve.hpp"
 
 Config TCPServer::default_config = Parser::make_default_config();
 
@@ -107,95 +108,20 @@ const Config &TCPServer::getCfg() const
 // 	return 0;
 // }
 
-void	TCPServer::assignWorker(WorkerPool& wrkrPool, int epoll_fd) const
+void	TCPServer::assignWorker(WorkerPool& wrkrPool, int epoll_fd)
 {
 	Worker* wrkr;
 
 	// if (wrkrPool.getNumAlloced() > 900)
 	// 	continue ;
-	wrkr = wrkrPool.alloc();
+	wrkr = wrkrPool.alloc(this);
 	wrkr->acceptConnection();
 	struct epoll_event ev;
 	// wrkr->setReq(new HttpRequest());
-	ev.data.ptr = wrkr;
+	ev.data.ptr = tag_ptr(wrkr, EP_WRKR);
 	ev.events = EPOLLIN;
 	epoll_ctl(epoll_fd, EPOLL_CTL_ADD, wrkr->getConnFd(), &ev);
-
 };
-
-int TCPServer::serve(TCPServer &srv)
-{
-	extern sig_atomic_t				g_var;
-	WorkerPool						wrkrPool(srv);
-	int								epoll_fd = epoll_create(1);
-	std::vector<struct epoll_event>	evs;
-	int								nfds;
-	int								sockfd = srv.getSocketFd();
-	Worker*							wrkr;
-
-	evs.resize(1024);
-	evs[0].events = EPOLLIN;
-	evs[0].data.fd = sockfd;
-	epoll_ctl(epoll_fd, EPOLL_CTL_ADD, sockfd, &evs[0]);
-
-	while(g_var != SIGINT)
-	{
-		nfds = epoll_wait(epoll_fd, evs.data(), 1024, -1);
-		for (int i = 0; i < nfds; i++)
-		{
-			wrkr = reinterpret_cast<Worker*>(evs[i].data.ptr);
-			// if (evs[i].data.fd == sockfd)
-			// 	std::cout << "event on fd: " << sockfd << std::endl;
-			// else
-			// 	std::cout << "event on fd: " << wrkr->getConnFd() << std::endl;
-			if (evs[i].events & (EPOLLERR | EPOLLHUP))
-			{
-				std::cout << "error occured on fd: " << wrkr->getConnFd() << std::endl;
-				epoll_ctl(epoll_fd, EPOLL_CTL_DEL, wrkr->getConnFd(), NULL);
-				wrkr->reset();
-				wrkrPool.free(wrkr);
-			}
-			else if (evs[i].events & EPOLLOUT && wrkr->getStatus() == Worker::REQ_RESPONSE_READY)
-			{
-				// std::cout << "Write ready on fd: " << wrkr->getConnFd() << std::endl;
-				int retval = wrkr->sendResponse();
-				if (retval == 0)
-				{
-					struct epoll_event ev;
-					ev.data.ptr = wrkr;
-					ev.events = EPOLLIN;
-					epoll_ctl(epoll_fd, EPOLL_CTL_MOD, wrkr->getConnFd(), &ev);
-				}
-			}
-			else if (evs[i].events & EPOLLIN)
-			{
-				// std::cout << "Read ready on fd " << std::endl;
-				if (evs[i].data.fd == sockfd)
-					assignWorker(wrkrPool, epoll_fd);
-				else
-				{
-					int retval = wrkr->handleRequest();
-					if (wrkr->getStatus() == Worker::REQ_RESPONSE_READY)
-					{
-						struct epoll_event ev;
-						ev.data.ptr = wrkr;
-						ev.events = EPOLLOUT;
-						epoll_ctl(epoll_fd, EPOLL_CTL_MOD, wrkr->getConnFd(), &ev);
-					}
-					if (retval == 2)
-					{
-						std::cout << "Connection closed on fd: " << wrkr->getConnFd() << std::endl;
-						epoll_ctl(epoll_fd, EPOLL_CTL_DEL, wrkr->getConnFd(), NULL);
-						wrkr->reset();
-						wrkrPool.free(wrkr);
-					}
-				}
-			}
-		}
-	}
-	close(epoll_fd);
-	return 0;
-}
 
 const char *TCPServer::GenericException::what() const throw()
 {

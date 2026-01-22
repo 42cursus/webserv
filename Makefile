@@ -6,7 +6,7 @@
 #    By: margo <margo@student.42.fr>                +#+  +:+       +#+         #
 #                                                 +#+#+#+#+#+   +#+            #
 #    Created: 2025/07/17 22:30:53 by abelov            #+#    #+#              #
-#    Updated: 2025/08/20 20:21:46 by fsmyth           ###   ########.fr        #
+#    Updated: 2026/01/22 14:27:42 by fsmyth           ###   ########.fr        #
 #                                                                              #
 # **************************************************************************** #
 
@@ -21,6 +21,7 @@ CPP 			= c++
 INCLUDE_FLAGS	:= -I. -I./src/http -I./src/app -I./src/utils -I./src/parser -I$(INC_DIR) -I/usr/include
 
 SRCS			= src/main.cpp \
+				  src/app/serve.cpp \
 				  src/app/Worker.cpp \
 				  src/app/WorkerPool.cpp \
 				  src/app/TCPServer.cpp \

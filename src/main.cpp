@@ -6,15 +6,17 @@
 /*   By: margo <margo@student.42.fr>                +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/07/17 22:51:57 by margo             #+#    #+#             */
-/*   Updated: 2025/07/17 22:52:21 by margo            ###   ########.fr       */
+/*   Updated: 2026/01/22 15:52:15 by fsmyth           ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
 #include "webserv.hpp"
 #include "TCPServer.hpp"
+#include "serve.hpp"
 #include "ConfigParser.hpp"
 #include <csignal>
 #include <cstdlib>
+#include <vector>
 
 typedef struct sigaction	t_sigaction;
 
@@ -47,12 +49,22 @@ int	main(int argc, char **argv)
 	filename = (char *)"resources/webserv.conf";
 	if (argc > 1)
 		filename = argv[1];
+	std::vector<TCPServer*>	srvs;
 	try {
 		std::cout << "Wello horld!" << std::endl;
 		Config conf = Parser::make_default_config();
 		TCPServer srv = TCPServer(conf);
+		Config conf2 = Parser::make_default_config();
+		conf2.http.server.ipv4_listen.sin_port = htons(5000);
+		conf2.http.server.location.config.root = "./resources/web2";
+		TCPServer srv2 = TCPServer(conf2);
+		srvs.push_back(&srv);
+		srvs.push_back(&srv2);
 		srv.start();
-		srv.serve(srv);
+		srv2.start();
+
+		serve(srvs);
+
 		srv.stop();
 	}
 	catch (const std::exception& e)

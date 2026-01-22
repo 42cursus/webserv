@@ -6,7 +6,7 @@
 /*   By: fsmyth <fsmyth@student.42london.com>       +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/08/20 20:00:30 by fsmyth            #+#    #+#             */
-/*   Updated: 2025/08/23 19:14:42 by fsmyth           ###   ########.fr       */
+/*   Updated: 2026/01/22 14:55:28 by fsmyth           ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -16,7 +16,7 @@
 #include <cstddef>
 #include <vector>
 
-WorkerPool::WorkerPool(TCPServer& srv, size_t size) : _srv(srv), _allocp(0)
+WorkerPool::WorkerPool(size_t size) : _allocp(0)
 {
 	_size = size;
 	_num_alloced = 0;
@@ -24,7 +24,7 @@ WorkerPool::WorkerPool(TCPServer& srv, size_t size) : _srv(srv), _allocp(0)
 	_pool.push_front(std::vector<Worker>());
 	_pool.front().reserve(_nodesize);
 	for (size_t i = 0; i < _nodesize; i++)
-		_pool.front().push_back(Worker(_srv));
+		_pool.front().push_back(Worker());
 }
 
 WorkerPool::~WorkerPool(void)
@@ -42,7 +42,7 @@ WorkerPool::~WorkerPool(void)
 	}
 }
 
-Worker*	WorkerPool::alloc(void)
+Worker*	WorkerPool::alloc(TCPServer *srv)
 {
 	Worker* out;
 
@@ -55,7 +55,7 @@ Worker*	WorkerPool::alloc(void)
 			_pool.push_back(std::vector<Worker>());
 			_pool.back().reserve(_nodesize);
 			for (size_t i = 0; i < _nodesize; i++)
-				_pool.back().push_back(Worker(_srv));
+				_pool.back().push_back(Worker());
 		}
 		out = _getWorker(_allocp);
 		// std::cout << "Getting worker: " << out << " allocp: " << _allocp << std::endl;
@@ -67,6 +67,7 @@ Worker*	WorkerPool::alloc(void)
 		_freeList.pop_front();
 	}
 	_num_alloced++;
+	out->setSrv(srv);
 	out->clearRequest();
 	return (out);
 }

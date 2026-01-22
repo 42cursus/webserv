@@ -39,14 +39,13 @@ private:
 	HttpRequest*			_req;
 	HttpResponse*			_res;
 	int						_conn_fd;
-	// int						_epoll_fd;
 	int						_request_handled;
 	struct sockaddr_in		_addr;
 	socklen_t				_addr_size;
-	TCPServer				&srv;
+	TCPServer				*_srv;
 	e_status				_status;
 public:
-	explicit Worker(TCPServer &);
+	explicit Worker();
 	~Worker();
 
 	class GenericException : public  std::exception
@@ -63,6 +62,7 @@ public:
 	HttpResponse* getRes() const;
 	void setRes(HttpResponse* res);
 	int getConnFd() const;
+	void	setSrv(TCPServer *srv);
 	void	closeSocketFd();
 	std::string& getRawRequest();
 	int requestHandled() const;
