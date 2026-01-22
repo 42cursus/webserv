@@ -6,7 +6,7 @@
 /*   By: fsmyth <fsmyth@student.42london.com>       +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/01/22 14:24:50 by fsmyth            #+#    #+#             */
-/*   Updated: 2026/01/22 16:46:58 by fsmyth           ###   ########.fr       */
+/*   Updated: 2026/01/22 17:48:23 by fsmyth           ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -43,13 +43,13 @@ void	*tag_ptr(void *ptr, epoll_ptr_type tag)
 
 epoll_ptr_type	get_tag(void *ptr)
 {
-	uint64_t	tag = (reinterpret_cast<uint64_t>(ptr) & 0xF000000000000000);
+	uint64_t	tag = (reinterpret_cast<uint64_t>(ptr) & 0xF000000000000000) >> 60;
 
 	switch (tag) {
-		case (0xA000000000000000):
+		case (0xA):
 			// std::cout << "ptr tagged as server" << std::endl;
 			return EP_SRV;
-		case (0xB000000000000000):
+		case (0xB):
 			// std::cout << "ptr tagged as worker" << std::endl;
 			return EP_WRKR;
 		default:
