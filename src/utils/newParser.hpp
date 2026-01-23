@@ -6,7 +6,7 @@
 /*   By: margo <margo@student.42.fr>                +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/01/21 16:11:56 by margo             #+#    #+#             */
-/*   Updated: 2026/01/21 22:06:38 by margo            ###   ########.fr       */
+/*   Updated: 2026/01/23 18:20:43 by margo            ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -22,11 +22,10 @@
 
 #include <iostream>
 #include <vector>
-#include <cstdint>
-#include <cstdbool>
 #include <map>
 #include <sstream>
 #include <fstream>
+#include "../../include/webserv.hpp"
 #include "newState.hpp"
 
 enum    e_line_type
@@ -42,6 +41,7 @@ enum    e_line_type
 enum	e_token
 {
 	EOL,
+    EQUAL,
 	KEY,
 	VAR,
 	QUOTES,
@@ -59,8 +59,9 @@ typedef	struct s_token
 	e_token	type;
 	std::string	literal;
 	int	line;
-	//bool	operator==(const s_token& other) const;
+	bool	operator==(const s_token& other) const;
 }	t_token;
+
 class   Parser
 {
     private:    
@@ -68,12 +69,14 @@ class   Parser
         unsigned int _current_line;
         t_token _current;
         t_token _next;
+        std::map<std::string, std::string>  _key_database;
         std::vector<t_token>    _tokens;
         std::vector<t_token>::iterator  _current_it;
         std::vector<Server> _servers;
         bool    _in_block;
         e_line_type _current_line_type;
         IBlock* _current_block;
+        Config _config;
         
         Parser();
         Parser(const Parser& copy);
@@ -99,17 +102,22 @@ class   Parser
         void    setCurrentIt(std::vector<t_token>::iterator current_it) { _current_it = current_it; };
         void    setCurrentBlock(IBlock* current) { _current_block = current; };
         
+
         // main loop
+        void    init_parser();
         void    tokenise();
-        void    toggle();
+        //void    toggle();
         void    parse();
 
         // utils
-        e_line_type checkLineType(std::string line);
+        e_line_type checkLineType(std::vector<t_token> line);
+        void  createKeyDatabase();
+        std::string    findKeyInDatabase(std::string key, bool value);
         t_token makeToken(e_token   key, std::string word, int linecount);
-        void    handleDirective();
-        void    handleBlockIn();
-        void    hangleBlockOut();
+        std::string readQuotedString(std::string word);
+        void    handleDirective(std::vector<t_token> line);
+        void    handleBlockIn(std::vector<t_token> line);
+        void    handleBlockOut(std::vector<t_token> line);
 
         class   Error: public std::exception
         {

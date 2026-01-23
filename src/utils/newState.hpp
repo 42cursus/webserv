@@ -6,7 +6,7 @@
 /*   By: margo <margo@student.42.fr>                +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/01/21 17:45:42 by margo             #+#    #+#             */
-/*   Updated: 2026/01/21 20:11:37 by margo            ###   ########.fr       */
+/*   Updated: 2026/01/23 17:50:25 by margo            ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -16,7 +16,6 @@
 #include <iostream>
 #include <vector>
 #include <map>
-#include <cstdint>
 #include "newParser.hpp"
 
 enum    e_block_type
@@ -48,7 +47,7 @@ class   IBlock
         IBlock(const IBlock& copy);
         IBlock& operator=(const IBlock& copy);
         bool    operator==(IBlock& oth);
-        ~IBlock();
+        ~IBlock() {};
 
         // getters
         unsigned int    getStartLine() const { return _line_start; };
@@ -63,9 +62,9 @@ class   IBlock
         void    setParent(IBlock*   parent) { _parent_block = parent; };
         void    addDirective(Directive new_directive) { _directives.push_back(new_directive); };
         
-        virtual void    start(Parser& parser) = 0;
-        virtual void    toggle(Parser& parser) = 0;
-        virtual void    exit(Parser& parser) = 0;
+        // virtual void    start(Parser& parser) = 0;
+        // virtual void    toggle(Parser& parser) = 0;
+        // virtual void    exit(Parser& parser) = 0;
 } ;
 
 struct  CGI: public IBlock
@@ -73,9 +72,9 @@ struct  CGI: public IBlock
     std::string _ext;
     std::string _script;
     
-    void    start(Parser& parser);
-    void    toggle(Parser& parser);
-    void    exit(Parser& parser);
+    // void    start(Parser& parser);
+    // void    toggle(Parser& parser);
+    // void    exit(Parser& parser);
 } ;
 
 struct  Location: public IBlock
@@ -84,13 +83,13 @@ struct  Location: public IBlock
     std::string _path; // the redirect 
     std::vector<std::string>    _index;
     std::vector<std::string>    _methods;
-    uint64_t   _max_body_size;
+    unsigned long long   _max_body_size;
     bool    _autoindex;
     std::vector<CGI>    _cgi;
 
-    void    start(Parser& parser);
-    void    toggle(Parser& parser);
-    void    exit(Parser& parser);
+    // void    start(Parser& parser);
+    // void    toggle(Parser& parser);
+    // void    exit(Parser& parser);
 } ;
 
 class   Server: public IBlock
@@ -105,11 +104,11 @@ class   Server: public IBlock
         Server();
         Server(const Server& copy);
         Server& operator=(const Server& copy);
-        ~Server();
+        ~Server() {};
         
-        void    start(Parser& parser);
-        void    toggle(Parser& parser);
-        void    exit(Parser& parser);
+        // void    start(Parser& parser);
+        // void    toggle(Parser& parser);
+        // void    exit(Parser& parser);
 } ;
 
 #endif

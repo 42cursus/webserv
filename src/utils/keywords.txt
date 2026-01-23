@@ -1,0 +1,13 @@
+server = value
+listen = value
+name = value
+location = value
+root = value
+index = value 
+autoindex = value
+methods = value
+max_body_size = value
+cgi = value
+ext = value
+script = value
+error_page = value

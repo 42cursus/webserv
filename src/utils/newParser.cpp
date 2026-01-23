@@ -6,11 +6,24 @@
 /*   By: margo <margo@student.42.fr>                +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/01/21 21:52:43 by margo             #+#    #+#             */
-/*   Updated: 2026/01/21 22:06:14 by margo            ###   ########.fr       */
+/*   Updated: 2026/01/23 19:08:23 by margo            ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
 #include "newParser.hpp"
+
+std::string	Parser::readQuotedString(std::string word)
+{
+	if (word.length() >= 2 && word[0] == '"' && word[word.size() - 1] == '"')
+		return word.substr(1, word.length() - 2);
+
+	return word;
+}
+
+bool    t_token::operator==(const t_token& other) const
+{
+    return (type == other.type && literal == other.literal && line == other.line);
+}
 
 t_token Parser::makeToken(e_token key, std::string word, int linecount)
 {
@@ -23,43 +36,126 @@ t_token Parser::makeToken(e_token key, std::string word, int linecount)
     return token;
 }
 
-void    Parser::handleDirective()
+void    Parser::createKeyDatabase()
 {
-    _current_line++;
-    
+    std::string line;
+    std::fstream    fin;
+
+    fin.open("keywords.txt", std::ios::in);
+    while(std::getline(fin, line, '='))
+    {
+        std::stringstream iss(line);
+        std::string key, value;
+        
+        iss >> key;
+        std::getline(fin, value);
+        _key_database[key] = value;
+    }
 }
 
-void    Parser::handleBlockIn()
+std::string    Parser::findKeyInDatabase(std::string key, bool value)
 {
-    _in_block = true;
+    std::map<std::string, std::string>::iterator it = _key_database.find(key);
 
+    if (it != _key_database.end())
+    {
+        if (value)
+            return it->second;
+        else
+            return it->first;
+    }
+    return "";
 }
 
-void    Parser::hangleBlockOut()
-{
-    _in_block = false;
-}
-
-e_line_type Parser::checkLineType(std::string line)
+e_line_type Parser::checkLineType(std::vector<t_token> line)
 {
     if (line.empty())
         return EMPTY;
-    else if (line.back('{'))
+    else if (line.rbegin()->type == BLOCK_START)
         return BLOCK_IN;
-    else if (line.back('}'))
+    else if (line.rbegin()->type == BLOCK_END)
         return BLOCK_OUT;
-    else if (line.back(';'))
+    else if (line.rbegin()->type == SEMICOLON)
         return DIRECTIVE;
     else
         return ERROR;
 }
+
+std::vector<t_token>::iterator  getTokenFromVector(std::vector<t_token> vec, e_token key)
+{
+    std::vector<t_token>::iterator it;
+
+    for (it = vec.begin(); it != vec.end(); ++it)
+    {
+        if (it->type == key)
+            return it;
+    }
+    return vec.end();
+}
+
+void    Parser::init_parser()
+{
+    _current_line = 0;
+    _current = makeToken(NONE, "", _current_line);
+    _next = makeToken(NONE, "", _current_line);
+    _in_block = false;
+    createKeyDatabase();
+}
+
+// void    Parser::toggle()
+// {
+//     _current_block->toggle(*this);
+// }
+
+void    Parser::handleDirective(std::vector<t_token> line)
+{
+    std::vector<t_token>::iterator it;
+    std::vector<t_token>::iterator split = getTokenFromVector(line, EQUAL);
+    int count = 0;
+
+    if (split == line.end())
+        throw Error("Error: handling directive during parsing");
+    
+    for (it = line.begin(); it != split; ++it)
+        count++;
+    if (count != 1)
+        throw Error("Error: handling directive: too many key words on line");
+    
+    if (it->literal == "listen")
+    {
+        int port;
+        std::stringstream iss((split + 1)->literal);
+        iss >> port;
+        if (port < 1 || port > 65636)
+            throw Error("Error: invalid config: port");
+        _config.http.server.ipv4_listen.sin_port = htons(port);
+        ++it;
+        if (it->type != SEMICOLON)
+            throw Error("Error: invalid config: syntax error");
+    }
+    else if (it->literal == "name")
+    {
+        
+    }
+}
+
+// void    Parser::handleBlockIn()
+// {
+//     _in_block = true;
+
+// }
+
+// void    Parser::handleBlockOut()
+// {
+//     _in_block = false;
+// }
+
 
 void    Parser::tokenise()
 {
     std::string line;
     std::ifstream file(_config_root.c_str());
     
-    _current_line = 0;
     try {
         file.is_open();
     }
@@ -72,20 +168,117 @@ void    Parser::tokenise()
         std::istringstream  iss(line);
         std::string word;
 
-        _current_line_type = checkLineType(line);
-        if (_current_line_type == EMPTY)
+        _current_line++;
+        if (line.empty())
             continue ;
-        else if (_current_line_type == BLOCK_IN)
+        
+        while (iss >> word)
         {
-
-        }
-        else if (_current_line_type == BLOCK_OUT)
-        {
-
-        }
-        else if (_current_line_type == DIRECTIVE)
-        {
-
+            if (word[0] == '#')
+            {
+                _tokens.push_back(makeToken(COMMENT, word, _current_line));
+                break ;
+            }
+            if (findKeyInDatabase(word, false) != "")
+				_tokens.push_back(makeToken(KEY, word, _current_line));
+			else if (word == "{")
+				_tokens.push_back(makeToken(BLOCK_START, word, _current_line));
+			else if (word == "}")
+				_tokens.push_back(makeToken(BLOCK_END, word, _current_line));
+			else if (word == "=")
+                _tokens.push_back(makeToken(EQUAL, word, _current_line));
+            else if (word.find('/') != std::string::npos)
+				_tokens.push_back(makeToken(REGEX, word, _current_line));
+			else if (word[0] == '"' && word[word.length() - 1] == '"')
+				_tokens.push_back(makeToken(QUOTES, readQuotedString(word), _current_line));
+			else if (word[0] == '$')
+				_tokens.push_back(makeToken(VAR, word, _current_line)); // to do: function extracting/expanding variable ???
+			else if (word == ";" || word[word.length() - 1] == ';')
+			{
+				if (word != ";")
+					_tokens.push_back(makeToken(KEY, word.substr(0, word.length() - 1), _current_line));
+				_tokens.push_back(makeToken(SEMICOLON, ";", _current_line));
+			}
+			else if (word[word.length() - 1] == '\n' || word == "\n")
+			{
+				if (word != "\n")
+					_tokens.push_back(makeToken(KEY, word.substr(0, word.length() - 1), _current_line));
+				_tokens.push_back(makeToken(EOL, "\n", _current_line));
+			}
+			else
+				_tokens.push_back(makeToken(ILLEGAL, word, _current_line));
         }
     }
+    file.close();
+}
+
+void    Parser::parse()
+{
+    setCurrentBlock(new Server());
+    for (_current_it = _tokens.begin(); _current_it != _tokens.end(); ++_current_it)
+    {
+        _current = *_current_it;
+        if (_current_it + 1 != _tokens.end())
+            _next = *(_current_it + 1);
+
+        unsigned int _tmp_current_line = _current.line;
+        std::vector<t_token> _line_tokens;
+        std::vector<t_token>::iterator _tmp_it;
+        for (_tmp_it = _current_it; _tmp_it->line != _tmp_current_line; ++_tmp_it)
+            _line_tokens.push_back(*_tmp_it);
+        _current_line_type = checkLineType(_line_tokens);
+        switch (_current_line_type)
+        {
+            case DIRECTIVE:
+                break ;
+            case BLOCK_IN:
+                break ;
+            case BLOCK_OUT:
+                break ;
+            case EMPTY:
+                break ;
+            case ERROR:
+                break ;
+        }
+    }
+}
+
+void	printTokens(std::vector<t_token> tokens)
+{
+	for (std::vector<t_token>::iterator it = tokens.begin(); it != tokens.end(); ++it)
+	{
+		if (it->type == EOL)
+			std::cout << "EOL " << it->literal << " on line " << it->line << std::endl;
+		else if (it->type == EQUAL)
+            std::cout << "EQUAL " << it->literal << " on line " << it->line << std::endl;
+        else if (it->type == KEY)
+			std::cout << "KEYWORD " << it->literal << " on line " << it->line << std::endl;
+		else if (it->type == VAR)
+			std::cout << "VARIABLE " << it->literal << " on line " << it->line << std::endl;	
+		else if (it->type == QUOTES)
+			std::cout << "QUOTED STRING " << it->literal << " on line " << it->line << std::endl;
+		else if (it->type == BLOCK_START)
+			std::cout << "BLOCK START " << it->literal << " on line " << it->line << std::endl;
+		else if (it->type == BLOCK_END)
+			std::cout << "BLOCK END " << it->literal << " on line " << it->line << std::endl;
+		else if (it->type == SEMICOLON)
+			std::cout << "SEMICOLON " << it->literal << " on line " << it->line << std::endl;
+		else if (it->type == REGEX)
+			std::cout << "REGEX " << it->literal << " on line " << it->line << std::endl;
+		else if (it->type == COMMENT)
+			std::cout << "COMMENT " << it->literal << " on line " << it->line << std::endl;
+		else if (it->type == ILLEGAL)
+			std::cout << "ILLEGAL " << it->literal << " on line " << it->line << std::endl;
+		else
+			std::cout << "UNKNOWN " << it->literal << " on line " << it->line << std::endl;
+	}
+}
+
+int main()
+{
+    Parser  newParser("../../resources/webserv.conf");
+
+    newParser.init_parser();
+    newParser.tokenise();
+    printTokens(newParser.getTokens());
 }
