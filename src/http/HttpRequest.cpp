@@ -6,7 +6,7 @@
 /*   By: abelov <abelov@student.42london.com>       +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/07/18 21:41:03 by abelov            #+#    #+#             */
-/*   Updated: 2025/07/18 21:41:03 by abelov           ###   ########.fr       */
+/*   Updated: 2026/01/23 15:52:59 by fsmyth           ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -19,6 +19,7 @@
 #include <vector>
 #include "HttpRequest.hpp"
 #include "HttpResponse.hpp"
+#include "Prefix.hpp"
 #include "webserv.hpp"
 #include "src/cgi/CgiHandler.hpp"
 #include "LocationConfig.hpp"
@@ -109,13 +110,19 @@ static bool ends_with(const std::string &s, const std::string &suffix) {
 std::string
 HttpRequest::getHtmlResponse(const Config &conf, HttpResponse& res)
 {
-	Config::Http::Server::Location location = conf.http.server.location;
+	Config::Http::Server::Location *location = loc_trie_search(conf.http.server.loc_trie, path);
 	std::basic_string<char> filename = path.substr(1, path.length());
+	// std::cout << FT_BOLD << FT_RED << path << FT_RESET << std::endl;
 
 	if (filename.empty())
-		filename = location.config.index[0];
+	{
+		if (!location->config.autoindex)
+			filename = location->config.index[0];
+		else
+			; // DO AUTOINDEX FUNCTION
+	}
 
-	LocationConfig lc(location);
+	LocationConfig lc(*location);
 	res.filename = filename;
 	std::string output;
 	if (ends_with(filename, ".bla"))
