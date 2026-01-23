@@ -6,7 +6,7 @@
 /*   By: margo <margo@student.42.fr>                +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/01/21 17:45:42 by margo             #+#    #+#             */
-/*   Updated: 2026/01/21 20:11:37 by margo            ###   ########.fr       */
+/*   Updated: 2026/01/23 12:55:22 by fsmyth           ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -17,7 +17,9 @@
 #include <vector>
 #include <map>
 #include <cstdint>
-#include "newParser.hpp"
+// #include "newParser.hpp"
+//
+class   Parser;
 
 enum    e_block_type
 {
