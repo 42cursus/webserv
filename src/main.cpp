@@ -6,7 +6,7 @@
 /*   By: margo <margo@student.42.fr>                +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/07/17 22:51:57 by margo             #+#    #+#             */
-/*   Updated: 2026/01/22 15:52:15 by fsmyth           ###   ########.fr       */
+/*   Updated: 2026/01/23 15:42:55 by fsmyth           ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -17,6 +17,8 @@
 #include <csignal>
 #include <cstdlib>
 #include <vector>
+
+#include "Prefix.hpp"
 
 typedef struct sigaction	t_sigaction;
 
@@ -41,6 +43,9 @@ int	main(int argc, char **argv)
 	t_sigaction	old_act;
 	char		*filename;
 
+	// test_trie();
+	// exit(1);
+
 	act.sa_flags = SA_SIGINFO; // Do NOT set SA_RESTART; we want syscalls to be interrupted.
 	act.sa_sigaction = &sig_handler;
 	sigemptyset(&act.sa_mask);
@@ -53,6 +58,13 @@ int	main(int argc, char **argv)
 	try {
 		std::cout << "Wello horld!" << std::endl;
 		Config conf = Parser::make_default_config();
+
+		// test_trie_match(conf.http.server.loc_trie, "/hello");
+		// test_trie_match(conf.http.server.loc_trie, "/upload");
+		// test_trie_match(conf.http.server.loc_trie, "/upload/wee");
+		// test_trie_match(conf.http.server.loc_trie, "/data/file.mp4");
+		// exit(1);
+
 		TCPServer srv = TCPServer(conf);
 		Config conf2 = Parser::make_default_config();
 		conf2.http.server.ipv4_listen.sin_port = htons(5000);

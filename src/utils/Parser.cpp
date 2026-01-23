@@ -6,14 +6,17 @@
 /*   By: margo <margo@student.42.fr>                +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/07/18 20:22:49 by abelov            #+#    #+#             */
-/*   Updated: 2026/01/21 16:42:38 by margo            ###   ########.fr       */
+/*   Updated: 2026/01/23 15:41:22 by fsmyth           ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
 #include <cstring>
 #include <sstream>
+#include <vector>
 #include "Parser.hpp"
+#include "Prefix.hpp"
 #include "Utils.hpp"
+#include "webserv.hpp"
 
 
 /*
@@ -104,13 +107,15 @@ Config Parser::make_default_config()
 					.path = "/",
 					.config = {
 						.autoindex = true,
-						.root = "./resources/web",
+						.root = "./resources/web/",
 						.index = Utils::to_vector(index)
 					}
 				}
 			}
 		}
 	};
+
+	cfg.http.server.loc_trie = new TrieNode();
 	return cfg;
 }
 

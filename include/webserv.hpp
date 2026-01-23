@@ -6,7 +6,7 @@
 /*   By: abelov <abelov@student.42london.com>       +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/07/18 19:27:09 by abelov            #+#    #+#             */
-/*   Updated: 2025/07/18 19:27:10 by abelov           ###   ########.fr       */
+/*   Updated: 2026/01/23 15:05:04 by fsmyth           ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -32,6 +32,8 @@
 
 typedef std::map<const std::string, std::string> StringMap;
 
+struct TrieNode;
+
 struct Config
 {
 	struct Http {
@@ -42,7 +44,7 @@ struct Config
 					return *this;
 				ipv4_listen = other.ipv4_listen;
 				server_name = other.server_name;
-				location = other.location;
+				locations = other.locations;
 				return *this;
 			}
 
@@ -54,8 +56,12 @@ struct Config
 					bool autoindex;
 					std::string root;
 					std::vector<std::string> index;
+    				std::vector<std::string> methods;
+    				uint64_t max_body_size;
 				}	config;
-			}	location; // https://nginx.org/en/docs/http/ngx_http_core_module.html#location
+			} location; // https://nginx.org/en/docs/http/ngx_http_core_module.html#location
+			std::vector<Location> locations;
+			TrieNode *loc_trie;
 
 		}	server;
 	}	http;

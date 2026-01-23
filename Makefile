@@ -6,7 +6,7 @@
 #    By: margo <margo@student.42.fr>                +#+  +:+       +#+         #
 #                                                 +#+#+#+#+#+   +#+            #
 #    Created: 2025/07/17 22:30:53 by abelov            #+#    #+#              #
-#    Updated: 2026/01/22 14:27:42 by fsmyth           ###   ########.fr        #
+#    Updated: 2026/01/23 14:36:57 by fsmyth           ###   ########.fr        #
 #                                                                              #
 # **************************************************************************** #
 
@@ -31,6 +31,7 @@ SRCS			= src/main.cpp \
 				  src/http/LocationConfig.cpp \
 				  src/parser/ConfigParser.cpp \
 				  src/parser/State.cpp \
+				  src/parser/Prefix.cpp \
 				  src/utils/Utils.cpp
 
 OBJS			= $(SRCS:%.cpp=$(BUILD_DIR)/%.o)
