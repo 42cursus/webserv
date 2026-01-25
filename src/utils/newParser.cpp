@@ -6,7 +6,7 @@
 /*   By: margo <margo@student.42.fr>                +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/01/21 21:52:43 by margo             #+#    #+#             */
-/*   Updated: 2026/01/23 19:08:23 by margo            ###   ########.fr       */
+/*   Updated: 2026/01/25 20:32:19 by margo            ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -121,6 +121,7 @@ void    Parser::handleDirective(std::vector<t_token> line)
     if (count != 1)
         throw Error("Error: handling directive: too many key words on line");
     
+    --it;
     if (it->literal == "listen")
     {
         int port;
@@ -129,21 +130,98 @@ void    Parser::handleDirective(std::vector<t_token> line)
         if (port < 1 || port > 65636)
             throw Error("Error: invalid config: port");
         _config.http.server.ipv4_listen.sin_port = htons(port);
-        ++it;
-        if (it->type != SEMICOLON)
+        ++split;
+        if (split->type != SEMICOLON)
             throw Error("Error: invalid config: syntax error");
     }
     else if (it->literal == "name")
+    {
+        std::string hostname = (split + 1)->literal;
+        _config.http.server.server_name = hostname;
+        ++split;
+        if (split->type != SEMICOLON)
+            throw Error("Error: invalid config: syntax error");
+    }
+    else if (it->literal == "root")
+    {
+        std::string root_path = (split + 1)->literal;
+        _config.http.server.location.path = root_path;
+        ++split;
+        if (split->type != SEMICOLON)
+            throw Error("Error: invalid config: syntax error");
+    }
+    else if (it->literal == "index")
+    {
+        it = split + 1;
+        while (it->type != SEMICOLON)
+        {
+            std::string index = it->literal;
+            _config.http.server.location.config.index.push_back(index);
+            it++;
+        }
+    }
+    else if (it->literal == "autoindex")
+    {
+        bool    autoidx;
+        if ((it + 1)->literal == "true")
+            autoidx = true;
+        else
+            autoidx = false;
+        _config.http.server.location.config.autoindex = autoidx;
+    }
+    else if (it->literal == "methods")
     {
         
     }
 }
 
-// void    Parser::handleBlockIn()
-// {
-//     _in_block = true;
+void    Parser::handleBlockIn(std::vector<t_token> line)
+{
+    std::vector<t_token>::iterator  it = line.begin();
+    if (it->literal == "http")
+    {
+        _config.setStartLine(_current_line);
+        _config.setInBlock(true);
+    }
+    else if (it->literal == "server")
+    {
+        Server  new_server;
+        new_server.setParent(&_config);
+        new_server.setStartLine(_current_line);
+        _current_block = &new_server;
+        _config.addServer(new_server);
+        _config.setInBlock(true);
+        _in_block = true;
+    }
+    else if (it->literal == "location")
+    {
+        if (_current_block->getBlockType() != SERVER_)
+            throw Error("Error: invalid config: syntax error");
+        if (_current_block->isInBlock())
+            throw Error("Error: invalid config: syntax error");
+        
+        Location    new_location;
+        new_location.setParent(_current_block);
+        new_location.setStartLine(_current_line);
+        _current_block = &new_location;
+        getLastServer().addLocation(new_location);
+        getLastServer().setInBlock(true);
+    }
+    else if (it->literal == "cgi")
+    {
+        if (_current_block->getBlockType() != LOCATION_)
+            throw Error("Error: invalid config: syntax error");
+        if (_current_block->isInBlock())
+            throw Error("Error: invalid config: syntax error");
 
-// }
+        CGI new_cgi;
+        new_cgi.setParent(_current_block);
+        new_cgi.setStartLine(_current_line);
+        _current_block = &new_cgi;
+        getLastLocation()._cgi.push_back(new_cgi);
+        getLastLocation().setInBlock(true);
+    }
+}
 
 // void    Parser::handleBlockOut()
 // {
@@ -232,6 +310,7 @@ void    Parser::parse()
             case DIRECTIVE:
                 break ;
             case BLOCK_IN:
+                handleBlockIn(_line_tokens);
                 break ;
             case BLOCK_OUT:
                 break ;

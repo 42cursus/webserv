@@ -6,7 +6,7 @@
 /*   By: margo <margo@student.42.fr>                +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/01/21 16:11:56 by margo             #+#    #+#             */
-/*   Updated: 2026/01/23 18:20:43 by margo            ###   ########.fr       */
+/*   Updated: 2026/01/25 20:27:16 by margo            ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -72,11 +72,12 @@ class   Parser
         std::map<std::string, std::string>  _key_database;
         std::vector<t_token>    _tokens;
         std::vector<t_token>::iterator  _current_it;
-        std::vector<Server> _servers;
+        //std::vector<Server> _servers;
         bool    _in_block;
         e_line_type _current_line_type;
         IBlock* _current_block;
-        Config _config;
+        //Config _config;
+        HTTP    _config;
         
         Parser();
         Parser(const Parser& copy);
@@ -92,9 +93,11 @@ class   Parser
         t_token getNextToken() const { return _next; };
         std::vector<t_token>    getTokens() const { return _tokens; };
         std::vector<t_token>::iterator  getCurrentIt() const { return _current_it; };
-        std::vector<Server> getServers() const { return _servers; };
         IBlock* getCurrentBlock() const { return _current_block; };
-        
+        Server& getLastServer() const { return _config.getServers().back(); }
+        Location& getLastLocation() const { return getLastServer().getLocations().back(); }
+        CGI& getLastCGI() const { return getLastLocation()._cgi.back(); }
+
         // setters
         void    setConfigRoot(std::string config_root) { _config_root = config_root; };
         void    setCurrentToken(t_token current) { _current = current; };
