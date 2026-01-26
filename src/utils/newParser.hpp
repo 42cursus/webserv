@@ -37,7 +37,6 @@ enum    e_line_type
     ERROR
 } ;
 
-
 enum	e_token
 {
 	EOL,
@@ -69,7 +68,9 @@ class   Parser
         unsigned int _current_line;
         t_token _current;
         t_token _next;
-        std::map<std::string, std::string>  _key_database;
+        std::vector<std::string>  _key_database;
+        typedef void(Parser::*Directive_handler(const std::vector<t_token>&));
+        std::map<std::string, Directive_handler> _directive_handlers;
         std::vector<t_token>    _tokens;
         std::vector<t_token>::iterator  _current_it;
         //std::vector<Server> _servers;
@@ -86,6 +87,7 @@ class   Parser
     public:
         Parser(std::string filePath): _config_root(filePath) {};
         ~Parser() {};
+
         // getters
         std::string getConfigRoot() const { return _config_root; };
         unsigned int    getCurrentLine() const { return _current_line; };
@@ -105,23 +107,38 @@ class   Parser
         void    setCurrentIt(std::vector<t_token>::iterator current_it) { _current_it = current_it; };
         void    setCurrentBlock(IBlock* current) { _current_block = current; };
         
+        // directive handlers
+        void    handleWorkers(const std::vector<t_token> line);
+        void    handleLogFormat(const std::vector<t_token> line);
+        void    handleListen(const std::vector<t_token> line);
+        void    handleName(const std::vector<t_token> line);
+        void    handleRoot(const std::vector<t_token> line);
+        void    handleIndex(const std::vector<t_token> line);
+        void    handleAutoIndex(const std::vector<t_token> line);
+        void    handleMethods(const std::vector<t_token> line);
+        void    handleMaxBodySize(const std::vector<t_token> line);
+        void    handleExt(const std::vector<t_token> line);
+        void    handleScript(const std::vector<t_token> line);
+        void    handleErrorPage(const std::vector<t_token> line);
 
         // main loop
+        void    init_key_database();
+        void    init_directive_handlers();
         void    init_parser();
         void    tokenise();
-        //void    toggle();
         void    parse();
 
         // utils
         e_line_type checkLineType(std::vector<t_token> line);
-        void  createKeyDatabase();
         std::string    findKeyInDatabase(std::string key, bool value);
         t_token makeToken(e_token   key, std::string word, int linecount);
+        std::vector<t_token>::iterator getTokenFromVector(std::vector<t_token> vec, e_token key);
         std::string readQuotedString(std::string word);
         void    handleDirective(std::vector<t_token> line);
         void    handleBlockIn(std::vector<t_token> line);
         void    handleBlockOut(std::vector<t_token> line);
 
+        // exceptions
         class   Error: public std::exception
         {
             private:

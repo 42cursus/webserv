@@ -1,13 +1,16 @@
-server = value
-listen = value
-name = value
-location = value
-root = value
-index = value 
-autoindex = value
-methods = value
-max_body_size = value
-cgi = value
-ext = value
-script = value
-error_page = value
+http
+worker_processes
+log_format
+server
+listen
+name
+location
+root
+index
+autoindex
+methods
+max_body_size
+cgi
+ext
+script
+error_page

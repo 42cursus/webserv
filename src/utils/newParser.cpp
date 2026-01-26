@@ -36,34 +36,12 @@ t_token Parser::makeToken(e_token key, std::string word, int linecount)
     return token;
 }
 
-void    Parser::createKeyDatabase()
+std::string    Parser::findKeyInDatabase(std::string key)
 {
-    std::string line;
-    std::fstream    fin;
-
-    fin.open("keywords.txt", std::ios::in);
-    while(std::getline(fin, line, '='))
-    {
-        std::stringstream iss(line);
-        std::string key, value;
-        
-        iss >> key;
-        std::getline(fin, value);
-        _key_database[key] = value;
-    }
-}
-
-std::string    Parser::findKeyInDatabase(std::string key, bool value)
-{
-    std::map<std::string, std::string>::iterator it = _key_database.find(key);
+    std::vector<std::string>::iterator it = _key_database.find(key);
 
     if (it != _key_database.end())
-    {
-        if (value)
-            return it->second;
-        else
-            return it->first;
-    }
+        return *it;
     return "";
 }
 
@@ -81,7 +59,7 @@ e_line_type Parser::checkLineType(std::vector<t_token> line)
         return ERROR;
 }
 
-std::vector<t_token>::iterator  getTokenFromVector(std::vector<t_token> vec, e_token key)
+std::vector<t_token>::iterator  Parser::getTokenFromVector(std::vector<t_token> vec, e_token key)
 {
     std::vector<t_token>::iterator it;
 
@@ -93,19 +71,162 @@ std::vector<t_token>::iterator  getTokenFromVector(std::vector<t_token> vec, e_t
     return vec.end();
 }
 
+void    Parser::handleWorkers(const std::vector<t_token> line)
+{
+    if (line.size() < 4 || _current_block->getBlockType() != HTTP_)
+        throw Error("Error: invalid directive: worker_processes");
+
+    std::vector<t_token>::iterator split = getTokenFromVector(line, EQUAL);
+    _config.setWorkers((++split)->literal);
+}
+
+void    Parser::handleLogFormat(const std::vector<t_token> line)
+{
+
+}
+
+void    Parser::handleListen(const std::vector<t_token> line)
+{
+    if (line.size() < 4 || _current_block->getBlockType() != SERVER_)
+        throw Error("Error: invalid directive: listen");
+
+    std::vector<t_token>::iterator split = getTokenFromVector(line, EQUAL);
+    std::stringstream iss((++split)->literal);
+    unsigned int port;
+    
+    iss >> port;
+    if (port < 1 || port > 65636)
+        throw Error("Error: invalid config: port");
+    _current_block.setPort(port);
+}
+
+void    Parser::handleName(const std::vector<t_token> line)
+{
+    if (line.size() < 4 || _current_block->getBlockType() != SERVER_)
+        throw Error("Error: invalid directive: hostname");
+
+    std::vector<t_token>::iterator split = getTokenFromVector(line, EQUAL);
+    _current_block.setHost((++split)->literal);
+}
+
+void    Parser::handleRoot(const std::vector<t_token> line)
+{
+    if (line.size() < 4 || _current_block->getBlockType() != LOCATION_);
+        throw Error("Error: invalid directive: root");
+
+    std::vector<t_token>::iterator split = getTokenFromVector(line, EQUAL);
+    if ((++split)->type != REGEX)
+        throw Error("Error: syntax error: root");
+    _current_block._root = split->literal;
+}
+
+void    Parser::handleIndex(const std::vector<t_token> line)
+{
+    if (line.size() < 4 || _current_block->getBlockType() != LOCATION_)
+        throw Error("Error: invalid directive: index");
+
+    std::vector<t_token>::iterator split = getTokenFromVector(line, EQUAL);
+    for (++split; split->type != SEMICOLON; ++split)
+        _current_block._index.push_back(split->literal); 
+}
+
+void    Parser::handleAutoIndex(const std::vector<t_token> line)
+{
+    if (line.size() < 4 || _current_block->getBlockType() != SERVER_)
+        throw Error("Error: invalid directive: autoindex");
+
+    std::vector<t_token>::iterator split = getTokenFromVector(line, EQUAL);
+    _current_block._autoindex = (++split)->literal;
+}
+
+void    Parser::handleMethods(const std::vector<t_token> line)
+{
+    if (line.size() < 4 || _current_block->getBlockType() != LOCATION_)
+        throw Error("Error: invalid directive: methods");
+
+    std::vector<t_token>::iterator split = getTokenFromVector(line, EQUAL);
+    for (++split; split->type != SEMICOLON; ++split)
+        _current_block._methods.push_back(split->literal);
+}
+
+void    Parser::handleMaxBodySize(const std::vector<t_token> line)
+{
+    if (line.size() < 4 || _current_block->getBlockType() != LOCATION_)
+        throw Error("Error: invalid directive: max_body_size");
+
+    std::vector<t_token>::iterator split = getTokenFromVector(line, EQUAL);
+    _current_block._max_body_size = (++split)->literal;
+}
+
+void    Parser::handleExt(const std::vector<t_token> line)
+{
+    if (line.size() < 4 || _current_block->getBlockType() != CGI_)
+        throw Error("Error: invalid directive: ext");
+
+    std::vector<t_token>::iterator split = getTokenFromVector(line, EQUAL);
+    _current_block._ext = (++split)->literal;
+}
+
+void    Parser::handleScript(const std::vector<t_token> line) // check if ext on script is the same as _ext of cgi
+{
+    if (line.size() < 4 || _current_block->getBlockType() != CGI_)
+        throw Error("Error: invalid directive: script");
+
+    std::vector<t_token>::iterator split = getTokenFromVector(line, EQUAL);
+    _current_block._script = (++split)->literal;
+}
+
+void    Parser::handleErrorPage(const std::vector<t_token> line) // check if last token before semicolon is a .html file
+{
+    if (line.size() < 5 || _current_block->getBlockType() != SERVER_)
+        throw Error("Error: invalid directive: error_page");
+
+    std::vector<t_token>::iterator split = getTokenFromVector(line, EQUAL);
+
+}
+
+void    Parser::init_key_database()
+{
+    std::string line;
+    std::fstream    fin;
+
+    fin.open("keywords.txt", std::ios::in);
+    while(std::getline(fin, line))
+    {
+        std::stringstream iss(line);
+        std::string key;
+        
+        iss >> key;
+        _key_database.push_back(key);
+    }
+    fin.close();
+}
+
+void    Parser::init_directive_handlers()
+{
+    _directive_handlers["worker_processes"] = &Parser::handleWorkers;
+    _directive_handlers["log_format"] = &Parser::handleLogFormat;
+    _directive_handlers["listen"] = &Parser::handleListen;
+    _directive_handlers["name"] = &Parser::handleName;
+    _directive_handlers["root"] = &Parser::handleRoot;
+    _directive_handlers["index"] = &Parser::handleIndex;
+    _directive_handlers["autoindex"] = &Parser::handleAutoIndex;
+    _directive_handlers["methods"] = &Parser::handleMethods;
+    _directive_handlers["max_body_size"] = &Parser::handleMaxBodySize;
+    _directive_handlers["ext"] = &Parser::handleExt;
+    _directive_handlers["script"] = &Parser::handleScript;
+    _directive_handlers["error_page"] = &Parser::handleErrorPage;
+}
+
 void    Parser::init_parser()
 {
     _current_line = 0;
     _current = makeToken(NONE, "", _current_line);
     _next = makeToken(NONE, "", _current_line);
     _in_block = false;
-    createKeyDatabase();
+    init_key_database();
+    init_directive_handlers();
 }
-
-// void    Parser::toggle()
-// {
-//     _current_block->toggle(*this);
-// }
 
 void    Parser::handleDirective(std::vector<t_token> line)
 {
@@ -121,11 +242,15 @@ void    Parser::handleDirective(std::vector<t_token> line)
     if (count != 1)
         throw Error("Error: invalid config: syntax error");
     --it;
+    if (it->type != KEY)
+        throw Error("Error: invalid directive");
 
     new_directive._key = it->literal;
     new_directive._line = it->line;
     for (it = split + 1; it != line.end(); ++it)
         _parameter.push_back(it->literal);
+
+    _current_block->addDirective(new_directive);
 }
 
 // void    Parser::handleDirective(std::vector<t_token> line)
@@ -224,6 +349,7 @@ void    Parser::handleBlockIn(std::vector<t_token> line)
         Location    new_location;
         new_location.setParent(_current_block);
         new_location.setStartLine(_current_line);
+        new_location._path = (++it)->literal;
         _current_block = &new_location;
         getLastServer().addLocation(new_location);
         getLastServer().setInBlock(true);
@@ -309,7 +435,7 @@ void    Parser::tokenise()
                 _tokens.push_back(makeToken(EQUAL, word, _current_line));
             else if (word.find('/') != std::string::npos)
 				_tokens.push_back(makeToken(REGEX, word, _current_line));
-			else if (word[0] == '"' && word[word.length() - 1] == '"')
+			else if (word[0] == '"' && word[word.length() - 1] == '"') // need a better way to handle quoted strings for log_format
 				_tokens.push_back(makeToken(QUOTES, readQuotedString(word), _current_line));
 			else if (word[0] == '$')
 				_tokens.push_back(makeToken(VAR, word, _current_line)); // to do: function extracting/expanding variable ???
@@ -350,15 +476,19 @@ void    Parser::parse()
         switch (_current_line_type)
         {
             case DIRECTIVE:
+                handleDirective(_line_tokens);
                 break ;
             case BLOCK_IN:
                 handleBlockIn(_line_tokens);
                 break ;
             case BLOCK_OUT:
+                handleBlockOut(_line_tokens);
                 break ;
             case EMPTY:
+                continue ;
                 break ;
             case ERROR:
+                throw Error("Error: parsing: syntax error on line " + std::to_string(_current.line));
                 break ;
         }
     }
