@@ -38,7 +38,7 @@ t_token Parser::makeToken(e_token key, std::string word, int linecount)
 
 std::string    Parser::findKeyInDatabase(std::string key)
 {
-    std::vector<std::string>::iterator it = _key_database.find(key);
+    std::vector<std::string>::iterator it = std::find(_key_database.begin(), _key_database.end(), key);
 
     if (it != _key_database.end())
         return *it;
@@ -82,7 +82,11 @@ void    Parser::handleWorkers(const std::vector<t_token> line)
 
 void    Parser::handleLogFormat(const std::vector<t_token> line)
 {
+    if (line.size() < 4 || _current_block->getBlockType() != HTTP_)
+        throw Error("Error: invalid directive: log_format");
 
+    std::vector<t_token>::iterator split = getTokenFromVector(line, EQUAL);
+    _config.setLogFormat((++split)->literal);
 }
 
 void    Parser::handleListen(const std::vector<t_token> line)
@@ -97,7 +101,7 @@ void    Parser::handleListen(const std::vector<t_token> line)
     iss >> port;
     if (port < 1 || port > 65636)
         throw Error("Error: invalid config: port");
-    _current_block.setPort(port);
+    _current_block->setPort(port);
 }
 
 void    Parser::handleName(const std::vector<t_token> line)
@@ -106,18 +110,19 @@ void    Parser::handleName(const std::vector<t_token> line)
         throw Error("Error: invalid directive: hostname");
 
     std::vector<t_token>::iterator split = getTokenFromVector(line, EQUAL);
-    _current_block.setHost((++split)->literal);
+    _current_block->setHost((++split)->literal);
 }
 
 void    Parser::handleRoot(const std::vector<t_token> line)
 {
-    if (line.size() < 4 || _current_block->getBlockType() != LOCATION_);
+    if (line.size() < 4 || _current_block->getBlockType() != LOCATION_)
         throw Error("Error: invalid directive: root");
 
     std::vector<t_token>::iterator split = getTokenFromVector(line, EQUAL);
     if ((++split)->type != REGEX)
         throw Error("Error: syntax error: root");
-    _current_block._root = split->literal;
+    Location& temp = *static_cast<Location*>(_current_block);
+    temp._root = split->literal;
 }
 
 void    Parser::handleIndex(const std::vector<t_token> line)
@@ -127,7 +132,7 @@ void    Parser::handleIndex(const std::vector<t_token> line)
 
     std::vector<t_token>::iterator split = getTokenFromVector(line, EQUAL);
     for (++split; split->type != SEMICOLON; ++split)
-        _current_block._index.push_back(split->literal); 
+        _current_block->_index.push_back(split->literal); 
 }
 
 void    Parser::handleAutoIndex(const std::vector<t_token> line)
@@ -136,7 +141,7 @@ void    Parser::handleAutoIndex(const std::vector<t_token> line)
         throw Error("Error: invalid directive: autoindex");
 
     std::vector<t_token>::iterator split = getTokenFromVector(line, EQUAL);
-    _current_block._autoindex = (++split)->literal;
+    _current_block->_autoindex = (++split)->literal;
 }
 
 void    Parser::handleMethods(const std::vector<t_token> line)
@@ -146,7 +151,7 @@ void    Parser::handleMethods(const std::vector<t_token> line)
 
     std::vector<t_token>::iterator split = getTokenFromVector(line, EQUAL);
     for (++split; split->type != SEMICOLON; ++split)
-        _current_block._methods.push_back(split->literal);
+        _current_block->_methods.push_back(split->literal);
 }
 
 void    Parser::handleMaxBodySize(const std::vector<t_token> line)
@@ -155,7 +160,7 @@ void    Parser::handleMaxBodySize(const std::vector<t_token> line)
         throw Error("Error: invalid directive: max_body_size");
 
     std::vector<t_token>::iterator split = getTokenFromVector(line, EQUAL);
-    _current_block._max_body_size = (++split)->literal;
+    _current_block->_max_body_size = (++split)->literal;
 }
 
 void    Parser::handleExt(const std::vector<t_token> line)
@@ -164,7 +169,7 @@ void    Parser::handleExt(const std::vector<t_token> line)
         throw Error("Error: invalid directive: ext");
 
     std::vector<t_token>::iterator split = getTokenFromVector(line, EQUAL);
-    _current_block._ext = (++split)->literal;
+    _current_block->_ext = (++split)->literal;
 }
 
 void    Parser::handleScript(const std::vector<t_token> line) // check if ext on script is the same as _ext of cgi
@@ -173,7 +178,7 @@ void    Parser::handleScript(const std::vector<t_token> line) // check if ext on
         throw Error("Error: invalid directive: script");
 
     std::vector<t_token>::iterator split = getTokenFromVector(line, EQUAL);
-    _current_block._script = (++split)->literal;
+    _current_block->_script = (++split)->literal;
 }
 
 void    Parser::handleErrorPage(const std::vector<t_token> line) // check if last token before semicolon is a .html file
@@ -182,7 +187,9 @@ void    Parser::handleErrorPage(const std::vector<t_token> line) // check if las
         throw Error("Error: invalid directive: error_page");
 
     std::vector<t_token>::iterator split = getTokenFromVector(line, EQUAL);
-
+    std::vector<t_token>::iterator html = line.back() - 1;
+    for (++split; split != html; ++split)
+        _current_block->_error_pages[split->literal] = html->literal;
 }
 
 void    Parser::init_key_database()
@@ -252,74 +259,6 @@ void    Parser::handleDirective(std::vector<t_token> line)
 
     _current_block->addDirective(new_directive);
 }
-
-// void    Parser::handleDirective(std::vector<t_token> line)
-// {
-//     std::vector<t_token>::iterator it;
-//     std::vector<t_token>::iterator split = getTokenFromVector(line, EQUAL);
-//     int count = 0;
-
-//     if (split == line.end())
-//         throw Error("Error: handling directive during parsing");
-    
-//     for (it = line.begin(); it != split; ++it)
-//         count++;
-//     if (count != 1)
-//         throw Error("Error: handling directive: too many key words on line");
-    
-//     --it;
-//     if (it->literal == "listen")
-//     {
-//         int port;
-//         std::stringstream iss((split + 1)->literal);
-//         iss >> port;
-//         if (port < 1 || port > 65636)
-//             throw Error("Error: invalid config: port");
-//         _config.http.server.ipv4_listen.sin_port = htons(port);
-//         ++split;
-//         if (split->type != SEMICOLON)
-//             throw Error("Error: invalid config: syntax error");
-//     }
-//     else if (it->literal == "name")
-//     {
-//         std::string hostname = (split + 1)->literal;
-//         _config.http.server.server_name = hostname;
-//         ++split;
-//         if (split->type != SEMICOLON)
-//             throw Error("Error: invalid config: syntax error");
-//     }
-//     else if (it->literal == "root")
-//     {
-//         std::string root_path = (split + 1)->literal;
-//         _config.http.server.location.path = root_path;
-//         ++split;
-//         if (split->type != SEMICOLON)
-//             throw Error("Error: invalid config: syntax error");
-//     }
-//     else if (it->literal == "index")
-//     {
-//         it = split + 1;
-//         while (it->type != SEMICOLON)
-//         {
-//             std::string index = it->literal;
-//             _config.http.server.location.config.index.push_back(index);
-//             it++;
-//         }
-//     }
-//     else if (it->literal == "autoindex")
-//     {
-//         bool    autoidx;
-//         if ((it + 1)->literal == "true")
-//             autoidx = true;
-//         else
-//             autoidx = false;
-//         _config.http.server.location.config.autoindex = autoidx;
-//     }
-//     else if (it->literal == "methods")
-//     {
-        
-//     }
-// }
 
 void    Parser::handleBlockIn(std::vector<t_token> line)
 {
@@ -525,6 +464,44 @@ void	printTokens(std::vector<t_token> tokens)
 	}
 }
 
+void    HTTP::printConfig()
+{
+    std::cout << "HTTP server config:" << std::endl
+              << "worker_processes = " << _workers << std::endl
+              << "log_format = " << _log_formart << std::endl;
+    for (size_t i = 0; i < _servers.size(); i++)
+    {
+        std::cout << "Server " << i + 1 << " config:" << std::endl
+                  << "port = " << _servers[i].getPort() << std::endl
+                  << "hostname = " << servers[i].getHost() << std::endl;
+                  << "error_pages: " << std::endl;
+        std::map<std::string, std::string>::iterator it;
+        for (it = servers[i].getErrorPages().begin(); it != servers[i].getErrorPages().end(); ++it)
+            std::cout << "page code " << it->first << " uses html script " << it->second << std::endl;
+        for (size_t j = 0; j < _servers[i].getLocations().size(); j++)
+        {
+            Location current = _servers[i].getLocations()[j];
+            std::cout << "Location " << j + 1 << " config:" << std::endl
+                      << "path = " << current._path << std::endl
+                      << "root = " << current._root << std::endl
+                      << "methods = ";
+            for (size_t k = 0; k < current._index.size(); k++)
+                std::cout << current._methods[k] << " ";
+            std::cout << std::endl << "index = ";
+            for (size_t k = 0; k < current._index[k]; k++)
+                std::cout << current._index[k] << " ";
+            std::cout << std::endl << "max_body_size = " << current._max_body_size << std::endl
+                      << "autoindex = " << (_autoindex ? "true" : false) << std::endl;
+            for (size_t l = 0; l < current._cgi.size(); l++)
+            {
+                std::cout << "CGI " << l + 1 << " config:" << std::endl
+                          << "ext = " << current._cgi[l]._ext << std::endl
+                          << "script = " << current._cgi[l]._script << std::endl; 
+            }
+        }
+    }
+}
+
 int main()
 {
     Parser  newParser("../../resources/webserv.conf");
@@ -532,4 +509,7 @@ int main()
     newParser.init_parser();
     newParser.tokenise();
     printTokens(newParser.getTokens());
+    std::cout << std::endl;
+    newParser.parse();
+    newParser.getConfig().printConfig();
 }

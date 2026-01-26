@@ -18,6 +18,9 @@
 #include <map>
 #include "newParser.hpp"
 
+struct  CGI;
+struct  Location;
+
 enum    e_block_type
 {
     HTTP_,
@@ -69,6 +72,11 @@ class   IBlock
         void    setParent(IBlock*   parent);
         void    addDirective(Directive new_directive);
         
+        // virtual functions for inheritance
+        virtual void    setPort(unsigned int port) { (void)port; };
+        virtual void    setHost(std::string hostname) { (void)hostname; };
+        virtual void    addLocation(Location& new_location) { (void)new_location; };
+        virtual void    addErrorPage(std::string code, std::string html) { (void)code; (void)html; };
         // virtual void    start(Parser& parser) = 0;
         // virtual void    toggle(Parser& parser) = 0;
         // virtual void    exit(Parser& parser) = 0;
@@ -150,6 +158,8 @@ class   HTTP: public IBlock
         void    setWorkers(std::string workers);
         void    setLogFormat(std::string log_format);
         void    addServer(Server new_server);
+
+        void    printConfig();
         
         // void    start(Parser& parser);
         // void    toggle(Parser&  parser);

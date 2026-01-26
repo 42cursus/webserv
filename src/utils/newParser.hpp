@@ -25,6 +25,7 @@
 #include <map>
 #include <sstream>
 #include <fstream>
+#include <algorithm>
 #include "../../include/webserv.hpp"
 #include "newState.hpp"
 
@@ -69,7 +70,7 @@ class   Parser
         t_token _current;
         t_token _next;
         std::vector<std::string>  _key_database;
-        typedef void(Parser::*Directive_handler(const std::vector<t_token>&));
+        typedef void (Parser::*Directive_handler)(const std::vector<t_token>);
         std::map<std::string, Directive_handler> _directive_handlers;
         std::vector<t_token>    _tokens;
         std::vector<t_token>::iterator  _current_it;
@@ -96,9 +97,10 @@ class   Parser
         std::vector<t_token>    getTokens() const { return _tokens; };
         std::vector<t_token>::iterator  getCurrentIt() const { return _current_it; };
         IBlock* getCurrentBlock() const { return _current_block; };
-        Server& getLastServer() const { return _config.getServers().back(); }
-        Location& getLastLocation() const { return getLastServer().getLocations().back(); }
-        CGI& getLastCGI() const { return getLastLocation()._cgi.back(); }
+        HTTP   getConfig() const { return _config; };
+        Server getLastServer() const { return _config.getServers().back(); }
+        Location getLastLocation() const { return getLastServer().getLocations().back(); }
+        CGI getLastCGI() const { return getLastLocation()._cgi.back(); }
 
         // setters
         void    setConfigRoot(std::string config_root) { _config_root = config_root; };
@@ -130,7 +132,7 @@ class   Parser
 
         // utils
         e_line_type checkLineType(std::vector<t_token> line);
-        std::string    findKeyInDatabase(std::string key, bool value);
+        std::string    findKeyInDatabase(std::string key);
         t_token makeToken(e_token   key, std::string word, int linecount);
         std::vector<t_token>::iterator getTokenFromVector(std::vector<t_token> vec, e_token key);
         std::string readQuotedString(std::string word);
