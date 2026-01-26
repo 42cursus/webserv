@@ -29,8 +29,9 @@ enum    e_block_type
 struct  Directive
 {
     std::string _key; // left side
-    std::string _parameter; // right side;
-    unsigned  int   _equal; // = index
+    std::vector<std::string> _parameter; // right side;
+    //unsigned  int   _equal; // = index
+    unsigned  int   _line;
     Directive& operator=(const Directive& other);    
 } ;
 

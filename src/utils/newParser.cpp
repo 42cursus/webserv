@@ -109,71 +109,92 @@ void    Parser::init_parser()
 
 void    Parser::handleDirective(std::vector<t_token> line)
 {
+    Directive new_directive;
+    int count = 0;
     std::vector<t_token>::iterator it;
     std::vector<t_token>::iterator split = getTokenFromVector(line, EQUAL);
-    int count = 0;
 
     if (split == line.end())
-        throw Error("Error: handling directive during parsing");
-    
+        throw Error("Error: invalid config: syntax error");
     for (it = line.begin(); it != split; ++it)
         count++;
     if (count != 1)
-        throw Error("Error: handling directive: too many key words on line");
-    
+        throw Error("Error: invalid config: syntax error");
     --it;
-    if (it->literal == "listen")
-    {
-        int port;
-        std::stringstream iss((split + 1)->literal);
-        iss >> port;
-        if (port < 1 || port > 65636)
-            throw Error("Error: invalid config: port");
-        _config.http.server.ipv4_listen.sin_port = htons(port);
-        ++split;
-        if (split->type != SEMICOLON)
-            throw Error("Error: invalid config: syntax error");
-    }
-    else if (it->literal == "name")
-    {
-        std::string hostname = (split + 1)->literal;
-        _config.http.server.server_name = hostname;
-        ++split;
-        if (split->type != SEMICOLON)
-            throw Error("Error: invalid config: syntax error");
-    }
-    else if (it->literal == "root")
-    {
-        std::string root_path = (split + 1)->literal;
-        _config.http.server.location.path = root_path;
-        ++split;
-        if (split->type != SEMICOLON)
-            throw Error("Error: invalid config: syntax error");
-    }
-    else if (it->literal == "index")
-    {
-        it = split + 1;
-        while (it->type != SEMICOLON)
-        {
-            std::string index = it->literal;
-            _config.http.server.location.config.index.push_back(index);
-            it++;
-        }
-    }
-    else if (it->literal == "autoindex")
-    {
-        bool    autoidx;
-        if ((it + 1)->literal == "true")
-            autoidx = true;
-        else
-            autoidx = false;
-        _config.http.server.location.config.autoindex = autoidx;
-    }
-    else if (it->literal == "methods")
-    {
-        
-    }
+
+    new_directive._key = it->literal;
+    new_directive._line = it->line;
+    for (it = split + 1; it != line.end(); ++it)
+        _parameter.push_back(it->literal);
 }
+
+// void    Parser::handleDirective(std::vector<t_token> line)
+// {
+//     std::vector<t_token>::iterator it;
+//     std::vector<t_token>::iterator split = getTokenFromVector(line, EQUAL);
+//     int count = 0;
+
+//     if (split == line.end())
+//         throw Error("Error: handling directive during parsing");
+    
+//     for (it = line.begin(); it != split; ++it)
+//         count++;
+//     if (count != 1)
+//         throw Error("Error: handling directive: too many key words on line");
+    
+//     --it;
+//     if (it->literal == "listen")
+//     {
+//         int port;
+//         std::stringstream iss((split + 1)->literal);
+//         iss >> port;
+//         if (port < 1 || port > 65636)
+//             throw Error("Error: invalid config: port");
+//         _config.http.server.ipv4_listen.sin_port = htons(port);
+//         ++split;
+//         if (split->type != SEMICOLON)
+//             throw Error("Error: invalid config: syntax error");
+//     }
+//     else if (it->literal == "name")
+//     {
+//         std::string hostname = (split + 1)->literal;
+//         _config.http.server.server_name = hostname;
+//         ++split;
+//         if (split->type != SEMICOLON)
+//             throw Error("Error: invalid config: syntax error");
+//     }
+//     else if (it->literal == "root")
+//     {
+//         std::string root_path = (split + 1)->literal;
+//         _config.http.server.location.path = root_path;
+//         ++split;
+//         if (split->type != SEMICOLON)
+//             throw Error("Error: invalid config: syntax error");
+//     }
+//     else if (it->literal == "index")
+//     {
+//         it = split + 1;
+//         while (it->type != SEMICOLON)
+//         {
+//             std::string index = it->literal;
+//             _config.http.server.location.config.index.push_back(index);
+//             it++;
+//         }
+//     }
+//     else if (it->literal == "autoindex")
+//     {
+//         bool    autoidx;
+//         if ((it + 1)->literal == "true")
+//             autoidx = true;
+//         else
+//             autoidx = false;
+//         _config.http.server.location.config.autoindex = autoidx;
+//     }
+//     else if (it->literal == "methods")
+//     {
+        
+//     }
+// }
 
 void    Parser::handleBlockIn(std::vector<t_token> line)
 {
@@ -223,10 +244,31 @@ void    Parser::handleBlockIn(std::vector<t_token> line)
     }
 }
 
-// void    Parser::handleBlockOut()
-// {
-//     _in_block = false;
-// }
+void    Parser::handleBlockOut(std::vector<t_token> line)
+{
+    if (!_current_block->isInBlock())
+        throw Error("Error: invalid config: syntax error");
+
+    if (_current_block->getBlockType() == HTTP_)
+    {
+        _config.setEndLine(_current_line);
+    }
+    else if (_current_block->getBlockType() == SERVER_)
+    {
+        getLastServer().setEndLine(_current_line);
+        _current_block->getParent()->setInBlock(false);
+    }
+    else if (_current_block->getBlockType() == LOCATION_)
+    {
+        getLastLocation().setEndLine(_current_line);
+        _current_block->getParent()->setInBlock(false);
+    }
+    else if (_current_block->getBlockType() == CGI_)
+    {
+        getLastCGI().setEndLine(_current_line);
+        _current_block->getParent()->setInBlock(false);
+    }
+}
 
 
 void    Parser::tokenise()

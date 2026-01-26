@@ -18,7 +18,8 @@ Directive& Directive::operator=(const Directive& copy)
     {
         _key = copy._key;
         _parameter = copy._parameter;
-        _equal = copy._equal;
+        //_equal = copy._equal;
+        _line = copy._line;
     }
     return *this;
 }
