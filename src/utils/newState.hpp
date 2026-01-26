@@ -6,7 +6,7 @@
 /*   By: margo <margo@student.42.fr>                +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/01/21 17:45:42 by margo             #+#    #+#             */
-/*   Updated: 2026/01/25 20:11:56 by margo            ###   ########.fr       */
+/*   Updated: 2026/01/26 10:17:41 by margo            ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -16,7 +16,6 @@
 #include <iostream>
 #include <vector>
 #include <map>
-#include "newParser.hpp"
 
 struct  CGI;
 struct  Location;
@@ -35,16 +34,17 @@ struct  Directive
     std::vector<std::string> _parameter; // right side;
     //unsigned  int   _equal; // = index
     unsigned  int   _line;
-    Directive& operator=(const Directive& other);    
+    Directive& operator=(const Directive& copy);
+    bool operator==(const Directive& other) const; 
 } ;
 
 class   IBlock
 {
     private:
         bool    _in_block;
+        e_block_type    _type;
         unsigned int    _line_start;
         unsigned int    _line_end;
-        e_block_type    _type;
         IBlock* _parent_block; // if NULL we're in main server block
         std::vector<Directive> _directives;
         
@@ -55,7 +55,7 @@ class   IBlock
         IBlock(const IBlock& copy);
         IBlock& operator=(const IBlock& copy);
         bool    operator==(IBlock& oth);
-        ~IBlock();
+        virtual ~IBlock();
 
         // getters
         bool    isInBlock() const;
@@ -130,7 +130,7 @@ class   Server: public IBlock
 
         void    setPort(unsigned int port);
         void    setHost(std::string hostname);
-        void    addLocation(Location& new_location);
+        void    addLocation(Location new_location);
         void    addErrorPage(std::string code, std::string html);
         
         //void    start(Parser& parser);
@@ -153,7 +153,8 @@ class   HTTP: public IBlock
 
         std::string getWorkers() const;
         std::string getLogFormat() const;
-        std::vector<Server> getServers() const;
+        std::vector<Server>& getServers();
+        const std::vector<Server>& getServers() const;
         
         void    setWorkers(std::string workers);
         void    setLogFormat(std::string log_format);

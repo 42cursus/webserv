@@ -6,7 +6,7 @@
 /*   By: margo <margo@student.42.fr>                +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/01/25 15:43:47 by margo             #+#    #+#             */
-/*   Updated: 2026/01/25 20:14:47 by margo            ###   ########.fr       */
+/*   Updated: 2026/01/26 10:18:03 by margo            ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -22,6 +22,11 @@ Directive& Directive::operator=(const Directive& copy)
         _line = copy._line;
     }
     return *this;
+}
+
+bool  Directive::operator==(const Directive& other) const
+{
+    return (_key == other._key && _parameter == other._parameter && _line == other._line);
 }
 
 IBlock::IBlock(e_block_type type): _in_block(false), _type(type), _line_start(0), _line_end(0) {}
@@ -154,7 +159,7 @@ void    Server::setPort(unsigned int port) { _port = port; }
 
 void    Server::setHost(std::string hostname) { _hostname = hostname; }
 
-void    Server::addLocation(Location& new_location) { _locations.push_back(new_location); }
+void    Server::addLocation(Location new_location) { _locations.push_back(new_location); }
 
 void    Server::addErrorPage(std::string code, std::string html) { _error_pages[code] = html; }
 
@@ -187,7 +192,9 @@ std::string HTTP::getWorkers() const { return _workers; }
 
 std::string HTTP::getLogFormat() const { return _log_format; }
 
-std::vector<Server> HTTP::getServers() const { return _servers; }
+std::vector<Server>& HTTP::getServers() { return _servers; }
+
+const std::vector<Server>& HTTP::getServers() const { return _servers; }
 
 void    HTTP::setWorkers(std::string workers) { _workers = workers; }
 

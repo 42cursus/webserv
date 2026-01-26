@@ -6,7 +6,7 @@
 /*   By: margo <margo@student.42.fr>                +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/01/21 16:11:56 by margo             #+#    #+#             */
-/*   Updated: 2026/01/25 20:27:16 by margo            ###   ########.fr       */
+/*   Updated: 2026/01/26 09:58:05 by margo            ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -28,6 +28,12 @@
 #include <algorithm>
 #include "../../include/webserv.hpp"
 #include "newState.hpp"
+
+class  IBlock;
+class  Server;
+class  HTTP;
+struct Location;
+struct CGI;
 
 enum    e_line_type
 {
@@ -58,7 +64,7 @@ typedef	struct s_token
 {
 	e_token	type;
 	std::string	literal;
-	int	line;
+	unsigned int	line;
 	bool	operator==(const s_token& other) const;
 }	t_token;
 
@@ -97,10 +103,14 @@ class   Parser
         std::vector<t_token>    getTokens() const { return _tokens; };
         std::vector<t_token>::iterator  getCurrentIt() const { return _current_it; };
         IBlock* getCurrentBlock() const { return _current_block; };
-        HTTP   getConfig() const { return _config; };
-        Server getLastServer() const { return _config.getServers().back(); }
-        Location getLastLocation() const { return getLastServer().getLocations().back(); }
-        CGI getLastCGI() const { return getLastLocation()._cgi.back(); }
+        HTTP&   getConfig() { return _config; };
+        const HTTP&   getConfig() const { return _config; };
+        Server& getLastServer() { return _config.getServers().back(); }
+        const Server& getLastServer() const { return _config.getServers().back(); }
+        Location& getLastLocation() { return getLastServer().getLocations().back(); }
+        const Location& getLastLocation() const { return getLastServer().getLocations().back(); }
+        CGI& getLastCGI() { return getLastLocation()._cgi.back(); }
+        const CGI& getLastCGI() const { return getLastLocation()._cgi.back(); }
 
         // setters
         void    setConfigRoot(std::string config_root) { _config_root = config_root; };
