@@ -18,7 +18,6 @@
 
 #include "HttpRequest.hpp"
 #include "HttpResponse.hpp"
-#include "LocationConfig.hpp"
 
 class CgiHandler
 {

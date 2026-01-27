@@ -6,15 +6,19 @@
 /*   By: margo <margo@student.42.fr>                +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/07/17 22:51:57 by margo             #+#    #+#             */
-/*   Updated: 2025/07/17 22:52:21 by margo            ###   ########.fr       */
+/*   Updated: 2026/01/23 15:42:55 by fsmyth           ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
 #include "webserv.hpp"
 #include "TCPServer.hpp"
-#include "ConfigParser.hpp"
+#include "serve.hpp"
+#include "Parser.hpp"
 #include <csignal>
-#include <cstdlib>
+// #include <cstdlib>
+#include <vector>
+
+#include "Prefix.hpp"
 
 typedef struct sigaction	t_sigaction;
 
@@ -37,28 +41,61 @@ int	main(int argc, char **argv)
 {
 	t_sigaction	act;
 	t_sigaction	old_act;
-	char		*filename;
 
 	act.sa_flags = SA_SIGINFO; // Do NOT set SA_RESTART; we want syscalls to be interrupted.
 	act.sa_sigaction = &sig_handler;
 	sigemptyset(&act.sa_mask);
 	if (sigaction(SIGINT, &act, &old_act) != 0)
 		exit(EXIT_FAILURE);
-	filename = (char *)"resources/webserv.conf";
+
+
+	std::string filename = "resources/webserv.conf";
+	Parser  newParser(filename);
+
 	if (argc > 1)
 		filename = argv[1];
-	try {
-		std::cout << "Wello horld!" << std::endl;
-		Config conf = Parser::make_default_config();
-		TCPServer srv = TCPServer(conf);
-		srv.start();
-		srv.serve(srv);
-		srv.stop();
-	}
-	catch (const std::exception& e)
+
+    try
+    {
+        newParser.init_parser();
+        newParser.tokenise();
+        // printTokens(newParser.getTokens());
+        std::cout << std::endl;
+        newParser.parse();
+        newParser.getConfig().printConfig();
+    }
+    catch (std::exception   &e)
+    {
+        std::cerr << e.what() << std::endl;
+    }
+
+	std::vector<TCPServer*>	srvs;
+	std::vector<Config>	cfgs;
+	cfgs.resize(newParser.getConfig().getServers().size());
+
+	for (uint64_t i = 0; i < cfgs.size(); i++)
 	{
-		std::cerr << e.what() << std::endl;
+		newParser.getConfig().getServers()[i].get_config(cfgs[i]);
 	}
+
+	test_trie_match(cfgs[0].http.server.loc_trie, "/");
+	test_trie_match(cfgs[0].http.server.loc_trie, "/uploa");
+	test_trie_match(cfgs[0].http.server.loc_trie, "/upload/");
+	test_trie_match(cfgs[0].http.server.loc_trie, "/upload/hello");
+
+	test_trie_match(cfgs[1].http.server.loc_trie, "/hello");
+	test_trie_match(cfgs[1].http.server.loc_trie, "/uploa");
+	test_trie_match(cfgs[1].http.server.loc_trie, "/upload/hello");
+	exit(1);
+
+	for (uint64_t i = 0; i < cfgs.size(); i++)
+	{
+		srvs.push_back(new TCPServer(cfgs[i]));
+		srvs[i]->start();
+	}
+
+	serve(srvs);
+	
     return (0);
 	(void)filename;
 }

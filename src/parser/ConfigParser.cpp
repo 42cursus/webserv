@@ -6,11 +6,12 @@
 /*   By: abelov <abelov@student.42london.com>       +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/12/04 04:54:36 by abelov            #+#    #+#             */
-/*   Updated: 2025/12/04 04:54:36 by abelov           ###   ########.fr       */
+/*   Updated: 2026/01/23 15:41:22 by fsmyth           ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
 #include "ConfigParser.hpp"
+#include "Prefix.hpp"
 
 
 /*
@@ -98,6 +99,18 @@ std::string	Parser::readQuotedString(std::string word)
     return word;
 }
 
+void	add_default_locations(Config &cfg)
+{
+	std::vector<Config::Http::Server::Location> &locations = cfg.http.server.locations;
+	locations.push_back(cfg.http.server.location);
+	locations.push_back(upload);
+	locations.push_back(data);
+	for (uint64_t i = 0; i < locations.size(); i++)
+	{
+		loc_trie_insert(cfg.http.server.loc_trie, &locations[i]);
+	}
+}
+
 Config Parser::make_default_config()
 {
     const std::string index[] = {
@@ -130,6 +143,8 @@ Config Parser::make_default_config()
                     }
             }
     };
+	cfg.http.server.loc_trie = new TrieNode();
+	add_default_locations(cfg);
     return cfg;
 }
 

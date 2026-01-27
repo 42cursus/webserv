@@ -25,7 +25,6 @@ class WorkerPool
 private:
 	std::list<std::vector<Worker> >	_pool;
 	std::list<Worker *>				_freeList;
-	TCPServer&						_srv;
 	size_t							_allocp;
 	size_t							_size;
 	size_t							_nodesize;
@@ -34,10 +33,10 @@ private:
 	Worker*		_getWorker(size_t index);
 
 public:
-	WorkerPool(TCPServer& srv, size_t size = 1024);
+	WorkerPool(size_t size = 1024);
 	~WorkerPool();
 
-	Worker*	alloc(void);
+	Worker*	alloc(TCPServer *srv);
 	void	free(Worker *wrkr);
 	size_t	getNumAlloced(void) const;
 };

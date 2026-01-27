@@ -1,0 +1,154 @@
+/* ************************************************************************** */
+/*                                                                            */
+/*                                                        :::      ::::::::   */
+/*   serve.cpp                                          :+:      :+:    :+:   */
+/*                                                    +:+ +:+         +:+     */
+/*   By: fsmyth <fsmyth@student.42london.com>       +#+  +:+       +#+        */
+/*                                                +#+#+#+#+#+   +#+           */
+/*   Created: 2026/01/22 14:24:50 by fsmyth            #+#    #+#             */
+/*   Updated: 2026/01/22 17:48:23 by fsmyth           ###   ########.fr       */
+/*                                                                            */
+/* ************************************************************************** */
+
+// #include <cstdint>
+#include <cstdlib>
+#include <cstring>
+#include <sys/epoll.h>
+#include <sys/socket.h>
+#include "Worker.hpp"
+#include "WorkerPool.hpp"
+#include "serve.hpp"
+
+void	*tag_ptr(void *ptr, epoll_ptr_type tag)
+{
+	uint64_t	tagged = reinterpret_cast<uint64_t>(ptr);
+
+	// std::cout << std::hex << "orig:      " << reinterpret_cast<void*>(tagged)<< std::endl;
+	tagged &= 0x00FFFFFFFFFFFFFF;
+	// std::cout << std::hex << "after mask:" << reinterpret_cast<void*>(tagged)<< std::endl;
+
+	switch (tag) {
+		case (EP_SRV):
+			tagged |= 0xA000000000000000;
+			break;
+		case (EP_WRKR):
+			tagged |= 0xB000000000000000;
+			break;
+		case (EP_NONE):
+			break;
+	}
+	// std::cout << std::hex << "after tag: " << reinterpret_cast<void*>(tagged)<< std::endl;
+	return reinterpret_cast<void*>(tagged);
+}
+
+epoll_ptr_type	get_tag(void *ptr)
+{
+	uint64_t	tag = (reinterpret_cast<uint64_t>(ptr) & 0xF000000000000000) >> 60;
+
+	switch (tag) {
+		case (0xA):
+			// std::cout << "ptr tagged as server" << std::endl;
+			return EP_SRV;
+		case (0xB):
+			// std::cout << "ptr tagged as worker" << std::endl;
+			return EP_WRKR;
+		default:
+			return EP_NONE;
+	}
+	// std::cout << "ptr tag failed" << std::endl;
+}
+
+void	*detag_ptr(void *ptr)
+{
+	uint64_t	tagged = reinterpret_cast<uint64_t>(ptr);
+
+	return reinterpret_cast<void *>(tagged & 0x00FFFFFFFFFFFFFF);
+}
+
+void serve_handle_worker(Worker *wrkr, int epoll_fd, WorkerPool &wrkrPool, struct epoll_event &ev)
+{
+	if (ev.events & (EPOLLERR | EPOLLHUP))
+	{
+		std::cout << "error occured on fd: " << wrkr->getConnFd() << std::endl;
+		epoll_ctl(epoll_fd, EPOLL_CTL_DEL, wrkr->getConnFd(), NULL);
+		wrkr->reset();
+		wrkrPool.free(wrkr);
+	}
+	else if (ev.events & EPOLLIN)
+	{
+		// std::cout << "Read ready on fd " << std::endl;
+		int retval = wrkr->handleRequest();
+		if (wrkr->getStatus() == Worker::REQ_RESPONSE_READY)
+		{
+			struct epoll_event ev;
+			ev.data.ptr = tag_ptr(wrkr, EP_WRKR);
+			ev.events = EPOLLOUT;
+			epoll_ctl(epoll_fd, EPOLL_CTL_MOD, wrkr->getConnFd(), &ev);
+		}
+		if (retval == 2)
+		{
+			std::cout << "Connection closed on fd: " << wrkr->getConnFd() << std::endl;
+			epoll_ctl(epoll_fd, EPOLL_CTL_DEL, wrkr->getConnFd(), NULL);
+			wrkr->reset();
+			wrkrPool.free(wrkr);
+		}
+	}
+	else if (ev.events & EPOLLOUT && wrkr->getStatus() == Worker::REQ_RESPONSE_READY)
+	{
+		// std::cout << "Write ready on fd: " << wrkr->getConnFd() << std::endl;
+		int retval = wrkr->sendResponse();
+		if (retval == 0)
+		{
+			struct epoll_event ev;
+			ev.data.ptr = tag_ptr(wrkr, EP_WRKR);
+			ev.events = EPOLLIN;
+			epoll_ctl(epoll_fd, EPOLL_CTL_MOD, wrkr->getConnFd(), &ev);
+		}
+	}
+}
+
+int serve(std::vector<TCPServer *> srvs)
+{
+	extern sig_atomic_t				g_var;
+	WorkerPool						wrkrPool(1024);
+	int								epoll_fd = epoll_create(1);
+	std::vector<struct epoll_event>	evs;
+	int								nfds;
+	Worker*							wrkr;
+	TCPServer*						srv;
+
+	evs.resize(1024);
+	for (uint64_t i = 0; i < srvs.size(); i++)
+	{
+		evs[i].events = EPOLLIN;
+		evs[i].data.ptr = tag_ptr(srvs[i], EP_SRV);
+		epoll_ctl(epoll_fd, EPOLL_CTL_ADD, srvs[i]->getSocketFd(), &evs[i]);
+	}
+
+	while(g_var != SIGINT)
+	{
+		nfds = epoll_wait(epoll_fd, evs.data(), 1024, -1);
+		for (int i = 0; i < nfds; i++)
+		{
+			void *ptr = evs[i].data.ptr;
+			switch (get_tag(ptr)) {
+				case (EP_SRV):
+					if (evs[i].events & EPOLLIN)
+					{
+						srv = reinterpret_cast<TCPServer*>(detag_ptr(ptr));
+						srv->assignWorker(wrkrPool, epoll_fd);
+					}
+					break;
+				case (EP_WRKR):
+					wrkr = reinterpret_cast<Worker*>(detag_ptr(ptr));
+					serve_handle_worker(wrkr, epoll_fd, wrkrPool, evs[i]);
+					break;
+				default:
+					break;
+			}
+		}
+	}
+	close(epoll_fd);
+	return 0;
+
+}

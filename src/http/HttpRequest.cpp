@@ -3,10 +3,10 @@
 /*                                                        :::      ::::::::   */
 /*   HttpRequest.cpp                                    :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By: abelov <abelov@student.42london.com>       +#+  +:+       +#+        */
+/*   By: margo <margo@student.42.fr>                +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/07/18 21:41:03 by abelov            #+#    #+#             */
-/*   Updated: 2025/07/18 21:41:03 by abelov           ###   ########.fr       */
+/*   Updated: 2026/01/27 15:51:41 by margo            ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -19,9 +19,10 @@
 #include <vector>
 #include "HttpRequest.hpp"
 #include "HttpResponse.hpp"
+#include "Prefix.hpp"
 #include "webserv.hpp"
-#include "src/cgi/CgiHandler.hpp"
-#include "LocationConfig.hpp"
+// #include "src/cgi/CgiHandler.hpp"
+// #include "LocationConfig.hpp"
 
 HttpRequest::HttpRequest(const std::string &path) : path(path)
 {}
@@ -109,20 +110,34 @@ static bool ends_with(const std::string &s, const std::string &suffix) {
 std::string
 HttpRequest::getHtmlResponse(const Config &conf, HttpResponse& res)
 {
-	Config::Http::Server::Location location = conf.http.server.location;
-	std::basic_string<char> filename = path.substr(1, path.length());
+	Location *location = loc_trie_search(conf.http.server.loc_trie, path);
+	if (location == NULL)
+	{
+		std::cout << "LOCATION NULL" << std::endl;
+		exit(1);
+	}
+	std::basic_string<char> filename = path.substr(location->_path.length(), path.length());
+	// std::cout << FT_BOLD << FT_RED << path << FT_RESET << std::endl;
 
 	if (filename.empty())
-		filename = location.config.index[0];
+	{
+		if (!location->_autoindex)
+			filename = location->_index[0];
+		else
+		{
+			; // DO AUTOINDEX FUNCTION
+		}
+	}
 
-	LocationConfig lc(location);
+	// LocationConfig lc(*location);
 	res.filename = filename;
 	std::string output;
 	if (ends_with(filename, ".bla"))
 	{
-		CgiHandler handler(*this, lc, filename, res);
-		res.statuscode = itoa(handler.do_run());
-		output = handler.raw_output();
+	// 	// CgiHandler handler(*this, lc, filename, res);
+	// 	res.statuscode = itoa(handler.do_run());
+	// 	output = handler.raw_output();
+		;
 	}
 	else if (filename == "teapot")
 	{
@@ -134,17 +149,17 @@ HttpRequest::getHtmlResponse(const Config &conf, HttpResponse& res)
 	else
 	{
 		res.headers["content-type"] = getMimeType(filename);
-		output = readHtmlFile(filename, conf);
+		output = readHtmlFile(filename, location);
 	}
 	return output;
 }
 
 std::string
-HttpRequest::readHtmlFile(const std::string &filename, const Config &conf)
+HttpRequest::readHtmlFile(const std::string &filename, const Location *location)
 {
-	const std::string &root_folder = conf.http.server.location.config.root;
+	const std::string &root_folder = location->_root;
 
-	std::string filePath = root_folder + "/" + filename;
+	std::string filePath = root_folder + filename;
 	std::ifstream file(filePath.c_str(), std::ios_base::in);
 
 	if (!file) {
