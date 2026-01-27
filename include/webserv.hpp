@@ -20,6 +20,7 @@
 #include <string>
 #include <netinet/in.h>
 #include <vector>
+#include <algorithm>
 
 #define FT_RED		"\e[31m"
 #define FT_GREEN	"\e[32m"

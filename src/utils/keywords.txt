@@ -1,0 +1,16 @@
+http
+worker_processes
+log_format
+server
+listen
+name
+location
+root
+index
+autoindex
+methods
+max_body_size
+cgi
+ext
+script
+error_page

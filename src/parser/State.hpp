@@ -3,160 +3,133 @@
 /*                                                        :::      ::::::::   */
 /*   State.hpp                                          :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By: margo <margo@student.42.fr>                +#+  +:+       +#+        */
+/*   By: mganchev <mganchev@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
-/*   Created: 2025/08/07 20:47:27 by margo             #+#    #+#             */
-/*   Updated: 2025/10/01 23:50:49 by margo            ###   ########.fr       */
+/*   Created: 2026/01/21 17:45:42 by margo             #+#    #+#             */
+/*   Updated: 2026/01/27 09:41:49 by mganchev         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
 #ifndef STATE_HPP
 #define STATE_HPP
 
-#include <map>
-#include <vector>
 #include <iostream>
-#include <string>
+#include <vector>
+#include <map>
 
-/*
-    STATES:
-        1. parsing > should it be a state in itself?
-        2. http/server/location etc.
-        3. inside block/directive(s)
-        4. errors (e.g. if config file doesn't exist/can't be read)
-        5. comment
-        6. quotes
-*/
+struct  CGI;
+struct  Location;
 
-class Parser;
-class   IBlock;
-
-typedef struct Parameter
+enum    e_block_type
 {
-    std::string value;
-    int rlidx;
-} Parameter;
+    HTTP_,
+    SERVER_,
+    LOCATION_,
+    CGI_,
+} ; 
 
-typedef struct Comment
-{
-    std::string content;
-    int rlidx;
-} Comment;
-
-class IState
-{
-    public:
-        virtual ~IState() {};
-        
-        virtual void    enter(Parser*   parser) = 0;
-        virtual void    toggle(Parser*  parser) = 0;
-        //virtual void    exit(Parser*  parser) = 0;
-} ;
-
-class   Start: public IState
+class   IBlock
 {
     private:
-        Start(const Start& copy);
-        Start& operator=(const Start& copy);
-    
+        bool    _in_block;
+        e_block_type    _type;
+        unsigned int    _line_start;
+        unsigned int    _line_end;
+        IBlock* _parent_block; // if NULL we're in main server block
         
-    public:
-        Start();
-        ~Start();
-        
-        void    enter(Parser* parser);
-        void    toggle(Parser *parser);
-        void    exit(Parser* parser);
-} ;
-
-class   IBlock: public IState
-{
-    private:
-        std::string     _name;
-        int _line;
-        std::string _code;
-        IState* _parent;
-        std::vector<Parameter> _parameters;
-        std::vector<IState*> _directives;
-
         IBlock();
+        
+    public:
+        IBlock(e_block_type type);
         IBlock(const IBlock& copy);
         IBlock& operator=(const IBlock& copy);
+        bool    operator==(IBlock& oth);
+        virtual ~IBlock();
 
-    public:
-        IBlock(const std::string& name);
-        bool operator==(const IBlock& oth);
-        ~IBlock();
-
-        int getLine() const;
-        void    setLine(int line);
-        std::string    getName() const;
-        std::string    getCode() const;
-        std::vector<IState*> getDirectives() const;
-        std::vector<Parameter>  getParameters() const;
-        void    addParameter(Parameter newParameter);
-        void    addDirective(IState* newDir);
-        IState* getParent() const;
-        void    setParent(IState*   parentDirective);
-
-        virtual void    enter(Parser* parser) = 0;
-        virtual void    toggle(Parser* parser) = 0;
-        virtual void    exit(Parser*    parser) = 0;
-
+        // getters
+        bool    isInBlock() const;
+        unsigned int    getStartLine() const;
+        unsigned int    getEndLine() const;
+        e_block_type    getBlockType() const;
+        IBlock* getParent() const;
+        
+        // setters
+        void    setInBlock(bool in_block);
+        void    setStartLine(unsigned int line_start);
+        void    setEndLine(unsigned int line_end);
+        void    setParent(IBlock*   parent);
 } ;
 
-/*
-    1. HTTP (context)
-    2. server (context)
-    //3. listen 
-    4. location (context)
-    5. root
-    6. index
-*/
+struct  CGI: public IBlock
+{
+    std::string _ext;
+    std::string _script;
+    CGI();
+    CGI& operator=(const CGI& copy);
+} ;
+
+struct  Location: public IBlock
+{  
+    std::string _root; // where it's getting redirected;
+    std::string _path; // the redirect 
+    std::vector<std::string>    _index;
+    std::vector<std::string>    _methods;
+    unsigned long long   _max_body_size;
+    bool    _autoindex;
+    std::vector<CGI>    _cgi;
+    Location();
+    Location&   operator=(const Location& copy);
+} ;
+
+class   Server: public IBlock
+{
+    private:
+        unsigned int _port;
+        std::string _hostname;
+        std::vector<Location>   _locations;
+        std::map<std::string, std::string> _error_pages; // map<error code, path to html>
+
+    public:
+        Server();
+        Server(const Server& copy);
+        Server& operator=(const Server& copy);
+        ~Server();
+        
+        unsigned int getPort() const;
+        std::string getHost() const;
+        std::vector<Location>& getLocations();
+        const std::vector<Location>& getLocations() const;
+        const std::map<std::string, std::string>& getErrorPages() const;
+
+        void    setPort(unsigned int port);
+        void    setHost(std::string hostname);
+        void    addLocation(Location new_location);
+        void    addErrorPage(std::string code, std::string html);
+} ;
 
 class   HTTP: public IBlock
 {
     private:
-        HTTP(const HTTP& copy);
-        HTTP& operator=(const HTTP& copy);
+        std::string _workers;
+        std::string _log_format;
+        std::vector<Server> _servers;
     
     public:
         HTTP();
+        HTTP(const HTTP& copy);
+        HTTP& operator=(const HTTP& copy);
         ~HTTP();
 
-        void    enter(Parser* parser);
-        void    toggle(Parser* parser);
-        void    exit(Parser* parser);
-        //void    storeCode();
-} ;
-
-class Server: public IBlock
-{
-    private:
-        Server(const Server& copy);
-        Server& operator=(const Server& copy);
+        std::string getWorkers() const;
+        std::string getLogFormat() const;
+        std::vector<Server>& getServers();
+        const std::vector<Server>& getServers() const;
         
-    public:
-        Server();
-        ~Server();
+        void    setWorkers(std::string workers);
+        void    setLogFormat(std::string log_format);
+        void    addServer(Server new_server);
 
-        void    enter(Parser* parser);
-        void    toggle(Parser* parser);
-        void    exit(Parser* parser);
-} ;
-
-class Location: public IBlock
-{
-    private:
-        Location(const Location& copy);
-        Location& operator=(const Location& copy);
-    public:
-        Location();
-        ~Location();
-
-        void enter(Parser* parser);
-        void toggle(Parser* parser);
-        void exit(Parser* parser);
+        void    printConfig();
 } ;
 
 #endif
