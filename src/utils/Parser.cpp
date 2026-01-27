@@ -6,7 +6,7 @@
 /*   By: margo <margo@student.42.fr>                +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/01/21 21:52:43 by margo             #+#    #+#             */
-/*   Updated: 2026/01/27 16:00:33 by margo            ###   ########.fr       */
+/*   Updated: 2026/01/27 16:07:18 by margo            ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -338,9 +338,11 @@ void    Parser::handleBlockIn(std::vector<t_token> line)
 
 void    Parser::handleBlockOut()
 {
-    std::cout << "current block: " << _current_block->getStartLine() << std::endl;
-    if ( _current_block->getBlockType() != HTTP_ && !_current_block->getParent()->isInBlock())
-        throw Error("Error: invalid config: block out syntax error");
+    if (_current_block->getBlockType() != HTTP_)
+    {
+        if (!_current_block->getParent()->isInBlock())
+            throw Error("Error: invalid config: block out syntax error");
+    }
 
     if (_current_block->getBlockType() == HTTP_)
         _config.setEndLine(_current_line);
