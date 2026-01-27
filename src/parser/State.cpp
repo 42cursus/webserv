@@ -3,17 +3,16 @@
 /*                                                        :::      ::::::::   */
 /*   State.cpp                                          :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By: mganchev <mganchev@student.42.fr>          +#+  +:+       +#+        */
+/*   By: margo <margo@student.42.fr>                +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/01/25 15:43:47 by margo             #+#    #+#             */
-/*   Updated: 2026/01/27 09:43:00 by mganchev         ###   ########.fr       */
+/*   Updated: 2026/01/27 18:14:27 by margo            ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
 #include "State.hpp"
 #include "webserv.hpp"
 #include "Prefix.hpp"
-#include <sys/socket.h>
 
 IBlock::IBlock(e_block_type type): _in_block(false), _type(type), _line_start(0), _line_end(0) {}
 
@@ -76,6 +75,7 @@ CGI& CGI::operator=(const CGI& copy)
         IBlock::operator=(copy);
         _ext = copy._ext;
         _script = copy._script;
+        _cgi_param = std::map<std::string, std::string>(copy._cgi_param);
     }
     return *this;
 }

@@ -3,10 +3,10 @@
 /*                                                        :::      ::::::::   */
 /*   State.hpp                                          :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By: mganchev <mganchev@student.42.fr>          +#+  +:+       +#+        */
+/*   By: margo <margo@student.42.fr>                +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/01/21 17:45:42 by margo             #+#    #+#             */
-/*   Updated: 2026/01/27 09:41:49 by mganchev         ###   ########.fr       */
+/*   Updated: 2026/01/27 18:06:49 by margo            ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -65,6 +65,7 @@ struct  CGI: public IBlock
 {
     std::string _ext;
     std::string _script;
+    std::map<std::string, std::string> _cgi_param; // std::map<key, value>
     CGI();
     CGI& operator=(const CGI& copy);
 } ;

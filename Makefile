@@ -6,7 +6,7 @@
 #    By: margo <margo@student.42.fr>                +#+  +:+       +#+         #
 #                                                 +#+#+#+#+#+   +#+            #
 #    Created: 2025/07/17 22:30:53 by abelov            #+#    #+#              #
-#    Updated: 2026/01/23 14:36:57 by fsmyth           ###   ########.fr        #
+#    Updated: 2026/01/27 17:32:06 by margo            ###   ########.fr        #
 #                                                                              #
 # **************************************************************************** #
 
@@ -28,9 +28,11 @@ SRCS			= src/main.cpp \
 				  src/http/HttpRequest.cpp \
 				  src/http/HttpResponse.cpp \
 				  src/parser/Prefix.cpp \
+				  src/parser/DirectiveHandlers.cpp \
+				  src/parser/State.cpp \
+				  src/parser/ParserUtils.cpp \
+				  src/parser/Parser.cpp \
 				  src/utils/Utils.cpp \
-				  src/utils/State.cpp \
-				  src/utils/Parser.cpp \
 				  # src/cgi/CgiHandler.cpp \
 
 OBJS			= $(SRCS:%.cpp=$(BUILD_DIR)/%.o)
