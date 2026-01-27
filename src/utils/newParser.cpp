@@ -231,6 +231,7 @@ void    Parser::init_parser()
     _current = makeToken(NONE, "", _current_line);
     _next = makeToken(NONE, "", _current_line);
     _in_block = false;
+    _current_block = &_config; // start at root HTTP block
     init_key_database();
     init_directive_handlers();
 }
@@ -238,7 +239,6 @@ void    Parser::init_parser()
 void    Parser::handleDirective(std::vector<t_token> line)
 {
     //int count = 0;
-    std::cout << "HELLO" << std::endl;
     std::vector<t_token>::iterator it = line.begin();
     std::vector<t_token>::iterator split = getTokenFromVector(line, EQUAL);
 
@@ -266,6 +266,7 @@ void    Parser::handleBlockIn(std::vector<t_token> line)
     {
         _config.setStartLine(_current_line);
         _config.setInBlock(true);
+        _current_block = &_config;
     }
     else if (it->literal == "server")
     {
@@ -289,7 +290,7 @@ void    Parser::handleBlockIn(std::vector<t_token> line)
         _current_block->setParent(&temp);
         _current_block->setStartLine(_current_line);
         Location& temp_loc = *static_cast<Location*>(_current_block);
-        temp_loc._path = (++it)->literal;
+        temp_loc._path = (it + 1)->literal;
         temp.setInBlock(true);
     }
     else if (it->literal == "cgi")
@@ -311,27 +312,28 @@ void    Parser::handleBlockIn(std::vector<t_token> line)
 void    Parser::handleBlockOut(std::vector<t_token> line)
 {
     (void)line;
-    if (!_current_block->isInBlock())
-        throw Error("Error: invalid config: syntax error");
+    // if (!_current_block->isInBlock())
+    //     throw Error("Error: invalid config: syntax error");
 
     if (_current_block->getBlockType() == HTTP_)
-    {
         _config.setEndLine(_current_line);
-    }
     else if (_current_block->getBlockType() == SERVER_)
     {
         getLastServer().setEndLine(_current_line);
         _current_block->getParent()->setInBlock(false);
+        _current_block = _current_block->getParent();
     }
     else if (_current_block->getBlockType() == LOCATION_)
     {
         getLastLocation().setEndLine(_current_line);
         _current_block->getParent()->setInBlock(false);
+        _current_block = _current_block->getParent();
     }
     else if (_current_block->getBlockType() == CGI_)
     {
         getLastCGI().setEndLine(_current_line);
         _current_block->getParent()->setInBlock(false);
+        _current_block = _current_block->getParent();
     }
 }
 
@@ -364,7 +366,7 @@ void    Parser::tokenise()
                 _tokens.push_back(makeToken(COMMENT, word, _current_line));
                 break ;
             }
-            if (findKeyInDatabase(word) != "")
+            else if (findKeyInDatabase(word) != "")
 				_tokens.push_back(makeToken(KEY, word, _current_line));
 			else if (word == "{")
 				_tokens.push_back(makeToken(BLOCK_START, word, _current_line));
@@ -373,7 +375,15 @@ void    Parser::tokenise()
 			else if (word == "=")
                 _tokens.push_back(makeToken(EQUAL, word, _current_line));
             else if (word.find('/') != std::string::npos)
-				_tokens.push_back(makeToken(REGEX, word, _current_line));
+            {
+				if (word[word.length() - 1] == ';')
+                {
+                    _tokens.push_back(makeToken(REGEX, word.substr(0, word.length() - 1), _current_line));
+                    _tokens.push_back(makeToken(SEMICOLON, ";", _current_line));
+                }
+                else
+                    _tokens.push_back(makeToken(REGEX, word,  _current_line));
+            }
 			else if (word[0] == '"' && word[word.length() - 1] == '"') // need a better way to handle quoted strings for log_format
 				_tokens.push_back(makeToken(QUOTES, readQuotedString(word), _current_line));
 			else if (word[0] == '$')
@@ -391,7 +401,7 @@ void    Parser::tokenise()
 				_tokens.push_back(makeToken(EOL, "\n", _current_line));
 			}
 			else
-				_tokens.push_back(makeToken(ILLEGAL, word, _current_line));
+			 	_tokens.push_back(makeToken(ILLEGAL, word, _current_line));
         }
     }
     file.close();
@@ -399,7 +409,6 @@ void    Parser::tokenise()
 
 void    Parser::parse()
 {
-    setCurrentBlock(new Server());
     _current_it = _tokens.begin();
     while (_current_it != _tokens.end())
     {
@@ -408,7 +417,6 @@ void    Parser::parse()
             _next = *(_current_it + 1);
 
         unsigned int _tmp_current_line = _current.line;
-        std::cout << "line " << _current.line << " " << _tmp_current_line << std::endl;
         std::vector<t_token> _line_tokens;
         while (_current_it != _tokens.end() && _current_it->line == _tmp_current_line)
         {
@@ -418,7 +426,6 @@ void    Parser::parse()
         _current_line_type = checkLineType(_line_tokens);
         if (_current_line_type == EMPTY)
             continue ;
-        std::cout << "current token " << _current_it->literal << std::endl;
         switch (_current_line_type)
         {
             case DIRECTIVE:
@@ -437,7 +444,6 @@ void    Parser::parse()
                 break ;
         }
     }
-    std::cout << "exit loop" << std::endl;
 }
 
 void	printTokens(std::vector<t_token> tokens)
@@ -482,7 +488,7 @@ void    HTTP::printConfig()
                   << "port = " << _servers[i].getPort() << std::endl
                   << "hostname = " << _servers[i].getHost() << std::endl
                   << "error_pages: " << std::endl;
-        std::map<std::string, std::string>::iterator it;
+        std::map<std::string, std::string>::const_iterator it;
         for (it = _servers[i].getErrorPages().begin(); it != _servers[i].getErrorPages().end(); ++it)
             std::cout << "page code " << it->first << " uses html script " << it->second << std::endl;
         for (size_t j = 0; j < _servers[i].getLocations().size(); j++)
@@ -492,7 +498,7 @@ void    HTTP::printConfig()
                       << "path = " << current._path << std::endl
                       << "root = " << current._root << std::endl
                       << "methods = ";
-            for (size_t k = 0; k < current._index.size(); k++)
+            for (size_t k = 0; k < current._methods.size(); k++)
                 std::cout << current._methods[k] << " ";
             std::cout << std::endl << "index = ";
             for (size_t k = 0; k < current._index.size(); k++)

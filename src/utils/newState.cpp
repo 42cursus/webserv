@@ -39,7 +39,7 @@ IBlock::IBlock(const IBlock& copy)
     _line_end = copy._line_end;
     _parent_block = copy._parent_block;
     for (size_t i = 0; i < copy._directives.size(); i++)
-        _directives[i] = copy._directives[i];
+        _directives.push_back(copy._directives[i]);
 }
 
 IBlock& IBlock::operator=(const IBlock& copy)
@@ -51,8 +51,9 @@ IBlock& IBlock::operator=(const IBlock& copy)
         _line_start = copy._line_start;
         _line_end = copy._line_end;
         _parent_block = copy._parent_block;
+        _directives.clear();
         for (size_t i = 0; i < copy._directives.size(); i++)
-            _directives[i] = copy._directives[i];
+            _directives.push_back(copy._directives[i]);
     }
     return *this;
 }
@@ -62,7 +63,7 @@ bool    IBlock::operator==(IBlock& oth)
     return (_in_block == oth._in_block && _line_start == oth._line_start && _line_end == oth._line_end && _type == oth._type && _parent_block == oth._parent_block && _directives == oth._directives);
 }
 
-IBlock::~IBlock() { delete _parent_block; }
+IBlock::~IBlock() {}
 
 bool    IBlock::isInBlock() const { return _in_block; }
 
@@ -108,14 +109,17 @@ Location&   Location::operator=(const Location& copy)
         IBlock::operator=(copy);
         _root = copy._root;
         _path = copy._path;
+        _index.clear();
         for (size_t i = 0; i < copy._index.size(); i++)
-            _index[i] = copy._index[i];
+            _index.push_back(copy._index[i]);
+        _methods.clear();
         for (size_t i = 0; i < copy._methods.size(); i++)
-            _methods[i] = copy._methods[i];
+            _methods.push_back(copy._methods[i]);
         _max_body_size = copy._max_body_size;
         _autoindex = copy._autoindex;
+        _cgi.clear();
         for (size_t i = 0; i < copy._cgi.size(); i++)
-            _cgi[i] = copy._cgi[i];
+            _cgi.push_back(copy._cgi[i]);
     }
     return *this;
 }
@@ -127,7 +131,7 @@ Server::Server(const Server& copy): IBlock(copy)
     _port = copy._port;
     _hostname = copy._hostname;
     for (size_t i = 0; i < copy._locations.size(); i++)
-        _locations[i] = copy._locations[i];
+        _locations.push_back(copy._locations[i]);
     _error_pages = std::map<std::string, std::string>(copy._error_pages);
 }
 
@@ -138,8 +142,9 @@ Server& Server::operator=(const Server& copy)
         IBlock::operator=(copy);
         _port = copy._port;
         _hostname = copy._hostname;
+        _locations.clear();
         for (size_t i = 0; i < copy._locations.size(); i++)
-            _locations[i] = copy._locations[i];
+            _locations.push_back(copy._locations[i]);
         _error_pages = std::map<std::string, std::string>(copy._error_pages);
     }
     return *this;
@@ -151,9 +156,11 @@ unsigned int Server::getPort() const { return _port; }
 
 std::string Server::getHost() const { return _hostname; }
 
-std::vector<Location> Server::getLocations() const { return _locations; }
+std::vector<Location>& Server::getLocations() { return _locations; }
 
-std::map<std::string, std::string>  Server::getErrorPages() const { return _error_pages; }
+const std::vector<Location>& Server::getLocations() const { return _locations; }
+
+const std::map<std::string, std::string>& Server::getErrorPages() const { return _error_pages; }
 
 void    Server::setPort(unsigned int port) { _port = port; }
 
@@ -170,7 +177,7 @@ HTTP::HTTP(const HTTP& copy): IBlock(copy)
     _workers = copy._workers;
     _log_format = copy._log_format;
     for (size_t i = 0; i < copy._servers.size(); i++)
-        _servers[i] = copy._servers[i];
+        _servers.push_back(copy._servers[i]);
 }
 
 HTTP& HTTP::operator=(const HTTP& copy)
@@ -180,8 +187,9 @@ HTTP& HTTP::operator=(const HTTP& copy)
         IBlock::operator=(copy);
         _workers = copy._workers;
         _log_format = copy._log_format;
+        _servers.clear();
         for (size_t i = 0; i < copy._servers.size(); i++)
-            _servers[i] = copy._servers[i];
+            _servers.push_back(copy._servers[i]);
     }
     return *this;
 }

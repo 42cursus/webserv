@@ -125,8 +125,9 @@ class   Server: public IBlock
         
         unsigned int getPort() const;
         std::string getHost() const;
-        std::vector<Location>   getLocations() const;
-        std::map<std::string, std::string>  getErrorPages() const;
+        std::vector<Location>& getLocations();
+        const std::vector<Location>& getLocations() const;
+        const std::map<std::string, std::string>& getErrorPages() const;
 
         void    setPort(unsigned int port);
         void    setHost(std::string hostname);
