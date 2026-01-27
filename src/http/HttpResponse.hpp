@@ -15,6 +15,7 @@
 
 #include <string>
 #include <map>
+#include "State.hpp"
 
 class HttpResponse {
 
@@ -28,7 +29,14 @@ public:
 	size_t		start;
 
 	void buildHttpResponse(void);
+	std::string readHtmlFile(const std::string &filename, const Location *location);
 	HttpResponse();
+
+	class GenericException : public  std::exception
+	{
+	public:
+		const char* what() const throw();
+	};
 };
 
 

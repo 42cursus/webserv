@@ -33,7 +33,7 @@ void	loc_trie_insert(TrieNode *head, Location *location)
 	current->location = location;
 }
 
-Location	*loc_trie_search(TrieNode *head, std::string& path)
+Location	*loc_trie_search(TrieNode *head, std::string const& path)
 {
 	TrieNode						*current = head;
 	Location	*last_loc = NULL;
@@ -43,8 +43,6 @@ Location	*loc_trie_search(TrieNode *head, std::string& path)
 		// std::cout << path[i] << std::endl;
 		size_t idx = static_cast<size_t>(path[i]);
 
-		// if (current->location != NULL)
-		// 	last_loc = current->location;
 		current = current->children[idx];
 		if (current != NULL && current->location != NULL)
 			last_loc = current->location;

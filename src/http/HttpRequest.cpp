@@ -20,6 +20,7 @@
 #include "HttpRequest.hpp"
 #include "HttpResponse.hpp"
 #include "Prefix.hpp"
+#include "State.hpp"
 #include "webserv.hpp"
 // #include "src/cgi/CgiHandler.hpp"
 // #include "LocationConfig.hpp"
@@ -108,9 +109,10 @@ static bool ends_with(const std::string &s, const std::string &suffix) {
 }
 
 std::string
-HttpRequest::getHtmlResponse(const Config &conf, HttpResponse& res)
+HttpRequest::getHtmlResponse(const Location *location, HttpResponse& res)
 {
-	Location *location = loc_trie_search(conf.http.server.loc_trie, path);
+	std::string output;
+
 	if (location == NULL)
 	{
 		std::cout << "LOCATION NULL" << std::endl;
@@ -131,7 +133,6 @@ HttpRequest::getHtmlResponse(const Config &conf, HttpResponse& res)
 
 	// LocationConfig lc(*location);
 	res.filename = filename;
-	std::string output;
 	if (ends_with(filename, ".bla"))
 	{
 	// 	// CgiHandler handler(*this, lc, filename, res);
@@ -149,28 +150,9 @@ HttpRequest::getHtmlResponse(const Config &conf, HttpResponse& res)
 	else
 	{
 		res.headers["content-type"] = getMimeType(filename);
-		output = readHtmlFile(filename, location);
+		output = res.readHtmlFile(filename, location);
 	}
 	return output;
-}
-
-std::string
-HttpRequest::readHtmlFile(const std::string &filename, const Location *location)
-{
-	const std::string &root_folder = location->_root;
-
-	std::string filePath = root_folder + filename;
-	std::ifstream file(filePath.c_str(), std::ios_base::in);
-
-	if (!file) {
-		std::cerr << "File not found." << std::endl;
-		return "";
-	}
-
-	std::stringstream buffer;
-	buffer << file.rdbuf();
-
-	return buffer.str();
 }
 
 std::string HttpRequest::getMimeType(const std::string &path)

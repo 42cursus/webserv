@@ -3,17 +3,16 @@
 /*                                                        :::      ::::::::   */
 /*   State.cpp                                          :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By: mganchev <mganchev@student.42.fr>          +#+  +:+       +#+        */
+/*   By: margo <margo@student.42.fr>                +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/01/25 15:43:47 by margo             #+#    #+#             */
-/*   Updated: 2026/01/27 09:43:00 by mganchev         ###   ########.fr       */
+/*   Updated: 2026/01/27 18:14:27 by margo            ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
 #include "State.hpp"
 #include "webserv.hpp"
 #include "Prefix.hpp"
-#include <sys/socket.h>
 
 IBlock::IBlock(e_block_type type): _in_block(false), _type(type), _line_start(0), _line_end(0) {}
 
@@ -76,6 +75,7 @@ CGI& CGI::operator=(const CGI& copy)
         IBlock::operator=(copy);
         _ext = copy._ext;
         _script = copy._script;
+        _cgi_param = std::map<std::string, std::string>(copy._cgi_param);
     }
     return *this;
 }
@@ -150,19 +150,21 @@ const std::map<std::string, std::string>& Server::getErrorPages() const { return
 
 void Server::get_config(struct Config& cfg)
 {
-	for (uint64_t i = 0; i < _locations.size(); i++)
-	{
-		cfg.http.server.locations.push_back(&this->_locations[i]);
-	}
+	// for (uint64_t i = 0; i < _locations.size(); i++)
+	// {
+	// 	cfg.http.server.locations.push_back(&this->_locations[i]);
+	// }
+	cfg.http.server.locations = this->_locations;
 	cfg.http.server.server_name = this->_hostname;
 	cfg.http.server.ipv4_listen.sin_family = AF_INET;
 	cfg.http.server.ipv4_listen.sin_addr.s_addr = htonl(INADDR_ANY);
 	std::memset(cfg.http.server.ipv4_listen.sin_zero, 0, 8);
 	cfg.http.server.ipv4_listen.sin_port = htons(this->_port);
 	cfg.http.server.loc_trie = new TrieNode();
-	for (uint64_t i = 0; i < this->_locations.size(); i++)
+	cfg.http.server.error_pages = this->_error_pages;
+	for (uint64_t i = 0; i < cfg.http.server.locations.size(); i++)
 	{
-		loc_trie_insert(cfg.http.server.loc_trie, &_locations[i]);
+		loc_trie_insert(cfg.http.server.loc_trie, &cfg.http.server.locations[i]);
 	}
 }
 

@@ -16,12 +16,13 @@
 #include <vector>
 #include "TCPServer.hpp"
 #include "HttpRequest.hpp"
+#include "Prefix.hpp"
 #include "Worker.hpp"
 #include "WorkerPool.hpp"
 #include "serve.hpp"
 
 
-TCPServer::TCPServer(const Config conf) : cfg(conf)
+TCPServer::TCPServer(const Config& conf) : cfg(conf)
 {
 
 }
@@ -86,6 +87,7 @@ int TCPServer::getSocketFd() const
 void TCPServer::stop()
 {
 	close(_socket_fd);
+	free_loc_trie(this->getCfg().http.server.loc_trie);
 }
 
 const Config &TCPServer::getCfg() const

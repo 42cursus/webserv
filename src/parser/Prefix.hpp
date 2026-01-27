@@ -25,7 +25,7 @@ struct TrieNode
 
 
 void	loc_trie_insert(TrieNode *head, Location *location);
-Location	*loc_trie_search(TrieNode *head, std::string& path);
+Location	*loc_trie_search(TrieNode *head, std::string const& path);
 void	test_trie_match(TrieNode *head, std::string path);
 void 	test_trie(void);
 void	free_loc_trie(TrieNode *node);
