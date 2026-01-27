@@ -32,13 +32,13 @@ private:
 	int _socket_fd;
 
 protected:
-	const Config cfg;
+	const Config &cfg;
 public:
 	const Config &getCfg() const;
 
 public:
 	// static Config default_config;
-	explicit TCPServer(Config conf);
+	explicit TCPServer(const Config& conf);
 	// TCPServer();
 	~TCPServer();
 

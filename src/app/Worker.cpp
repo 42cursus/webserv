@@ -18,6 +18,7 @@
 #include "webserv.hpp"
 #include "HttpRequest.hpp"
 #include "HttpResponse.hpp"
+#include "Prefix.hpp"
 #include <cstddef>
 #include <cstring>
 #include <fcntl.h>
@@ -235,9 +236,19 @@ int	Worker::sendResponse(void)
 	return (1);
 }
 
+void	Worker::handle_error_response(HttpResponse *res) const
+{
+	const std::string& path = _srv->getCfg().http.server.error_pages.at(res->statuscode);
+	res->headers["content-type"] = _req->getMimeType(path);
+	res->body = res->readHtmlFile(path, loc_trie_search(_srv->getCfg().http.server.loc_trie, path));
+	res->headers["content-length"] = ::itoa(res->body.length());
+
+}
+
 HttpResponse*	Worker::prepareResponse() const
 {
 	HttpResponse*	res = new HttpResponse();
+	Location		*location = loc_trie_search(_srv->getCfg().http.server.loc_trie, _req->path);
 	std::string		mimetype;
 
 	res->statuscode = "200";
@@ -245,45 +256,59 @@ HttpResponse*	Worker::prepareResponse() const
 	// res->headers = _req->headers;
 	res->headers["Server"] = "Webserv/0.69";
 
-	if (_req->method == "GET")
+	if (std::find(location->_methods.begin(), location->_methods.end(), _req->method) == location->_methods.end())
 	{
-		res->body = _req->getHtmlResponse(_srv->getCfg(), *res);
-		// if (res->headers["content-type"] == "video/mp4" )
-		// {
-			if (_req->headers["range"].empty())
-				res->headers["accept-ranges"] = "bytes";
-			else if (_req->headers["range"].find("bytes") == 0)
-			{
-				parse_range(*res);
-				res->statuscode = "206";
-				res->statusmsg = "Partial Content";
-			}
-		// }
-		res->headers["content-length"] = ::itoa(res->body.length());
+		res->statuscode = "405";
+		res->statusmsg = "Method Not Allowed";
+		handle_error_response(res);
+		return res;
 	}
-	else if (_req->method == "PUT")
-	{
-		std::string	rel_path = _req->path.substr(1, _req->path.length());
-		if (rel_path.empty())
-			rel_path = "default";
-		std::string	path = _srv->getCfg().http.server.locations[0]->_root + "/put_test/" + rel_path;
-		if (access(path.c_str(), F_OK) == 0)
-		{
-			res->statuscode = "204";
-			res->statusmsg = "No Content";
-		}
-		else
-		{
-			res->statuscode = "201";
-			res->statusmsg = "Created";
-		}
-		int	fd = open(path.c_str(), O_WRONLY | O_TRUNC | O_CREAT, S_IRWXU | S_IROTH | S_IRGRP);
-		write(fd, _req->body.data(), _req->body.size());
-		close(fd);
-	}
-	else if (_req->method == "DELETE")
-	{
 
+	try {
+		if (_req->method == "GET")
+		{
+			res->body = _req->getHtmlResponse(location, *res);
+			// if (res->headers["content-type"] == "video/mp4" )
+			// {
+				if (_req->headers["range"].empty())
+					res->headers["accept-ranges"] = "bytes";
+				else if (_req->headers["range"].find("bytes") == 0)
+				{
+					parse_range(*res);
+					res->statuscode = "206";
+					res->statusmsg = "Partial Content";
+				}
+			// }
+			res->headers["content-length"] = ::itoa(res->body.length());
+		}
+		else if (_req->method == "PUT")
+		{
+			std::string	rel_path = _req->path.substr(location->_path.length(), _req->path.length());
+			if (rel_path.empty())
+				rel_path = "default";
+			std::string	path = location->_root + rel_path;
+			if (access(path.c_str(), F_OK) == 0)
+			{
+				res->statuscode = "204";
+				res->statusmsg = "No Content";
+			}
+			else
+			{
+				res->statuscode = "201";
+				res->statusmsg = "Created";
+			}
+			res->headers["content-length"] = "0";
+			int	fd = open(path.c_str(), O_WRONLY | O_TRUNC | O_CREAT, S_IRWXU | S_IROTH | S_IRGRP);
+			write(fd, _req->body.data(), _req->body.size());
+			close(fd);
+		}
+		else if (_req->method == "DELETE")
+		{
+
+		}
+	} catch (std::exception &e)
+	{
+		handle_error_response(res);
 	}
 
 	return (res);

@@ -41,11 +41,11 @@ struct Config
 {
 	struct Http {
 		struct Server {
-			sockaddr_in	ipv4_listen;
-			std::string			server_name;
-			std::vector<Location*> locations;
-			TrieNode *loc_trie;
-
+			sockaddr_in				ipv4_listen;
+			std::string				server_name;
+			std::vector<Location>	locations;
+			TrieNode				*loc_trie;
+			std::map<std::string, std::string>	error_pages; // map<error code, path to html>
 		}	server;
 	}	http;
 

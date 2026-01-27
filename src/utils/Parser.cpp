@@ -284,7 +284,7 @@ void    Parser::handleDirective(std::vector<t_token> line)
         throw Error("Error: invalid config: directive syntax error");
 	}
 
-	std::cout << "literal: " << line.begin()->literal << " on line " << line.begin()->line << std::endl;
+	// std::cout << "literal: " << line.begin()->literal << " on line " << line.begin()->line << std::endl;
 
 	if (line.begin()->type != KEY)
         throw Error("Error: invalid directive");

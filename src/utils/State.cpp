@@ -150,19 +150,21 @@ const std::map<std::string, std::string>& Server::getErrorPages() const { return
 
 void Server::get_config(struct Config& cfg)
 {
-	for (uint64_t i = 0; i < _locations.size(); i++)
-	{
-		cfg.http.server.locations.push_back(&this->_locations[i]);
-	}
+	// for (uint64_t i = 0; i < _locations.size(); i++)
+	// {
+	// 	cfg.http.server.locations.push_back(&this->_locations[i]);
+	// }
+	cfg.http.server.locations = this->_locations;
 	cfg.http.server.server_name = this->_hostname;
 	cfg.http.server.ipv4_listen.sin_family = AF_INET;
 	cfg.http.server.ipv4_listen.sin_addr.s_addr = htonl(INADDR_ANY);
 	std::memset(cfg.http.server.ipv4_listen.sin_zero, 0, 8);
 	cfg.http.server.ipv4_listen.sin_port = htons(this->_port);
 	cfg.http.server.loc_trie = new TrieNode();
-	for (uint64_t i = 0; i < this->_locations.size(); i++)
+	cfg.http.server.error_pages = this->_error_pages;
+	for (uint64_t i = 0; i < cfg.http.server.locations.size(); i++)
 	{
-		loc_trie_insert(cfg.http.server.loc_trie, &_locations[i]);
+		loc_trie_insert(cfg.http.server.loc_trie, &cfg.http.server.locations[i]);
 	}
 }
 

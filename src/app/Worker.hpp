@@ -72,6 +72,7 @@ public:
 	size_t	extract_body(size_t nread, size_t old_size, size_t clcr_pos) const;
 	void	parse_range(HttpResponse& res) const;
 	int	sendResponse();
+	void	handle_error_response(HttpResponse *res) const;
 	void	reset();
 };
 

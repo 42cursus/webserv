@@ -15,7 +15,7 @@ NAME 			= webserv
 BUILD_DIR		= build
 INC_DIR			= ./include
 
-CFLAGS 			:= -Wall -Wextra -Werror -std=c++98 -g3 -gdwarf-3 -O0
+CFLAGS 			:= -Wall -Wextra -Werror -std=c++98 -g3 -gdwarf-3 -O0 # -fsanitize=address
 CPP 			= c++
 
 INCLUDE_FLAGS	:= -I. -I./src/http -I./src/app -I./src/utils -I./src/parser -I$(INC_DIR) -I/usr/include
