@@ -101,18 +101,6 @@ std::string	Parser::readQuotedString(std::string word)
 
 void	add_default_locations(Config &cfg)
 {
-	Config::Http::Server::Location upload = {
-		.path = "/upload/",
-		.config = {
-			.root = "./resources/web/put_test/",
-		},
-	};
-	Config::Http::Server::Location data = {
-		.path = "/data/",
-		.config = {
-			.root = "./resources/web/img/",
-		},
-	};
 	std::vector<Config::Http::Server::Location> &locations = cfg.http.server.locations;
 	locations.push_back(cfg.http.server.location);
 	locations.push_back(upload);

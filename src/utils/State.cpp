@@ -11,6 +11,8 @@
 /* ************************************************************************** */
 
 #include "State.hpp"
+#include "webserv.hpp"
+#include "Prefix.hpp"
 
 IBlock::IBlock(e_block_type type): _in_block(false), _type(type), _line_start(0), _line_end(0) {}
 
@@ -61,7 +63,10 @@ void    IBlock::setEndLine(unsigned int line_end) { _line_end = line_end; }
 
 void    IBlock::setParent(IBlock* parent) { _parent_block = parent; }
 
-CGI::CGI(): IBlock(CGI_) {}
+CGI::CGI(): IBlock(CGI_)
+{
+	setInBlock(false);
+}
 
 CGI& CGI::operator=(const CGI& copy)
 {
@@ -74,7 +79,10 @@ CGI& CGI::operator=(const CGI& copy)
     return *this;
 }
 
-Location::Location(): IBlock(LOCATION_) {}
+Location::Location(): IBlock(LOCATION_)
+{
+	setInBlock(false);
+}
 
 Location&   Location::operator=(const Location& copy)
 {
@@ -98,7 +106,10 @@ Location&   Location::operator=(const Location& copy)
     return *this;
 }
 
-Server::Server(): IBlock(SERVER_), _port(-1) {}
+Server::Server(): IBlock(SERVER_), _port(-1)
+{
+	setInBlock(false);
+}
 
 Server::Server(const Server& copy): IBlock(copy)
 {
@@ -135,6 +146,21 @@ std::vector<Location>& Server::getLocations() { return _locations; }
 const std::vector<Location>& Server::getLocations() const { return _locations; }
 
 const std::map<std::string, std::string>& Server::getErrorPages() const { return _error_pages; }
+
+void Server::get_config(struct Config& cfg)
+{
+	for (uint64_t i = 0; i < _locations.size(); i++)
+	{
+		cfg.http.server.locations.push_back(&this->_locations[i]);
+	}
+	cfg.http.server.server_name = this->_hostname;
+	cfg.http.server.ipv4_listen.sin_port = htons(this->_port);
+	cfg.http.server.loc_trie = new TrieNode();
+	for (uint64_t i = 0; i < this->_locations.size(); i++)
+	{
+		loc_trie_insert(cfg.http.server.loc_trie, &_locations[i]);
+	}
+}
 
 void    Server::setPort(unsigned int port) { _port = port; }
 

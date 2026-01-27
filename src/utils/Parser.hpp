@@ -86,7 +86,7 @@ class   Parser
         Parser& operator=(const Parser& copy);
         
     public:
-        Parser(std::string filePath): _config_root(filePath) {};
+        Parser(std::string filePath);
         ~Parser() {};
 
         // getters

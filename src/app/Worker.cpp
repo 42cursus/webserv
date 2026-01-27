@@ -266,7 +266,7 @@ HttpResponse*	Worker::prepareResponse() const
 		std::string	rel_path = _req->path.substr(1, _req->path.length());
 		if (rel_path.empty())
 			rel_path = "default";
-		std::string	path = _srv->getCfg().http.server.location.config.root + "/put_test/" + rel_path;
+		std::string	path = _srv->getCfg().http.server.locations[0]->_root + "/put_test/" + rel_path;
 		if (access(path.c_str(), F_OK) == 0)
 		{
 			res->statuscode = "204";

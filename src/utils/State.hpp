@@ -19,6 +19,7 @@
 
 struct  CGI;
 struct  Location;
+struct Config;
 
 enum    e_block_type
 {
@@ -105,6 +106,7 @@ class   Server: public IBlock
         void    setHost(std::string hostname);
         void    addLocation(Location new_location);
         void    addErrorPage(std::string code, std::string html);
+		void	get_config(struct Config &cfg);
 } ;
 
 class   HTTP: public IBlock

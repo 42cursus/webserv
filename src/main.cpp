@@ -13,9 +13,9 @@
 #include "webserv.hpp"
 #include "TCPServer.hpp"
 #include "serve.hpp"
-#include "ConfigParser.hpp"
+#include "Parser.hpp"
 #include <csignal>
-#include <cstdlib>
+// #include <cstdlib>
 #include <vector>
 
 #include "Prefix.hpp"
@@ -41,48 +41,56 @@ int	main(int argc, char **argv)
 {
 	t_sigaction	act;
 	t_sigaction	old_act;
-	char		*filename;
-
-	// test_trie();
-	// exit(1);
 
 	act.sa_flags = SA_SIGINFO; // Do NOT set SA_RESTART; we want syscalls to be interrupted.
 	act.sa_sigaction = &sig_handler;
 	sigemptyset(&act.sa_mask);
 	if (sigaction(SIGINT, &act, &old_act) != 0)
 		exit(EXIT_FAILURE);
-	filename = (char *)"resources/webserv.conf";
+
+
+	std::string filename = "resources/webserv.conf";
+	Parser  newParser(filename);
+
 	if (argc > 1)
 		filename = argv[1];
+
+    try
+    {
+        newParser.init_parser();
+        newParser.tokenise();
+        // printTokens(newParser.getTokens());
+        std::cout << std::endl;
+        newParser.parse();
+        newParser.getConfig().printConfig();
+    }
+    catch (std::exception   &e)
+    {
+        std::cerr << e.what() << std::endl;
+    }
+
 	std::vector<TCPServer*>	srvs;
-	try {
-		std::cout << "Wello horld!" << std::endl;
-		Config conf = Parser::make_default_config();
+	std::vector<Config>	cfgs;
+	cfgs.resize(newParser.getConfig().getServers().size());
 
-		// test_trie_match(conf.http.server.loc_trie, "/hello");
-		// test_trie_match(conf.http.server.loc_trie, "/upload");
-		// test_trie_match(conf.http.server.loc_trie, "/upload/wee");
-		// test_trie_match(conf.http.server.loc_trie, "/data/file.mp4");
-		// exit(1);
-
-		TCPServer srv = TCPServer(conf);
-		Config conf2 = Parser::make_default_config();
-		conf2.http.server.ipv4_listen.sin_port = htons(5000);
-		conf2.http.server.location.config.root = "./resources/web2";
-		TCPServer srv2 = TCPServer(conf2);
-		srvs.push_back(&srv);
-		srvs.push_back(&srv2);
-		srv.start();
-		srv2.start();
-
-		serve(srvs);
-
-		srv.stop();
-	}
-	catch (const std::exception& e)
+	for (uint64_t i = 0; i < cfgs.size(); i++)
 	{
-		std::cerr << e.what() << std::endl;
+		newParser.getConfig().getServers()[i].get_config(cfgs[i]);
 	}
+
+	test_trie_match(cfgs[0].http.server.loc_trie, "/hello");
+	test_trie_match(cfgs[0].http.server.loc_trie, "/uploa");
+	test_trie_match(cfgs[0].http.server.loc_trie, "/upload/hello");
+	exit(1);
+
+	for (uint64_t i = 0; i < cfgs.size(); i++)
+	{
+		srvs.push_back(new TCPServer(cfgs[i]));
+		srvs[i]->start();
+	}
+
+	serve(srvs);
+	
     return (0);
 	(void)filename;
 }

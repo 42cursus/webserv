@@ -16,22 +16,20 @@
 #include <vector>
 #include "TCPServer.hpp"
 #include "HttpRequest.hpp"
-#include "ConfigParser.hpp"
 #include "Worker.hpp"
 #include "WorkerPool.hpp"
 #include "serve.hpp"
 
-Config TCPServer::default_config = Parser::make_default_config();
 
 TCPServer::TCPServer(const Config conf) : cfg(conf)
 {
 
 }
 
-TCPServer::TCPServer() : cfg(default_config)
-{
-
-}
+// TCPServer::TCPServer() : cfg(default_config)
+// {
+//
+// }
 
 int TCPServer::start()
 {

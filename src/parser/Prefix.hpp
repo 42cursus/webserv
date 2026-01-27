@@ -17,15 +17,15 @@
 
 struct TrieNode
 {
-	Config::Http::Server::Location	*location;
-	TrieNode						*children[128];
+	Location	*location;
+	TrieNode	*children[128];
 
 	TrieNode(void);
 };
 
 
-void	loc_trie_insert(TrieNode *head, Config::Http::Server::Location *location);
-Config::Http::Server::Location	*loc_trie_search(TrieNode *head, std::string& path);
+void	loc_trie_insert(TrieNode *head, Location *location);
+Location	*loc_trie_search(TrieNode *head, std::string& path);
 void	test_trie_match(TrieNode *head, std::string path);
 void 	test_trie(void);
 void	free_loc_trie(TrieNode *node);

@@ -25,14 +25,13 @@ SRCS			= src/main.cpp \
 				  src/app/Worker.cpp \
 				  src/app/WorkerPool.cpp \
 				  src/app/TCPServer.cpp \
-				  src/cgi/CgiHandler.cpp \
 				  src/http/HttpRequest.cpp \
 				  src/http/HttpResponse.cpp \
-				  src/http/LocationConfig.cpp \
-				  src/parser/ConfigParser.cpp \
-				  src/parser/State.cpp \
 				  src/parser/Prefix.cpp \
-				  src/utils/Utils.cpp
+				  src/utils/Utils.cpp \
+				  src/utils/State.cpp \
+				  src/utils/Parser.cpp \
+				  # src/cgi/CgiHandler.cpp \
 
 OBJS			= $(SRCS:%.cpp=$(BUILD_DIR)/%.o)
 

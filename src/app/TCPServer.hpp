@@ -37,9 +37,9 @@ public:
 	const Config &getCfg() const;
 
 public:
-	static Config default_config;
+	// static Config default_config;
 	explicit TCPServer(Config conf);
-	TCPServer();
+	// TCPServer();
 	~TCPServer();
 
 	class GenericException : public  std::exception

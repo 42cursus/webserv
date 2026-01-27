@@ -13,6 +13,11 @@
 #include "Parser.hpp"
 #include "State.hpp"
 
+Parser::Parser(std::string filePath) : _config_root(filePath)
+{
+
+}
+
 void Parser::readLogFormatString(std::ifstream& file, std::istringstream& iss, std::string& word)
 {
     _tokens.push_back(makeToken(KEY, word, _current_line));
@@ -216,7 +221,7 @@ void    Parser::init_key_database()
     std::string line;
     std::fstream    fin;
 
-    fin.open("keywords.txt", std::ios::in);
+    fin.open("./src/utils/keywords.txt", std::ios::in);
     while(std::getline(fin, line))
     {
         std::stringstream iss(line);
@@ -249,7 +254,7 @@ void    Parser::init_parser()
     _current_line = 0;
     _current = makeToken(NONE, "", _current_line);
     _next = makeToken(NONE, "", _current_line);
-    _current_block = &_config; // start at root HTTP block
+    // _current_block = &_config; // start at root HTTP block
     init_key_database();
     init_directive_handlers();
 }
@@ -265,8 +270,13 @@ void    Parser::handleDirective(std::vector<t_token> line)
     for (it = line.begin(); it != split; ++it)
         count++;
     if (count != 1)
+	{
         throw Error("Error: invalid config: directive syntax error");
-    if (line.begin()->type != KEY)
+	}
+
+	std::cout << "literal: " << line.begin()->literal << " on line " << line.begin()->line << std::endl;
+
+	if (line.begin()->type != KEY)
         throw Error("Error: invalid directive");
 
     std::map<std::string, Directive_handler>::iterator key = _directive_handlers.find(line.front().literal);
@@ -513,21 +523,21 @@ void    HTTP::printConfig()
     }
 }
 
-int main()
-{
-    Parser  newParser("../../resources/webserv.conf");
-
-    try
-    {        
-        newParser.init_parser();
-        newParser.tokenise();
-        printTokens(newParser.getTokens());
-        std::cout << std::endl;
-        newParser.parse();
-        newParser.getConfig().printConfig();
-    }
-    catch (std::exception   &e)
-    {
-        std::cerr << e.what() << std::endl;
-    }
-}
+// int main()
+// {
+//     Parser  newParser("../../resources/webserv.conf");
+//
+//     try
+//     {
+//         newParser.init_parser();
+//         newParser.tokenise();
+//         printTokens(newParser.getTokens());
+//         std::cout << std::endl;
+//         newParser.parse();
+//         newParser.getConfig().printConfig();
+//     }
+//     catch (std::exception   &e)
+//     {
+//         std::cerr << e.what() << std::endl;
+//     }
+// }

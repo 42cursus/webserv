@@ -17,10 +17,10 @@
 
 TrieNode::TrieNode(void) : location(NULL), children() {}
 
-void	loc_trie_insert(TrieNode *head, Config::Http::Server::Location *location)
+void	loc_trie_insert(TrieNode *head, Location *location)
 {
 	TrieNode		*current = head;
-	std::string&	path = location->path;
+	std::string&	path = location->_path;
 
 	for (uint64_t i = 0; i < path.length(); i++)
 	{
@@ -33,10 +33,10 @@ void	loc_trie_insert(TrieNode *head, Config::Http::Server::Location *location)
 	current->location = location;
 }
 
-Config::Http::Server::Location	*loc_trie_search(TrieNode *head, std::string& path)
+Location	*loc_trie_search(TrieNode *head, std::string& path)
 {
 	TrieNode						*current = head;
-	Config::Http::Server::Location	*last_loc = NULL;
+	Location	*last_loc = NULL;
 
 	for (uint64_t i = 0; i < path.length() && current != NULL; i++)
 	{
@@ -65,43 +65,43 @@ void	free_loc_trie(TrieNode *node)
 
 void	test_trie_match(TrieNode *head, std::string path)
 {
-	Config::Http::Server::Location	*match;
+	Location	*match;
 
 	std::cout << "Searching for '" << path << "'" << std::endl;
 	match = loc_trie_search(head, path);
-	std::cout << "Matches to: '" << match->config.root << "'" << std::endl << std::endl;
+	std::cout << "Matches to: '" << match->_root << "'" << std::endl << std::endl;
 }
 
-void test_trie(void)
-{
-	TrieNode	*head = new TrieNode();
-	Config::Http::Server::Location root = {
-		.path = "/",
-		.config = {
-			.root = "/usr/web/",
-		},
-	};
-	Config::Http::Server::Location loc1 = {
-		.path = "/dir/",
-		.config = {
-			.root = "/usr/web/resources/",
-		},
-	};
-	Config::Http::Server::Location loc2 = {
-		.path = "/storage/",
-		.config = {
-			.root = "/usr/storage/",
-		},
-	};
-
-	loc_trie_insert(head, &root);
-	loc_trie_insert(head, &loc1);
-	loc_trie_insert(head, &loc2);
-
-	test_trie_match(head, "/hello");
-	test_trie_match(head, "/di");
-	test_trie_match(head, "/dir/weeee");
-	test_trie_match(head, "/storage/waaaaa");
-
-	free_loc_trie(head);
-}
+// void test_trie(void)
+// {
+// 	TrieNode	*head = new TrieNode();
+// 	Config::Http::Server::Location root = {
+// 		.path = "/",
+// 		.config = {
+// 			.root = "/usr/web/",
+// 		},
+// 	};
+// 	Config::Http::Server::Location loc1 = {
+// 		.path = "/dir/",
+// 		.config = {
+// 			.root = "/usr/web/resources/",
+// 		},
+// 	};
+// 	Config::Http::Server::Location loc2 = {
+// 		.path = "/storage/",
+// 		.config = {
+// 			.root = "/usr/storage/",
+// 		},
+// 	};
+//
+// 	loc_trie_insert(head, &root);
+// 	loc_trie_insert(head, &loc1);
+// 	loc_trie_insert(head, &loc2);
+//
+// 	test_trie_match(head, "/hello");
+// 	test_trie_match(head, "/di");
+// 	test_trie_match(head, "/dir/weeee");
+// 	test_trie_match(head, "/storage/waaaaa");
+//
+// 	free_loc_trie(head);
+// }
