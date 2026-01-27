@@ -13,4 +13,5 @@ max_body_size
 cgi
 ext
 script
+cgi_param
 error_page
