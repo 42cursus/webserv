@@ -13,6 +13,7 @@
 #include "State.hpp"
 #include "webserv.hpp"
 #include "Prefix.hpp"
+#include <sys/socket.h>
 
 IBlock::IBlock(e_block_type type): _in_block(false), _type(type), _line_start(0), _line_end(0) {}
 
@@ -154,6 +155,9 @@ void Server::get_config(struct Config& cfg)
 		cfg.http.server.locations.push_back(&this->_locations[i]);
 	}
 	cfg.http.server.server_name = this->_hostname;
+	cfg.http.server.ipv4_listen.sin_family = AF_INET;
+	cfg.http.server.ipv4_listen.sin_addr.s_addr = htonl(INADDR_ANY);
+	std::memset(cfg.http.server.ipv4_listen.sin_zero, 0, 8);
 	cfg.http.server.ipv4_listen.sin_port = htons(this->_port);
 	cfg.http.server.loc_trie = new TrieNode();
 	for (uint64_t i = 0; i < this->_locations.size(); i++)

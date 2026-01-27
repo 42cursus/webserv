@@ -111,7 +111,12 @@ std::string
 HttpRequest::getHtmlResponse(const Config &conf, HttpResponse& res)
 {
 	Location *location = loc_trie_search(conf.http.server.loc_trie, path);
-	std::basic_string<char> filename = path.substr(1, path.length());
+	if (location == NULL)
+	{
+		std::cout << "LOCATION NULL" << std::endl;
+		exit(1);
+	}
+	std::basic_string<char> filename = path.substr(location->_path.length(), path.length());
 	// std::cout << FT_BOLD << FT_RED << path << FT_RESET << std::endl;
 
 	if (filename.empty())
@@ -132,6 +137,7 @@ HttpRequest::getHtmlResponse(const Config &conf, HttpResponse& res)
 	// 	// CgiHandler handler(*this, lc, filename, res);
 	// 	res.statuscode = itoa(handler.do_run());
 	// 	output = handler.raw_output();
+		;
 	}
 	else if (filename == "teapot")
 	{
@@ -143,17 +149,17 @@ HttpRequest::getHtmlResponse(const Config &conf, HttpResponse& res)
 	else
 	{
 		res.headers["content-type"] = getMimeType(filename);
-		output = readHtmlFile(filename, conf);
+		output = readHtmlFile(filename, location);
 	}
 	return output;
 }
 
 std::string
-HttpRequest::readHtmlFile(const std::string &filename, const Config &conf)
+HttpRequest::readHtmlFile(const std::string &filename, const Location *location)
 {
-	const std::string &root_folder = conf.http.server.locations[0]->_root;
+	const std::string &root_folder = location->_root;
 
-	std::string filePath = root_folder + "/" + filename;
+	std::string filePath = root_folder + filename;
 	std::ifstream file(filePath.c_str(), std::ios_base::in);
 
 	if (!file) {

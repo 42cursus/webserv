@@ -40,12 +40,17 @@ Location	*loc_trie_search(TrieNode *head, std::string& path)
 
 	for (uint64_t i = 0; i < path.length() && current != NULL; i++)
 	{
+		// std::cout << path[i] << std::endl;
 		size_t idx = static_cast<size_t>(path[i]);
 
-		if (current->location != NULL)
-			last_loc = current->location;
+		// if (current->location != NULL)
+		// 	last_loc = current->location;
 		current = current->children[idx];
+		if (current != NULL && current->location != NULL)
+			last_loc = current->location;
 	}
+
+
 
 	return last_loc;
 }

@@ -78,9 +78,14 @@ int	main(int argc, char **argv)
 		newParser.getConfig().getServers()[i].get_config(cfgs[i]);
 	}
 
-	test_trie_match(cfgs[0].http.server.loc_trie, "/hello");
+	test_trie_match(cfgs[0].http.server.loc_trie, "/");
 	test_trie_match(cfgs[0].http.server.loc_trie, "/uploa");
+	test_trie_match(cfgs[0].http.server.loc_trie, "/upload/");
 	test_trie_match(cfgs[0].http.server.loc_trie, "/upload/hello");
+
+	test_trie_match(cfgs[1].http.server.loc_trie, "/hello");
+	test_trie_match(cfgs[1].http.server.loc_trie, "/uploa");
+	test_trie_match(cfgs[1].http.server.loc_trie, "/upload/hello");
 	exit(1);
 
 	for (uint64_t i = 0; i < cfgs.size(); i++)
