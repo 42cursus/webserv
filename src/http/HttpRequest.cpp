@@ -3,10 +3,10 @@
 /*                                                        :::      ::::::::   */
 /*   HttpRequest.cpp                                    :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By: abelov <abelov@student.42london.com>       +#+  +:+       +#+        */
+/*   By: margo <margo@student.42.fr>                +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/07/18 21:41:03 by abelov            #+#    #+#             */
-/*   Updated: 2026/01/23 15:52:59 by fsmyth           ###   ########.fr       */
+/*   Updated: 2026/01/27 15:51:41 by margo            ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -119,7 +119,9 @@ HttpRequest::getHtmlResponse(const Config &conf, HttpResponse& res)
 		if (!location->_autoindex)
 			filename = location->_index[0];
 		else
+		{
 			; // DO AUTOINDEX FUNCTION
+		}
 	}
 
 	// LocationConfig lc(*location);

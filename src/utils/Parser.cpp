@@ -3,10 +3,10 @@
 /*                                                        :::      ::::::::   */
 /*   Parser.cpp                                         :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By: mganchev <mganchev@student.42.fr>          +#+  +:+       +#+        */
+/*   By: margo <margo@student.42.fr>                +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/01/21 21:52:43 by margo             #+#    #+#             */
-/*   Updated: 2026/01/27 13:26:20 by mganchev         ###   ########.fr       */
+/*   Updated: 2026/01/27 16:00:33 by margo            ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -338,7 +338,8 @@ void    Parser::handleBlockIn(std::vector<t_token> line)
 
 void    Parser::handleBlockOut()
 {
-    if (!_current_block->getParent()->isInBlock())
+    std::cout << "current block: " << _current_block->getStartLine() << std::endl;
+    if ( _current_block->getBlockType() != HTTP_ && !_current_block->getParent()->isInBlock())
         throw Error("Error: invalid config: block out syntax error");
 
     if (_current_block->getBlockType() == HTTP_)
@@ -423,9 +424,11 @@ void    Parser::tokenise()
 
 void    Parser::parse()
 {
+    _current_line = 0;
     _current_it = _tokens.begin();
     while (_current_it != _tokens.end())
     {
+        _current_line++;
         _current = *_current_it;
         if (_current_it + 1 != _tokens.end())
             _next = *(_current_it + 1);
