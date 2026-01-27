@@ -6,12 +6,22 @@
 /*   By: margo <margo@student.42.fr>                +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/01/21 21:52:43 by margo             #+#    #+#             */
-/*   Updated: 2026/01/27 16:07:18 by margo            ###   ########.fr       */
+/*   Updated: 2026/01/27 16:40:36 by margo            ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
 #include "Parser.hpp"
 #include "State.hpp"
+
+/*
+    - check if method valid: PUT GET DELETE POST;
+    - check if line type is always validated correctly;
+    - check if line size is validated correctly;
+    - check if last token before SEMICOLON on error_page line is .html file;
+    - check if error_page code is valid;
+    - check if bools are only true and false;
+    - check if CGI script has correct extension;
+*/
 
 Parser::Parser(std::string filePath) : _config_root(filePath)
 {
