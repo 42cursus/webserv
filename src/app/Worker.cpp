@@ -239,9 +239,14 @@ int	Worker::sendResponse(void)
 
 void	Worker::handle_error_response(HttpResponse *res) const
 {
-	const std::string& path = _srv->getCfg().http.server.error_pages.at(res->statuscode);
+	std::string path = _srv->getCfg().http.server.error_pages.at(res->statuscode);
+	if (path[0] != '.')
+	{
+		Location *location = loc_trie_search(_srv->getCfg().http.server.loc_trie, path);
+		path = apply_location(path, location);
+	}
 	res->headers["content-type"] = _req->getMimeType(path);
-	res->body = res->readHtmlFile(path, loc_trie_search(_srv->getCfg().http.server.loc_trie, path));
+	res->body = res->readHtmlFile(path);
 	res->headers["content-length"] = ::itoa(res->body.length());
 
 }

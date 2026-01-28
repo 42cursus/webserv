@@ -188,3 +188,4 @@ tags
 [._]*.un~
 /webserv
 /src/utils/parse
+test*
