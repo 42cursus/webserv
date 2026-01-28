@@ -150,7 +150,7 @@ HttpRequest::getHtmlResponse(const Location *location, HttpResponse& res)
 	else
 	{
 		res.headers["content-type"] = getMimeType(filename);
-		output = res.readHtmlFile(filename, location);
+		output = res.readHtmlFile(location->_root + filename);
 	}
 	return output;
 }

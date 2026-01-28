@@ -23,14 +23,10 @@ std::string itoa(int value)
 	return oss.str();
 }
 
-
-
-std::string HttpResponse::readHtmlFile(const std::string &filename, const Location *location)
+std::string HttpResponse::readHtmlFile(const std::string &filename)
 {
-	const std::string &root_folder = location->_root;
 
-	std::string filePath = root_folder + filename;
-	std::ifstream file(filePath.c_str(), std::ios_base::in);
+	std::ifstream file(filename.c_str(), std::ios_base::in);
 
 	if (!file) {
 		std::cerr << "File not found." << std::endl;

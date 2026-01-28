@@ -29,7 +29,7 @@ public:
 	size_t		start;
 
 	void buildHttpResponse(void);
-	std::string readHtmlFile(const std::string &filename, const Location *location);
+	std::string readHtmlFile(const std::string &filename);
 	HttpResponse();
 
 	class GenericException : public  std::exception

@@ -75,6 +75,12 @@ void	test_trie_match(TrieNode *head, std::string path)
 	std::cout << "Matches to: '" << match->_root << "'" << std::endl << std::endl;
 }
 
+std::string apply_location(std::string& path, Location const *location)
+{
+	std::basic_string<char> filename = path.substr(location->_path.length(), path.length());
+	return (location->_root + filename);
+}
+
 // void test_trie(void)
 // {
 // 	TrieNode	*head = new TrieNode();
