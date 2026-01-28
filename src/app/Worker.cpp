@@ -18,7 +18,7 @@
 #include "webserv.hpp"
 #include "HttpRequest.hpp"
 #include "HttpResponse.hpp"
-#include "Prefix.hpp"
+#include "Prefix_suffix.hpp"
 #include <cstddef>
 #include <cstring>
 #include <fcntl.h>
@@ -267,6 +267,17 @@ HttpResponse*	Worker::prepareResponse() const
 		res->statusmsg = "Method Not Allowed";
 		handle_error_response(res);
 		return res;
+	}
+
+	CGI	*cgi = cgi_trie_search(location->cgi_trie, _req->path);
+	if (cgi != NULL)
+	{
+		res->statuscode = "500";
+		res->statusmsg = "Internal Server Error";
+		res->headers["boop"] = "beep";
+		handle_error_response(res);
+		return res;
+
 	}
 
 	try {

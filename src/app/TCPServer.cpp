@@ -16,7 +16,7 @@
 #include <vector>
 #include "TCPServer.hpp"
 #include "HttpRequest.hpp"
-#include "Prefix.hpp"
+#include "Prefix_suffix.hpp"
 #include "Worker.hpp"
 #include "WorkerPool.hpp"
 #include "serve.hpp"
@@ -87,7 +87,7 @@ int TCPServer::getSocketFd() const
 void TCPServer::stop()
 {
 	close(_socket_fd);
-	free_loc_trie(this->getCfg().http.server.loc_trie);
+	free_trie(this->getCfg().http.server.loc_trie);
 }
 
 const Config &TCPServer::getCfg() const

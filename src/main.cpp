@@ -17,8 +17,8 @@
 #include <csignal>
 // #include <cstdlib>
 #include <vector>
+#include "Prefix_suffix.hpp"
 
-#include "Prefix.hpp"
 
 typedef struct sigaction	t_sigaction;
 
@@ -63,6 +63,7 @@ int	main(int argc, char **argv)
         std::cout << std::endl;
         newParser.parse();
         // newParser.getConfig().printConfig();
+		// exit(1);
     }
     catch (std::exception   &e)
     {

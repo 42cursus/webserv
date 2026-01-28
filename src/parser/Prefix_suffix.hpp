@@ -17,18 +17,22 @@
 
 struct TrieNode
 {
-	Location	*location;
+	void		*data;
 	TrieNode	*children[128];
 
 	TrieNode(void);
 };
 
 
-void	loc_trie_insert(TrieNode *head, Location *location);
+void		loc_trie_insert(TrieNode *head, Location *location);
 Location	*loc_trie_search(TrieNode *head, std::string const& path);
-std::string apply_location(std::string& path, Location const *location);
-void	test_trie_match(TrieNode *head, std::string path);
-void 	test_trie(void);
-void	free_loc_trie(TrieNode *node);
+void		cgi_trie_insert(TrieNode *head, CGI *cgi);
+CGI			*cgi_trie_search(TrieNode *head, std::string const& suffix);
+
+std::string	apply_location(std::string& path, Location const *location);
+
+void		test_trie_match(TrieNode *head, std::string path);
+void		test_trie(void);
+void		free_trie(TrieNode *node);
 
 #endif

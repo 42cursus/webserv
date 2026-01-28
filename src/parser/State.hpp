@@ -28,7 +28,9 @@ enum    e_block_type
     SERVER_,
     LOCATION_,
     CGI_,
-} ; 
+} ;
+
+struct TrieNode;
 
 class   IBlock
 {
@@ -80,7 +82,9 @@ struct  Location: public IBlock
     size_t					_max_body_size;
     bool    _autoindex;
     std::vector<CGI>    _cgi;
+	TrieNode			*cgi_trie;
     Location();
+    ~Location();
     Location&   operator=(const Location& copy);
 } ;
 
