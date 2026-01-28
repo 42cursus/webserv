@@ -18,7 +18,14 @@ INC_DIR			= ./include
 CFLAGS 			:= -Wall -Wextra -Werror -std=c++98 -g3 -gdwarf-3 -O0 # -fsanitize=address
 CPP 			= c++
 
-INCLUDE_FLAGS	:= -I. -I./src/http -I./src/app -I./src/utils -I./src/parser -I$(INC_DIR) -I/usr/include
+INCLUDE_FLAGS	:= -I. \
+					-I./src/http \
+					-I./src/app \
+					-I./src/utils \
+					-I./src/parser \
+					-I./src/handlers \
+					-I$(INC_DIR) \
+					-I/usr/include
 
 SRCS			= src/main.cpp \
 				  src/app/serve.cpp \
@@ -33,7 +40,7 @@ SRCS			= src/main.cpp \
 				  src/parser/ParserUtils.cpp \
 				  src/parser/Parser.cpp \
 				  src/utils/Utils.cpp \
-				  # src/cgi/CgiHandler.cpp \
+				  src/parser/ConfigParser.cpp \
 
 OBJS			= $(SRCS:%.cpp=$(BUILD_DIR)/%.o)
 

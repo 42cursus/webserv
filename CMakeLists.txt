@@ -73,6 +73,7 @@ target_include_directories(${TARGET_NAME} PRIVATE
 		${PROJECT_SOURCE_DIR}/src/parser
 		${PROJECT_SOURCE_DIR}/src/http
 		${PROJECT_SOURCE_DIR}/src/utils
+		${PROJECT_SOURCE_DIR}/src/handlers
 		/usr/include
 		/usr/include/x86_64-linux-gnu)
 

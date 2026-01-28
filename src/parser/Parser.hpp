@@ -27,6 +27,7 @@
 #include <fstream>
 #include <algorithm>
 #include "../../include/webserv.hpp"
+#include "Location.hpp"
 #include "State.hpp"
 
 class  IBlock;

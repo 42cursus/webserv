@@ -22,8 +22,8 @@
 #include "Prefix.hpp"
 #include "State.hpp"
 #include "webserv.hpp"
-// #include "src/cgi/CgiHandler.hpp"
-// #include "LocationConfig.hpp"
+#include "src/handlers/CgiHandler.hpp"
+#include "Location.hpp"
 
 HttpRequest::HttpRequest(const std::string &path) : path(path)
 {}
@@ -131,7 +131,7 @@ HttpRequest::getHtmlResponse(const Location *location, HttpResponse& res)
 		}
 	}
 
-	// LocationConfig lc(*location);
+	// Location lc(*location);
 	res.filename = filename;
 	if (ends_with(filename, ".bla"))
 	{

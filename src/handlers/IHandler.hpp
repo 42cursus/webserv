@@ -13,9 +13,14 @@
 #ifndef IHANDLER_HPP
 #define IHANDLER_HPP
 
+#include "HttpRequest.hpp"
+#include "HttpResponse.hpp"
+#include "Location.hpp"
+
 class IHandler {
 public:
-    virtual bool handle(HttpRequest &req, HttpResponse &res) = 0;
+    virtual ~IHandler() {}
+    virtual int handle(HttpRequest& req, HttpResponse& res) = 0;
 };
 
 #endif //IHANDLER_HPP

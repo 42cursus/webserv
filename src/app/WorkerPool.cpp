@@ -10,11 +10,12 @@
 /*                                                                            */
 /* ************************************************************************** */
 
+#include <cstddef>
+#include <vector>
 #include "WorkerPool.hpp"
 #include "TCPServer.hpp"
 #include "Worker.hpp"
-#include <cstddef>
-#include <vector>
+#include "Connection.hpp"
 
 WorkerPool::WorkerPool(size_t size) : _allocp(0)
 {
@@ -27,7 +28,7 @@ WorkerPool::WorkerPool(size_t size) : _allocp(0)
 		_pool.front().push_back(Worker());
 }
 
-WorkerPool::~WorkerPool(void)
+WorkerPool::~WorkerPool()
 {
 	Worker*	wrkr;
 

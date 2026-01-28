@@ -23,53 +23,38 @@
 ** ------------------------------- CONSTRUCTORS -------------------------------
 */
 
-Parser::Parser(IState*	currentState)
-        : _currentState(currentState), _inBlock(false), _config()
-{
+Parser::Parser(IState *currentState)
+    : _currentState(currentState), _inBlock(false), _config() {
     Parser::memset(&_config, 0, sizeof(_config));
 }
 
-Parser::Parser()
-{
+Parser::Parser() {
     Parser::memset(&_config, 0, sizeof(_config));
     _config = make_default_config();
 }
 
-Parser::Parser(const Parser &copy)
-{
-    (void)copy;
+Parser::Parser(const Parser &copy) {
+    (void) copy;
 }
 
-Parser::errorException::errorException(const std::string& msg): _errorMsg(msg) {};
+Parser::errorException::errorException(const std::string &msg) : _errorMsg(msg) {};
 
-const char* Parser::errorException::what() const throw()
-{
+const char *Parser::errorException::what() const throw() {
     return _errorMsg.c_str();
 }
 /*
 ** ------------------------------- DESTRUCTOR ---------------------------------
 */
 
-Parser::~Parser()
-{
-    delete _currentState;
-
-    for (std::vector<IBlock*>::iterator it = _blocks.begin(); it != _blocks.end(); ++it)
-        delete *it;
-    _blocks.clear();
-}
-
 /*
 ** -------------------------------- OPERATORS ---------------------------------
 */
 
-bool	Parser::Token::operator==(const Parser::Token&	other) const
-{
+bool Parser::Token::operator==(const Parser::Token &other) const {
     return (type == other.type && literal == other.literal && line == other.line);
 }
 
-bool Parser::operator==(const Parser &rhs) const
-{
+bool Parser::operator==(const Parser &rhs) const {
     return _key == rhs._key &&
            _configRoot == rhs._configRoot &&
            _currentToken == rhs._currentToken &&
@@ -78,12 +63,12 @@ bool Parser::operator==(const Parser &rhs) const
            _currentState == rhs._currentState &&
            _inBlock == rhs._inBlock &&
            _blocks == rhs._blocks &&
-           commentBuf == rhs.commentBuf &&
-           _config == rhs._config;
+           commentBuf == rhs.commentBuf;
+//           commentBuf == rhs.commentBuf &&
+//           _config == rhs._config;
 }
 
-bool Parser::operator!=(const Parser &rhs) const
-{
+bool Parser::operator!=(const Parser &rhs) const {
     return !(rhs == *this);
 }
 
@@ -91,8 +76,7 @@ bool Parser::operator!=(const Parser &rhs) const
 ** --------------------------------- METHODS ----------------------------------
 */
 
-std::string	Parser::readQuotedString(std::string word)
-{
+std::string Parser::readQuotedString(std::string word) {
     if (word.length() >= 2 && word[0] == '"' && word[word.size() - 1] == '"')
         return word.substr(1, word.length() - 2);
 
@@ -101,59 +85,44 @@ std::string	Parser::readQuotedString(std::string word)
 
 void	add_default_locations(Config &cfg)
 {
-	std::vector<Config::Http::Server::Location> &locations = cfg.http.server.locations;
-	locations.push_back(cfg.http.server.location);
-	locations.push_back(upload);
-	locations.push_back(data);
+	std::vector<Location> &locations = cfg.http.server.locations;
+//	locations.push_back(upload);
+//	locations.push_back(data);
 	for (uint64_t i = 0; i < locations.size(); i++)
 	{
 		loc_trie_insert(cfg.http.server.loc_trie, &locations[i]);
 	}
 }
 
-Config Parser::make_default_config()
-{
+Config Parser::make_default_config() {
     const std::string index[] = {
-            "index.html",
-            "index.htm",
-            ""
-    };
+        "index.html",
+        "index.htm",
+        ""};
 
     Config cfg = {
-            .http = {
-                    .server = {
-                            .ipv4_listen = {
-                                    .sin_family = AF_INET,
-                                    .sin_port = htons(8080),
-                                    .sin_addr = {
-                                            .s_addr = htonl(INADDR_ANY)
-//						.s_addr = inet_addr("127.0.0.1")
-                                    },
-                                    .sin_zero = {0x00}
-                            },
-                            .server_name = "localhost",
-                            .location = {
-                                    .path = "/",
-                                    .config = {
-                                            .autoindex = true,
-                                            .root = "./resources/web",
-                                            .index = Utils::to_vector(index)
-                                    }
-                            }
-                    }
-            }
+        .http = {
+            .server = {
+                .ipv4_listen = {
+                    .sin_family = AF_INET,
+                    .sin_port = htons(8080),
+                    .sin_addr = {
+//                        .s_addr = inet_addr("127.0.0.1")
+                        .s_addr = htonl(INADDR_ANY)},
+                    .sin_zero = {0x00}},
+                .server_name = "localhost",
+                .locations = std::vector<Location>(),
+                .loc_trie = new TrieNode(),
+                .error_pages = std::map<std::string, std::string>()}}
     };
-	cfg.http.server.loc_trie = new TrieNode();
-	add_default_locations(cfg);
+    add_default_locations(cfg);
     return cfg;
 }
 
-std::string Parser::read_file(const char *filename)
-{
+std::string Parser::read_file(const char *filename) {
     //Config conf = make_default_config();
     std::ifstream file(filename);
-    if (!file.is_open())
-    {
+    if (!file.is_open()) {
         std::cerr << "Err: File doesn't exist or can't be opened." << std::endl;
         return std::string();
     }
@@ -166,12 +135,8 @@ std::string Parser::read_file(const char *filename)
 }
 
 
-
-
-
-Parser::Token	Parser::makeToken(TokenType	key, std::string word, int linecount)
-{
-    Token	token;
+Parser::Token Parser::makeToken(TokenType key, std::string word, int linecount) {
+    Token token;
 
     token.type = key;
     token.literal = word;
@@ -180,49 +145,33 @@ Parser::Token	Parser::makeToken(TokenType	key, std::string word, int linecount)
     return token;
 }
 
-Comment	Parser::makeComment(std::string buf, int line)
-{
-    Comment	comment;
-
-    comment.content = buf;
-    comment.rlidx = line;
-
-    return comment;
-}
-
-void	Parser::toggle()
-{
+void Parser::toggle() {
     _currentState->toggle(this);
 }
 
-std::vector<Parser::Token>	Parser::tokenize()
-{
-    int	linecount = 0;
-    std::string	line;
-    std::vector<Parser::Token>	tokens;
+std::vector<Parser::Token> Parser::tokenize() {
+    int linecount = 0;
+    std::string line;
+    std::vector<Parser::Token> tokens;
 
     std::ifstream file(_configRoot.c_str());
-    if (!file.is_open())
-    {
+    if (!file.is_open()) {
         std::cerr << "Err: File doesn't exist or can't be opened." << std::endl;
         return std::vector<Parser::Token>();
     }
 
-    while (std::getline(file, line))
-    {
+    while (std::getline(file, line)) {
         linecount++;
-        std::istringstream	iss(line);
-        std::string	word;
+        std::istringstream iss(line);
+        std::string word;
 
         if (line.empty())
-            continue ;
+            continue;
 
-        while (iss >> word)
-        {
-            if (word[0] == '#')
-            {
-                tokens.push_back(makeToken(COMMENT, word, linecount)); // to do: function for storing comments
-                break ;
+        while (iss >> word) {
+            if (word[0] == '#') {
+                tokens.push_back(makeToken(COMMENT, word, linecount));// to do: function for storing comments
+                break;
             }
             if (word == "http" || word == "server" || word == "listen" || word == "location" || word == "root" || word == "index")
                 tokens.push_back(makeToken(KEY, word, linecount));
@@ -235,20 +184,16 @@ std::vector<Parser::Token>	Parser::tokenize()
             else if (word[0] == '"' && word[word.length() - 1] == '"')
                 tokens.push_back(makeToken(QUOTES, readQuotedString(word), linecount));
             else if (word[0] == '$')
-                tokens.push_back(makeToken(VAR, word, linecount)); // to do: function extracting/expanding variable ???
-            else if (word == ";" || word[word.length() - 1] == ';')
-            {
+                tokens.push_back(makeToken(VAR, word, linecount));// to do: function extracting/expanding variable ???
+            else if (word == ";" || word[word.length() - 1] == ';') {
                 if (word != ";")
                     tokens.push_back(makeToken(KEY, word.substr(0, word.length() - 1), linecount));
                 tokens.push_back(makeToken(SEMICOLON, ";", linecount));
-            }
-            else if (word[word.length() - 1] == '\n' || word == "\n")
-            {
+            } else if (word[word.length() - 1] == '\n' || word == "\n") {
                 if (word != "\n")
                     tokens.push_back(makeToken(KEY, word.substr(0, word.length() - 1), linecount));
                 tokens.push_back(makeToken(EOL, "\n", linecount));
-            }
-            else
+            } else
                 tokens.push_back(makeToken(ILLEGAL, word, linecount));
         }
     }
@@ -257,31 +202,26 @@ std::vector<Parser::Token>	Parser::tokenize()
     return tokens;
 }
 
-std::map<std::string, std::string> Parser::init_mime_types()
-{
+std::map<std::string, std::string> Parser::init_mime_types() {
     std::ifstream file("./mime.types");
 
-    if (!file.is_open())
-    {
+    if (!file.is_open()) {
         std::cerr << "Err: mime.types can't be opened or doesn't exist." << std::endl;
         return std::map<std::string, std::string>();
     }
 
     std::string line;
-    while (std::getline(file, line))
-    {
-        std::string	 mtype;
+    while (std::getline(file, line)) {
+        std::string mtype;
         if (line.find(';') == std::string::npos)
-            continue ; // skips lines without semicolons
-        size_t start = line.find_first_not_of(" \t"); // checks for whitespace/indentation
-        size_t	end = 0;
-        if (start != 0)
-        {
+            continue;                                // skips lines without semicolons
+        size_t start = line.find_first_not_of(" \t");// checks for whitespace/indentation
+        size_t end = 0;
+        if (start != 0) {
             // extract substr and store them in map
-            std::istringstream	iss(line);
-            std::string	word;
-            while (iss >> word)
-            {
+            std::istringstream iss(line);
+            std::string word;
+            while (iss >> word) {
                 end = word.length();
                 mtype = line.substr(start, end);
                 std::cout << mtype << std::endl;
@@ -292,11 +232,8 @@ std::map<std::string, std::string> Parser::init_mime_types()
 }
 
 
-
-void	Parser::printTokens(std::vector<Parser::Token> tokens)
-{
-    for (std::vector<Parser::Token>::iterator it = tokens.begin(); it != tokens.end(); ++it)
-    {
+void Parser::printTokens(std::vector<Parser::Token> tokens) {
+    for (std::vector<Parser::Token>::iterator it = tokens.begin(); it != tokens.end(); ++it) {
         if (it->type == EOL)
             std::cout << "EOL " << it->literal << " on line " << it->line << std::endl;
         else if (it->type == KEY)
@@ -322,17 +259,14 @@ void	Parser::printTokens(std::vector<Parser::Token> tokens)
     }
 }
 
-void	Parser::parseServer(std::vector<Parser::Token>& tokens)
-{
+void Parser::parseServer(std::vector<Parser::Token> &tokens) {
     std::vector<Parser::Token>::iterator it;
 
     _config.http.server.ipv4_listen.sin_family = AF_INET;
     _config.http.server.ipv4_listen.sin_addr.s_addr = htonl(INADDR_LOOPBACK);
     memset(_config.http.server.ipv4_listen.sin_zero, 0, sizeof(_config.http.server.ipv4_listen.sin_zero));
-    for(it = _currentIt; it != tokens.end(); ++it)
-    {
-        if (it->literal == "listen" && (it + 1) != tokens.end())
-        {
+    for (it = _currentIt; it != tokens.end(); ++it) {
+        if (it->literal == "listen" && (it + 1) != tokens.end()) {
             int port;
             std::stringstream ss((it + 1)->literal);
             ss >> port;
@@ -341,8 +275,7 @@ void	Parser::parseServer(std::vector<Parser::Token>& tokens)
             _config.http.server.ipv4_listen.sin_port = htons(port);
             ++it;
         }
-        if (it->literal == "server_name" && (it + 1) != tokens.end())
-        {
+        if (it->literal == "server_name" && (it + 1) != tokens.end()) {
             _config.http.server.server_name = (it + 1)->literal;
             //std::cout << _config.http.server.server_name << std::endl;
             ++it;
@@ -350,13 +283,11 @@ void	Parser::parseServer(std::vector<Parser::Token>& tokens)
     }
 }
 
-void Parser::parse(std::vector<Parser::Token>&	tokens)
-{
+void Parser::parse(std::vector<Parser::Token> &tokens) {
     std::vector<Parser::Token>::iterator it;
 
     setCurrentState(new Start());
-    for (it = tokens.begin(); it != tokens.end(); ++it)
-    {
+    for (it = tokens.begin(); it != tokens.end(); ++it) {
         _currentIt = it;
         _currentToken = *it;
         if (it + 1 != tokens.end())
@@ -364,14 +295,11 @@ void Parser::parse(std::vector<Parser::Token>&	tokens)
 
         //std::cout << getCurrentToken().literal << ", " << getCurrentToken().line << std::endl;
         toggle();
-        if (dynamic_cast<Server*>(_currentState) != NULL)
-        {
+        if (dynamic_cast<Server *>(_currentState) != NULL) {
             // populate Config struct w sockaddr_in and server_name
             parseServer(tokens);
             it = _currentIt;
-        }
-        else if (dynamic_cast<Location*>(_currentState) != NULL)
-        {
+        } else if (dynamic_cast<Location *>(_currentState) != NULL) {
             // populate Config struct w path
             toggle();
             it = _currentIt;
@@ -383,20 +311,18 @@ void Parser::parse(std::vector<Parser::Token>&	tokens)
         }
         */
     }
-
 }
-
 
 
 std::string Parser::getFullLine(int line) {
     return std::string();
-    (void)line;
+    (void) line;
 }
 
 std::string Parser::readUntil(std::string line, char delim) {
     return std::string();
-    (void)line;
-    (void)delim;
+    (void) line;
+    (void) delim;
 }
 
 /*
@@ -415,87 +341,13 @@ std::string Parser::readUntil(std::string line, char delim) {
  */
 
 
-std::string Parser::getKey() const
-{
-    return _key;
-}
-
-void	Parser::setKey(std::string key)
-{
-    _key = key;
-}
-
-IState*	Parser::getCurrentState() const
-{
-    return _currentState;
-}
-
-void	Parser::setCurrentState(IState*	newState)
-{
+void Parser::setCurrentState(IState *newState) {
     _currentState = newState;
 }
 
-bool	Parser::isInBlock() const
-{
-    return _inBlock;
-}
 
-void	Parser::setInBlock(bool in)
-{
-    _inBlock = in;
-}
-
-std::string	Parser::getConfigRoot() const
-{
-    return _configRoot;
-}
-
-void	Parser::setConfigRoot(std::string configRoot)
-{
-    _configRoot = configRoot;
-}
-
-Config	Parser::getConfig() const
-{
-    return _config;
-}
-
-Parser::Token	Parser::getCurrentToken() const
-{
-    return _currentToken;
-}
-
-void	Parser::setCurrentToken(Token token)
-{
-    _currentToken = token;
-}
-
-Parser::Token	Parser::getNextToken() const
-{
-    return _nextToken;
-}
-
-void	Parser::setNextToken(Token token)
-{
-    _nextToken = token;
-}
-
-void	Parser::toggleCurrentToken()
-{
-    _currentIt++;
-    _currentToken = _nextToken;
-    _nextToken = *_currentIt;
-}
-
-void	Parser::addNewBlock(IBlock* newBlock)
-{
-    _blocks.push_back(newBlock);
-}
-
-IBlock*	Parser::getBlock(std::string key)
-{
-    for (std::vector<IBlock*>::iterator it = _blocks.begin(); it != _blocks.end(); ++it)
-    {
+IBlock *Parser::getBlock(std::string key) {
+    for (std::vector<IBlock *>::iterator it = _blocks.begin(); it != _blocks.end(); ++it) {
         if ((*it)->getName() == key)
             return *it;
     }
@@ -512,8 +364,7 @@ void Parser::memset(void *s, int c, size_t n) __THROW {
 */
 
 
-void	printConfig(Config cfg)
-{
+void printConfig(Config cfg) {
     uint16_t port;
     std::string locationPath;
     std::string configRoot;
@@ -523,11 +374,11 @@ void	printConfig(Config cfg)
     port = ntohs(in.sin_port);
 
     server_name = cfg.http.server.server_name;
-    locationPath = cfg.http.server.location.path;
-    configRoot = cfg.http.server.location.config.root;
+//    locationPath = cfg.http.server.location.path;
+//    configRoot = cfg.http.server.location.config.root;
 
     char buf[INET_ADDRSTRLEN];
-    const char* addr = inet_ntop(AF_INET, &in.sin_addr, static_cast<char*>(buf), INET_ADDRSTRLEN);
+    const char *addr = inet_ntop(AF_INET, &in.sin_addr, static_cast<char *>(buf), INET_ADDRSTRLEN);
 
     std::cout << "Address Family: " << static_cast<int>(in.sin_family) << "\n"
               << "Port: " << port << "\n"
@@ -537,12 +388,11 @@ void	printConfig(Config cfg)
               << "Config Root: " << configRoot << "\n"
               << "Index Files: ";
 
-    for (int i = 0; !cfg.http.server.location.config.index[i].empty(); i++)
-    {
-        std::cout << cfg.http.server.location.config.index[i];
-        if (!cfg.http.server.location.config.index[i + 1].empty())
-            std::cout << ", ";
-    }
+//    for (int i = 0; !cfg.http.server.location.config.index[i].empty(); i++) {
+//        std::cout << cfg.http.server.location.config.index[i];
+//        if (!cfg.http.server.location.config.index[i + 1].empty())
+//            std::cout << ", ";
+//    }
     std::cout << std::endl;
 }
 

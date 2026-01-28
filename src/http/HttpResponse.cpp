@@ -15,6 +15,7 @@
 #include <iostream>
 #include "HttpResponse.hpp"
 #include "webserv.hpp"
+#include "Location.hpp"
 
 std::string itoa(int value)
 {
@@ -22,8 +23,6 @@ std::string itoa(int value)
 	oss << value;
 	return oss.str();
 }
-
-
 
 std::string HttpResponse::readHtmlFile(const std::string &filename, const Location *location)
 {

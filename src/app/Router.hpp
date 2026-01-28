@@ -16,6 +16,7 @@
 
 
 #include "HttpRequest.hpp"
+#include "Location.hpp"
 #include "State.hpp"
 
 class VirtualHost;
@@ -26,6 +27,7 @@ class Router {
 public:
     const VirtualHost *resolve_vhost(const Listener &listener,
                                      const HttpRequest &req) const;
+
     const Location *resolve_location(const VirtualHost &vhost,
                                      const HttpRequest &req) const;
 };

@@ -30,16 +30,17 @@ class TCPServer
 private:
 	static const unsigned int DEFAULT_PORT = 8080;
 	int _socket_fd;
+    static Config DEFAULT_CONFIG;
+    TCPServer();
 
 protected:
 	const Config &cfg;
 public:
+    static const unsigned int WRKR_POOL_SIZE = 1024;
 	const Config &getCfg() const;
 
-public:
-	// static Config default_config;
 	explicit TCPServer(const Config& conf);
-	// TCPServer();
+
 	~TCPServer();
 
 	class GenericException : public  std::exception
@@ -53,6 +54,8 @@ public:
 	void stop();
 	unsigned long	requests_handled;
 	unsigned long	requests_failed;
+
+	int serve(TCPServer &srv);
 };
 
 

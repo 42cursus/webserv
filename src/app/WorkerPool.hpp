@@ -33,7 +33,7 @@ private:
 	Worker*		_getWorker(size_t index);
 
 public:
-	WorkerPool(size_t size = 1024);
+	WorkerPool(size_t size);
 	~WorkerPool();
 
 	Worker*	alloc(TCPServer *srv);

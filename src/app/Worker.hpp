@@ -68,7 +68,7 @@ public:
 	std::string& getRawRequest();
 	int requestHandled() const;
 	void clearRequest();
-	e_status getStatus(void) const;
+	e_status getStatus() const;
 	void	setStatus(e_status status);
 	size_t	extract_body(size_t nread, size_t old_size, size_t clcr_pos) const;
 	void	parse_range(HttpResponse& res) const;

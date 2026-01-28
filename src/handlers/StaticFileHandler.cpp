@@ -1,16 +1,16 @@
 /* ************************************************************************** */
 /*                                                                            */
 /*                                                        :::      ::::::::   */
-/*   AutoindexHandler.cpp                               :+:      :+:    :+:   */
+/*   StaticFileHandler.cpp                              :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
 /*   By: abelov <abelov@student.42london.com>       +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
-/*   Created: 2026/01/20 14:42:13 by abelov            #+#    #+#             */
-/*   Updated: 2026/01/20 14:42:13 by abelov           ###   ########.fr       */
+/*   Created: 2026/01/20 14:42:58 by abelov            #+#    #+#             */
+/*   Updated: 2026/01/20 14:42:58 by abelov           ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
-#include "AutoindexHandler.hpp"
+#include "StaticFileHandler.hpp"
 
 /*
 ** -------------------------------- STATIC VARS -------------------------------
@@ -20,7 +20,7 @@
 ** ------------------------------- CONSTRUCTORS -------------------------------
 */
 
-AutoindexHandler::AutoindexHandler(const Location &loc) : _loc(loc) {}
+StaticFileHandler::StaticFileHandler(const Location &loc) : _loc(loc) {}
 
 /*
 ** ------------------------------- DESTRUCTORS --------------------------------
@@ -35,13 +35,13 @@ AutoindexHandler::AutoindexHandler(const Location &loc) : _loc(loc) {}
 ** -------------------------------- OVERLOADS ---------------------------------
 */
 
+int StaticFileHandler::handle(HttpRequest &req, HttpResponse &res) {
+    return 200;
+}
+
 /*
 ** --------------------------------- METHODS ----------------------------------
 */
-
-int AutoindexHandler::handle(HttpRequest &req, HttpResponse &res) {
-    return 200;
-}
 
 /*
 ** -------------------------------- ACCESSORS ---------------------------------
@@ -54,5 +54,4 @@ int AutoindexHandler::handle(HttpRequest &req, HttpResponse &res) {
 /*
 ** -------------------------------- MISCELLANEOUS --------------------------------
 */
-
 

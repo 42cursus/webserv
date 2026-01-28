@@ -1,3 +1,6 @@
+"In this project bugs usually come from lifetime and ownership confusion,
+and storing references inside polymorphic objects is a great way to manufacture that confusion." (c)
+
 ```bash
 
 chmod +x ubuntu_cgi_tester

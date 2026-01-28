@@ -10,22 +10,23 @@
 /*                                                                            */
 /* ************************************************************************** */
 
+#include <sys/socket.h>
+#include <sys/types.h>
+#include <cstddef>
+#include <cstring>
+#include <fcntl.h>
+#include <cstdlib>
+#include <unistd.h>
+
 #include "Worker.hpp"
-
-#include <asm-generic/socket.h>
-#include <cassert>
-
 #include "webserv.hpp"
 #include "HttpRequest.hpp"
 #include "HttpResponse.hpp"
 #include "Prefix.hpp"
-#include <cstddef>
-#include <cstring>
-#include <fcntl.h>
-#include <sys/types.h>
-#include <cstdlib>
-#include <unistd.h>
-#include <sys/socket.h>
+
+#include "Location.hpp"
+#include "CgiHandler.hpp"
+#include "Connection.hpp"
 
 Worker::Worker()
 	: _req_buffer(),
@@ -253,7 +254,6 @@ HttpResponse*	Worker::prepareResponse() const
 
 	res->statuscode = "200";
 	res->statusmsg = "OK";
-	// res->headers = _req->headers;
 	res->headers["Server"] = "Webserv/0.69";
 
 	if (std::find(location->_methods.begin(), location->_methods.end(), _req->method) == location->_methods.end())

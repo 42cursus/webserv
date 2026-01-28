@@ -17,6 +17,9 @@
 #include "HttpResponse.hpp"
 #include "State.hpp"
 #include "HttpTransaction.hpp"
+#include "Router.hpp"
+#include "CgiHandler.hpp"
+#include "StaticFileHandler.hpp"
 
 class Listener;
 class VirtualHost;
@@ -29,15 +32,16 @@ private:
     Listener            *listener;   // which listener accepted this connection
     HttpTransaction     tx;
     const VirtualHost   *current_vhost;
-    const Location      *current_location;
 
     bool keep_alive;
     bool has_request;
     bool response_ready;
 
-    void onRequestParsed();
     void onReadable();
     void onWritable();
+
+    void onRequestParsed(Router router, HttpRequest &req);
+
 };
 
 

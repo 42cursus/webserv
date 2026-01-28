@@ -11,23 +11,28 @@
 /* ************************************************************************** */
 
 #include "Connection.hpp"
+#include "Router.hpp"
 
-void Connection::onRequestParsed() {
+void Connection::onRequestParsed(Router router, HttpRequest &current_request) {
     current_vhost = router.resolve_vhost(*listener, current_request);
     if (!current_vhost) {
-        // 400 or 421 or 404, depending on how strict you want to be
-        build_error_response(400);
+        //build_error_response(400);  // 400 or 421 or 404
         return;
     }
 
+    const Location *current_location;
+
     current_location = router.resolve_location(*current_vhost, current_request);
     if (!current_location) {
-        // fall back to some default location, likely "/"
+        // fall back to the default location
     }
 
-    if (current_location->is_cgi) {
-        cgi_handler.handle(*this, *current_vhost, *current_location);
+    if (current_location->isCgi) {
+        CgiHandler cgi_handler(current_location);
+
+        cgi_handler.handle(current_request, );
     } else {
-        static_handler.handle(*this, *current_vhost, *current_location);
+        StaticFileHandler static_handler(current_location.);
+        static_handler.handle(current_request, *current_location);
     }
 }
