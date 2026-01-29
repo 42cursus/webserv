@@ -1,7 +1,7 @@
 /* ************************************************************************** */
 /*                                                                            */
 /*                                                        :::      ::::::::   */
-/*   Worker.cpp                                         :+:      :+:    :+:   */
+/*   ConnWorker.cpp                                         :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
 /*   By: margo <margo@student.42.fr>                +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
@@ -12,37 +12,38 @@
 
 #include <sys/socket.h>
 #include <sys/types.h>
+#include <algorithm>
 #include <cstddef>
 #include <cstring>
 #include <fcntl.h>
 #include <cstdlib>
 #include <unistd.h>
 
-#include "Worker.hpp"
-#include "webserv.hpp"
+#include "ConnWorker.hpp"
 #include "HttpRequest.hpp"
 #include "HttpResponse.hpp"
 #include "Prefix_suffix.hpp"
+#include "webserv.hpp"
 
 #include "Location.hpp"
 #include "CgiHandler.hpp"
 #include "Connection.hpp"
 
-Worker::Worker()
+ConnWorker::ConnWorker()
 	: _req_buffer(),
     _req(NULL),
     _res(NULL),
-	_conn_fd(-1),
-	_request_handled(),
-	_srv(NULL),
-	_status(REQ_HEADERS)
+    _conn_fd(-1),
+    _srv(NULL),
+    _status(REQ_HEADERS)
 {
-
 }
 
-Worker::~Worker()
+ConnWorker::~ConnWorker()
 {
-
+    if (_conn_fd != -1)
+        closeSocketFd();
+    reset();
 }
 
 /**
@@ -56,7 +57,7 @@ Worker::~Worker()
  *
  *	with `::` it skips all above and directly jumps to the global namespace.
  */
-void Worker::acceptConnection()
+void ConnWorker::acceptConnection()
 {
     struct sockaddr_in		_addr;
     socklen_t				_addr_size = sizeof(_addr);
@@ -92,7 +93,7 @@ void Worker::acceptConnection()
 	// std::cout << "SO_SNDBUF (Receive Buffer Capacity): " << sndbuf_size << std::endl;
 }
 
-void	Worker::setSrv(TCPServer *srv)
+void ConnWorker::setSrv(TCPServer *srv)
 {
 	_srv = srv;
 }
@@ -101,7 +102,7 @@ void logServingFile(const std::string& path, const std::string& mimetype) {
 	std::cout << "Serving file: " << path << " with MIME type: " << mimetype << std::endl;
 }
 
-size_t	Worker::extract_body(size_t nread, size_t old_size, size_t clcr_pos) const
+size_t ConnWorker::extract_body(size_t nread, size_t old_size, size_t clcr_pos) const
 {
 	const size_t	body_start = clcr_pos + 4 - old_size;
 	const size_t	body_size = nread - body_start;
@@ -112,7 +113,7 @@ size_t	Worker::extract_body(size_t nread, size_t old_size, size_t clcr_pos) cons
 	return (body_size);
 }
 
-void	Worker::parse_range(HttpResponse& res) const
+void ConnWorker::parse_range(HttpResponse& res) const
 {
 	std::string	rangestr = _req->headers["range"];
 	size_t		i = rangestr.find('=');
@@ -131,7 +132,7 @@ void	Worker::parse_range(HttpResponse& res) const
 	res.body.erase(0, start);
 }
 
-int Worker::handleRequest()
+int ConnWorker::onReadable()
 {
 	ssize_t	nread;
 
@@ -144,7 +145,7 @@ int Worker::handleRequest()
 			size_t	old_size = _rawRequest.size();
 			_rawRequest += _req_buffer;
 
-			size_t	clcr_pos = _rawRequest.find("\r\n\r\n");
+			size_t	clcr_pos = _rawRequest.find(CRLF CRLF);
 			if (clcr_pos == std::string::npos)
 				return (1);
 			std::cout << FT_MAGENTA << "Request ready on fd: " << _conn_fd << std::endl;
@@ -152,12 +153,12 @@ int Worker::handleRequest()
 			_req = new HttpRequest();
 			try {
 				_req->parseRequest(_rawRequest);
-			}
-			catch (HttpRequest::GenericException &e) {
+			} catch (HttpRequest::GenericException &e) {
 				std::cout << e.what() << std::endl;
 				_srv->requests_failed++;
 				_rawRequest.erase();
 				delete _req;
+                _req = NULL;
 				return (0);
 			}
 			_req->content_length = std::atoi(_req->headers["content-length"].c_str());
@@ -184,11 +185,9 @@ int Worker::handleRequest()
 			break ;
 	}
 
-	_res = Worker::prepareResponse();
+	_res = prepareResponse();
 	_res->buildHttpResponse();
-
 	setStatus(REQ_RESPONSE_READY);
-
 	return (0);
 }
 
@@ -206,7 +205,7 @@ void	resize_socket_buffer(int sockfd, size_t size)
 	std::cout << "New sock_buf_size: " << sndbuf_size << std::endl;
 }
 
-int	Worker::sendResponse(void)
+int ConnWorker::onWritable()
 {
 	std::string& response = _res->response;
 
@@ -218,16 +217,20 @@ int	Worker::sendResponse(void)
 		if (type.substr(0, type.find_first_of("/")) == "text")
 			std::cout << FT_BLUE << response << FT_RESET << std::endl;
 		else
-			std::cout << FT_BLUE << response.substr(0, response.find("\r\n\r\n")) << "\n<Binary file>" << FT_RESET << std::endl;
+			std::cout << FT_BLUE << response.substr(0, response.find(CRLF CRLF)) << "\n<Binary file>" << FT_RESET << std::endl;
 	}
 	// size_t	msg_size = RESPONSE_MSG_SIZE;
 	size_t	msg_size = response.length() - _res->start;
 	// resize_socket_buffer(_conn_fd, msg_size);
-	if (msg_size > response.length() - _res->start)
-		msg_size = response.length() - _res->start;
-	msg_size = write(_conn_fd, &response.c_str()[_res->start], msg_size);
-	std::cout << "on fd: " << _conn_fd << " wrote: " << msg_size << std::endl;
-	_res->start += msg_size;
+	msg_size = std::min(msg_size, response.length() - _res->start);
+    ssize_t w = write(_conn_fd, &response.c_str()[_res->start], msg_size);
+	std::cout << "on fd: " << _conn_fd << " wrote: " << w << std::endl;
+    if (w <= 0) {
+        return 1;
+    }
+
+
+	_res->start += static_cast<size_t>(w);
 	if (_res->start >= response.length())
 	{
 		_srv->requests_handled++;
@@ -238,7 +241,7 @@ int	Worker::sendResponse(void)
 	return (1);
 }
 
-void	Worker::handle_error_response(HttpResponse *res) const
+void ConnWorker::handle_error_response(HttpResponse *res) const
 {
 	std::string path = _srv->getCfg().http.server.error_pages.at(res->statuscode);
 	if (path[0] != '.')
@@ -252,7 +255,7 @@ void	Worker::handle_error_response(HttpResponse *res) const
 
 }
 
-HttpResponse*	Worker::prepareResponse() const
+HttpResponse*ConnWorker::prepareResponse() const
 {
 	HttpResponse*	res = new HttpResponse();
 	Location		*location = loc_trie_search(_srv->getCfg().http.server.loc_trie, _req->path);
@@ -261,6 +264,14 @@ HttpResponse*	Worker::prepareResponse() const
 	res->statuscode = "200";
 	res->statusmsg = "OK";
 	res->headers["Server"] = "Webserv/0.69";
+
+    if (!location)
+    {
+        res->statuscode = "404";
+        res->statusmsg = "Not Found";
+        handle_error_response(res);
+        return res;
+    }
 
 	if (std::find(location->_methods.begin(), location->_methods.end(), _req->method) == location->_methods.end())
 	{
@@ -331,71 +342,68 @@ HttpResponse*	Worker::prepareResponse() const
 	return (res);
 }
 
-const char *Worker::GenericException::what() const throw()
+const char *ConnWorker::GenericException::what() const throw()
 {
 	return "Client exception happened";
 }
 
-// Worker&	Worker::operator=(Worker const &src)
+// ConnWorker&	ConnWorker::operator=(ConnWorker const &src)
 // {
 // 	this->_socket_fd = src._socket_fd;
 // 	this->srv = src.srv;
 // 	return (*this);
 // }
 
-int Worker::getConnFd() const
+int ConnWorker::getConnFd() const
 {
 	return _conn_fd;
 }
 
-void	Worker::closeSocketFd(void)
+void ConnWorker::closeSocketFd()
 {
-	close(_conn_fd);
+    if (_conn_fd != -1) {
+        close(_conn_fd);
+    }
 	_conn_fd = -1;
 }
 
-int Worker::requestHandled() const
-{
-	return _request_handled;
-}
-
-std::string& Worker::getRawRequest()
+std::string&ConnWorker::getRawRequest()
 {
 	return _rawRequest;
 }
 
-void	Worker::setReq(HttpRequest* req)
+void ConnWorker::setReq(HttpRequest* req)
 {
 	_req = req;
 }
 
-void	Worker::setRes(HttpResponse* res)
+void ConnWorker::setRes(HttpResponse* res)
 {
 	_res = res;
 }
 
-HttpResponse*	Worker::getRes() const
+HttpResponse*ConnWorker::getRes() const
 {
 	return _res;
 }
 
-HttpRequest*	Worker::getReq() const
+HttpRequest*ConnWorker::getReq() const
 {
 	return _req;
 }
 
-void	Worker::clearRequest(void)
+void ConnWorker::clearRequest(void)
 {
 	if (!_rawRequest.empty())
 		_rawRequest.erase();
 }
 
-void	Worker::setStatus(e_status status)
+void ConnWorker::setStatus(e_status status)
 {
 	_status = status;
 }
 
-void	Worker::reset()
+void ConnWorker::reset()
 {
 	delete _res;
 	delete _req;
@@ -404,11 +412,14 @@ void	Worker::reset()
 	_status = REQ_HEADERS;
 }
 
-Worker::e_status	Worker::getStatus(void) const
+ConnWorker::e_status ConnWorker::getStatus(void) const
 {
 	return (_status);
 }
 
-void Worker::setConnFd(int connFd) {
+void ConnWorker::setConnFd(int connFd) {
     _conn_fd = connFd;
+    int flags = fcntl(_conn_fd, F_GETFL, 0);
+    if (flags >= 0)
+        fcntl(_conn_fd, F_SETFL, flags | O_NONBLOCK);
 }

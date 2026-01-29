@@ -10,17 +10,17 @@
 /*                                                                            */
 /* ************************************************************************** */
 
+#include "TCPServer.hpp"
+#include "ConfigParser.hpp"
+#include "ConnWorker.hpp"
+#include "HttpRequest.hpp"
+#include "Prefix_suffix.hpp"
+#include "WorkerPool.hpp"
+#include "serve.hpp"
 #include <cstring>
 #include <sys/epoll.h>
 #include <sys/socket.h>
 #include <vector>
-#include "TCPServer.hpp"
-#include "HttpRequest.hpp"
-#include "Prefix_suffix.hpp"
-#include "ConfigParser.hpp"
-#include "Worker.hpp"
-#include "WorkerPool.hpp"
-#include "serve.hpp"
 
 /*
 ** -------------------------------- STATIC VARS -------------------------------
@@ -132,23 +132,21 @@ const Config &TCPServer::getCfg() const
 
 void	TCPServer::acceptAllPendingConns(WorkerPool& wrkrPool, int epoll_fd)
 {
-    Worker* wrkr;
+    ConnWorker * wrkr;
 
     while (true) // multiple connections may already be queued on the listen socket
     {
-
-
         struct sockaddr_in		_addr;
         socklen_t				_addr_size = sizeof(_addr);
         struct sockaddr         *addr = reinterpret_cast<struct sockaddr*>(&_addr); // NOLINT(*-pro-type-reinterpret-cast)
 
         int conn_fd = /* global namespace */ ::accept(_socket_fd, addr, &_addr_size);
         if (conn_fd < 0) {
-            std::cerr << "Failed to accept client request." << std::endl;
             if (errno == EINTR)
                 continue;
             if (errno == EAGAIN || errno == EWOULDBLOCK)
                 break;
+            std::cerr << "Failed to accept client request." << std::endl;
             break;
         }
 
@@ -178,7 +176,7 @@ int TCPServer::serve(TCPServer &srv)
 	std::vector<struct epoll_event>	evs;
 	int								nfds;
 	int								sockfd = srv.getSocketFd();
-	Worker*							wrkr;
+    ConnWorker *							wrkr;
 
 	evs.resize(1024);
 	evs[0].events = EPOLLIN;
@@ -190,7 +188,7 @@ int TCPServer::serve(TCPServer &srv)
 		nfds = epoll_wait(epoll_fd, evs.data(), 1024, -1);
 		for (int i = 0; i < nfds; i++)
 		{
-			wrkr = reinterpret_cast<Worker*>(evs[i].data.ptr);
+			wrkr = reinterpret_cast<ConnWorker *>(evs[i].data.ptr);
 			// if (evs[i].data.fd == sockfd)
 			// 	std::cout << "event on fd: " << sockfd << std::endl;
 			// else
@@ -202,10 +200,10 @@ int TCPServer::serve(TCPServer &srv)
 				wrkr->reset();
 				wrkrPool.free(wrkr);
 			}
-			else if (evs[i].events & EPOLLOUT && wrkr->getStatus() == Worker::REQ_RESPONSE_READY)
+			else if (evs[i].events & EPOLLOUT && wrkr->getStatus() == ConnWorker::REQ_RESPONSE_READY)
 			{
 				// std::cout << "Write ready on fd: " << wrkr->getConnFd() << std::endl;
-				int retval = wrkr->sendResponse();
+				int retval = wrkr->onWritable();
 				if (retval == 0)
 				{
 					struct epoll_event ev;
@@ -221,8 +219,8 @@ int TCPServer::serve(TCPServer &srv)
                     acceptAllPendingConns(wrkrPool, epoll_fd); // <==
 				else
 				{
-					int retval = wrkr->handleRequest();
-					if (wrkr->getStatus() == Worker::REQ_RESPONSE_READY)
+					int retval = wrkr->onReadable();
+					if (wrkr->getStatus() == ConnWorker::REQ_RESPONSE_READY)
 					{
 						struct epoll_event ev;
 						ev.data.ptr = wrkr;

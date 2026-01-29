@@ -1,7 +1,7 @@
 /* ************************************************************************** */
 /*                                                                            */
 /*                                                        :::      ::::::::   */
-/*   Worker.hpp                                         :+:      :+:    :+:   */
+/*   ConnWorker.hpp                                         :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
 /*   By: abelov <abelov@student.42london.com>       +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
@@ -21,9 +21,9 @@
 
 #define REQUEST_BUF_SIZE 4096
 #define RESPONSE_MSG_SIZE 4096
+#define CRLF "\r\n"
 
-class Worker
-{
+class ConnWorker {
 public:
 
 	enum e_status {
@@ -33,24 +33,8 @@ public:
 		REQ_MAX,
 	};
 
-private:
-	char					_req_buffer[REQUEST_BUF_SIZE + 1];
-	std::string				_rawRequest;
-	HttpRequest*			_req;
-	HttpResponse*			_res;
-	int						_conn_fd;
-
-public:
-    void setConnFd(int connFd);
-
-private:
-    int						_request_handled;
-	TCPServer				*_srv;
-	e_status				_status;
-	std::vector<class Connection> _conns;
-public:
-	explicit Worker();
-	~Worker();
+	explicit ConnWorker();
+	~ConnWorker();
 
 	class GenericException : public  std::exception
 	{
@@ -59,8 +43,12 @@ public:
 	};
 
 	void acceptConnection();
-	int handleRequest();
-	HttpResponse* prepareResponse() const;
+
+    int onWritable();
+    int onReadable();
+
+    void setConnFd(int connFd);
+
 	HttpRequest* getReq() const;
 	void setReq(HttpRequest* req);
 	HttpResponse* getRes() const;
@@ -69,15 +57,26 @@ public:
 	void	setSrv(TCPServer *srv);
 	void	closeSocketFd();
 	std::string& getRawRequest();
-	int requestHandled() const;
 	void clearRequest();
+
 	e_status getStatus() const;
 	void	setStatus(e_status status);
-	size_t	extract_body(size_t nread, size_t old_size, size_t clcr_pos) const;
-	void	parse_range(HttpResponse& res) const;
-	int	sendResponse();
-	void	handle_error_response(HttpResponse *res) const;
-	void	reset();
+
+    void	reset();
+
+private:
+    char					_req_buffer[REQUEST_BUF_SIZE + 1];
+    std::string				_rawRequest;
+    HttpRequest*			_req;
+    HttpResponse*			_res;
+    int						_conn_fd;
+    TCPServer				*_srv;
+    e_status				_status;
+
+    size_t	extract_body(size_t nread, size_t old_size, size_t clcr_pos) const;
+    void	parse_range(HttpResponse& res) const;
+    void	handle_error_response(HttpResponse *res) const;
+    HttpResponse* prepareResponse() const;
 };
 
 #endif //WORKER_HPP

@@ -29,7 +29,7 @@ INCLUDE_FLAGS	:= -I. \
 
 SRCS			= src/main.cpp \
 				  src/app/serve.cpp \
-				  src/app/Worker.cpp \
+				  src/app/ConnWorker.cpp \
 				  src/app/WorkerPool.cpp \
 				  src/app/TCPServer.cpp \
 				  src/http/HttpRequest.cpp \

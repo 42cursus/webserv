@@ -10,12 +10,10 @@
 /*                                                                            */
 /* ************************************************************************** */
 
-// #include <cstdint>
-#include <cstdlib>
 #include <cstring>
 #include <sys/epoll.h>
 #include <sys/socket.h>
-#include "Worker.hpp"
+#include "ConnWorker.hpp"
 #include "WorkerPool.hpp"
 #include "serve.hpp"
 
@@ -80,7 +78,7 @@ void epoll_mod(int epoll_fd, int fd, void* tagged_ptr, uint32_t events)
 }
 
 
-void serve_handle_worker(Worker *wrkr, int epoll_fd, WorkerPool &wrkrPool, struct epoll_event &ev)
+void serve_handle_worker(ConnWorker *wrkr, int epoll_fd, WorkerPool &wrkrPool, struct epoll_event &ev)
 {
 	if (ev.events & (EPOLLERR | EPOLLHUP))
 	{
@@ -92,8 +90,8 @@ void serve_handle_worker(Worker *wrkr, int epoll_fd, WorkerPool &wrkrPool, struc
 	else if (ev.events & EPOLLIN)
 	{
 		// std::cout << "Read ready on fd " << std::endl;
-		int retval = wrkr->handleRequest();
-        if (wrkr->getStatus() == Worker::REQ_RESPONSE_READY)
+		int retval = wrkr->onReadable();
+        if (wrkr->getStatus() == ConnWorker::REQ_RESPONSE_READY)
             epoll_mod(epoll_fd, wrkr->getConnFd(), tag_ptr(wrkr, EP_WRKR), EPOLLOUT);
         if (retval == 2)
 		{
@@ -103,10 +101,10 @@ void serve_handle_worker(Worker *wrkr, int epoll_fd, WorkerPool &wrkrPool, struc
 			wrkrPool.free(wrkr);
 		}
 	}
-	else if (ev.events & EPOLLOUT && wrkr->getStatus() == Worker::REQ_RESPONSE_READY)
+	else if (ev.events & EPOLLOUT && wrkr->getStatus() == ConnWorker::REQ_RESPONSE_READY)
 	{
 		// std::cout << "Write ready on fd: " << wrkr->getConnFd() << std::endl;
-		int retval = wrkr->sendResponse();
+		int retval = wrkr->onWritable();
         if (retval == 0)
             epoll_mod(epoll_fd, wrkr->getConnFd(), tag_ptr(wrkr, EP_WRKR), EPOLLIN);
     }
@@ -119,7 +117,7 @@ int serve(std::vector<TCPServer *> srvs)
 	int								epoll_fd = epoll_create(1);
 	std::vector<struct epoll_event>	evs;
 	int								nfds;
-	Worker*							wrkr;
+    ConnWorker* 					wrkr;
 	TCPServer*						srv;
 
 	evs.resize(1024);
@@ -145,7 +143,7 @@ int serve(std::vector<TCPServer *> srvs)
 					}
 					break;
 				case (EP_WRKR):
-					wrkr = reinterpret_cast<Worker*>(detag_ptr(ptr));
+					wrkr = reinterpret_cast<ConnWorker *>(detag_ptr(ptr));
 					serve_handle_worker(wrkr, epoll_fd, wrkrPool, evs[i]);
 					break;
 				default:
