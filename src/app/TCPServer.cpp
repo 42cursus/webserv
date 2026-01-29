@@ -200,7 +200,7 @@ int TCPServer::serve(TCPServer &srv)
 				wrkr->reset();
 				wrkrPool.free(wrkr);
 			}
-			else if (evs[i].events & EPOLLOUT && wrkr->getStatus() == ConnWorker::REQ_RESPONSE_READY)
+			else if (evs[i].events & EPOLLOUT && wrkr->getStatus() == Connection::REQ_RESPONSE_READY)
 			{
 				// std::cout << "Write ready on fd: " << wrkr->getConnFd() << std::endl;
 				int retval = wrkr->onWritable();
@@ -220,7 +220,7 @@ int TCPServer::serve(TCPServer &srv)
 				else
 				{
 					int retval = wrkr->onReadable();
-					if (wrkr->getStatus() == ConnWorker::REQ_RESPONSE_READY)
+					if (wrkr->getStatus() == Connection::REQ_RESPONSE_READY)
 					{
 						struct epoll_event ev;
 						ev.data.ptr = wrkr;

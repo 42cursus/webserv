@@ -14,10 +14,11 @@
 #ifndef WORKER_HPP
 #define WORKER_HPP
 
-#include <netinet/in.h>
+#include "Connection.hpp"
+#include "HttpRequest.hpp"
 #include "HttpResponse.hpp"
 #include "TCPServer.hpp"
-#include "HttpRequest.hpp"
+#include <netinet/in.h>
 
 #define REQUEST_BUF_SIZE 4096
 #define RESPONSE_MSG_SIZE 4096
@@ -25,58 +26,36 @@
 
 class ConnWorker {
 public:
+    typedef Connection::e_status e_status;
 
-	enum e_status {
-		REQ_HEADERS = 0,
-		REQ_BODY,
-		REQ_RESPONSE_READY,
-		REQ_MAX,
-	};
+    explicit ConnWorker();
+    ConnWorker(const ConnWorker &other);
+    ~ConnWorker();
 
-	explicit ConnWorker();
-	~ConnWorker();
-
-	class GenericException : public  std::exception
-	{
-	public:
-		const char* what() const throw();
-	};
-
-	void acceptConnection();
-
-    int onWritable();
-    int onReadable();
-
+    void setSrv(TCPServer *srv);
     void setConnFd(int connFd);
 
-	HttpRequest* getReq() const;
-	void setReq(HttpRequest* req);
-	HttpResponse* getRes() const;
-	void setRes(HttpResponse* res);
-	int getConnFd() const;
-	void	setSrv(TCPServer *srv);
-	void	closeSocketFd();
-	std::string& getRawRequest();
-	void clearRequest();
+    int getConnFd() const;
 
-	e_status getStatus() const;
-	void	setStatus(e_status status);
+    int onReadable();
+    int onWritable();
 
-    void	reset();
+    void reset();
+    void clearRequest();
+
+    e_status getStatus() const;
+
+    void closeSocketFd();
+
+    class GenericException : public std::exception {
+    public:
+        const char *what() const throw();
+    };
+
+    ConnWorker& operator=(const ConnWorker&);
+    const Connection &getConn() const;
 
 private:
-    char					_req_buffer[REQUEST_BUF_SIZE + 1];
-    std::string				_rawRequest;
-    HttpRequest*			_req;
-    HttpResponse*			_res;
-    int						_conn_fd;
-    TCPServer				*_srv;
-    e_status				_status;
-
-    size_t	extract_body(size_t nread, size_t old_size, size_t clcr_pos) const;
-    void	parse_range(HttpResponse& res) const;
-    void	handle_error_response(HttpResponse *res) const;
-    HttpResponse* prepareResponse() const;
+    Connection _conn;
 };
-
 #endif //WORKER_HPP

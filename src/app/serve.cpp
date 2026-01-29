@@ -91,7 +91,7 @@ void serve_handle_worker(ConnWorker *wrkr, int epoll_fd, WorkerPool &wrkrPool, s
 	{
 		// std::cout << "Read ready on fd " << std::endl;
 		int retval = wrkr->onReadable();
-        if (wrkr->getStatus() == ConnWorker::REQ_RESPONSE_READY)
+        if (wrkr->getStatus() == Connection::REQ_RESPONSE_READY)
             epoll_mod(epoll_fd, wrkr->getConnFd(), tag_ptr(wrkr, EP_WRKR), EPOLLOUT);
         if (retval == 2)
 		{
@@ -101,7 +101,7 @@ void serve_handle_worker(ConnWorker *wrkr, int epoll_fd, WorkerPool &wrkrPool, s
 			wrkrPool.free(wrkr);
 		}
 	}
-	else if (ev.events & EPOLLOUT && wrkr->getStatus() == ConnWorker::REQ_RESPONSE_READY)
+	else if (ev.events & EPOLLOUT && wrkr->getStatus() == Connection::REQ_RESPONSE_READY)
 	{
 		// std::cout << "Write ready on fd: " << wrkr->getConnFd() << std::endl;
 		int retval = wrkr->onWritable();
