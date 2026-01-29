@@ -65,12 +65,27 @@ void	*detag_ptr(void *ptr)
 	return reinterpret_cast<void *>(tagged & 0x00FFFFFFFFFFFFFF);
 }
 
+void epoll_del(int epoll_fd, int fd)
+{
+    epoll_ctl(epoll_fd, EPOLL_CTL_DEL, fd, NULL);
+}
+
+void epoll_mod(int epoll_fd, int fd, void* tagged_ptr, uint32_t events)
+{
+    struct epoll_event ev;
+    std::memset(&ev, 0, sizeof(ev));
+    ev.data.ptr = tagged_ptr;
+    ev.events = events;
+    epoll_ctl(epoll_fd, EPOLL_CTL_MOD, fd, &ev);
+}
+
+
 void serve_handle_worker(Worker *wrkr, int epoll_fd, WorkerPool &wrkrPool, struct epoll_event &ev)
 {
 	if (ev.events & (EPOLLERR | EPOLLHUP))
 	{
 		std::cout << "error occured on fd: " << wrkr->getConnFd() << std::endl;
-		epoll_ctl(epoll_fd, EPOLL_CTL_DEL, wrkr->getConnFd(), NULL);
+        epoll_del(epoll_fd, wrkr->getConnFd());
 		wrkr->reset();
 		wrkrPool.free(wrkr);
 	}
@@ -78,17 +93,12 @@ void serve_handle_worker(Worker *wrkr, int epoll_fd, WorkerPool &wrkrPool, struc
 	{
 		// std::cout << "Read ready on fd " << std::endl;
 		int retval = wrkr->handleRequest();
-		if (wrkr->getStatus() == Worker::REQ_RESPONSE_READY)
-		{
-			struct epoll_event ev;
-			ev.data.ptr = tag_ptr(wrkr, EP_WRKR);
-			ev.events = EPOLLOUT;
-			epoll_ctl(epoll_fd, EPOLL_CTL_MOD, wrkr->getConnFd(), &ev);
-		}
-		if (retval == 2)
+        if (wrkr->getStatus() == Worker::REQ_RESPONSE_READY)
+            epoll_mod(epoll_fd, wrkr->getConnFd(), tag_ptr(wrkr, EP_WRKR), EPOLLOUT);
+        if (retval == 2)
 		{
 			std::cout << "Connection closed on fd: " << wrkr->getConnFd() << std::endl;
-			epoll_ctl(epoll_fd, EPOLL_CTL_DEL, wrkr->getConnFd(), NULL);
+            epoll_del(epoll_fd, wrkr->getConnFd());
 			wrkr->reset();
 			wrkrPool.free(wrkr);
 		}
@@ -97,14 +107,9 @@ void serve_handle_worker(Worker *wrkr, int epoll_fd, WorkerPool &wrkrPool, struc
 	{
 		// std::cout << "Write ready on fd: " << wrkr->getConnFd() << std::endl;
 		int retval = wrkr->sendResponse();
-		if (retval == 0)
-		{
-			struct epoll_event ev;
-			ev.data.ptr = tag_ptr(wrkr, EP_WRKR);
-			ev.events = EPOLLIN;
-			epoll_ctl(epoll_fd, EPOLL_CTL_MOD, wrkr->getConnFd(), &ev);
-		}
-	}
+        if (retval == 0)
+            epoll_mod(epoll_fd, wrkr->getConnFd(), tag_ptr(wrkr, EP_WRKR), EPOLLIN);
+    }
 }
 
 int serve(std::vector<TCPServer *> srvs)

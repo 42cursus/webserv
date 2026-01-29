@@ -32,21 +32,21 @@ enum e_block_type {
 struct TrieNode;
 
 class IBlock {
-    private:
-        bool    _in_block;
-        e_block_type    _type;
-        unsigned int    _line_start;
-        unsigned int    _line_end;
-        IBlock* _parent_block; // if NULL we're in main server block
+private:
+    bool    _in_block;
+    e_block_type    _type;
+    unsigned int    _line_start;
+    unsigned int    _line_end;
+    IBlock* _parent_block; // if NULL we're in main server block
+
+    IBlock();
         
-        IBlock();
-        
-    public:
-        IBlock(e_block_type type);
-        IBlock(const IBlock& copy);
-        IBlock& operator=(const IBlock& copy);
-        bool    operator==(IBlock& oth);
-        virtual ~IBlock();
+public:
+    IBlock(e_block_type type);
+    IBlock(const IBlock& copy);
+    IBlock& operator=(const IBlock& copy);
+    bool    operator==(IBlock& oth);
+    virtual ~IBlock();
 
     std::string getName() const { return ""; };
     std::string getCode() const { return ""; };

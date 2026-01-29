@@ -155,8 +155,7 @@ HttpRequest::getHtmlResponse(const Location *location, HttpResponse& res)
 	return output;
 }
 
-std::string HttpRequest::getMimeType(const std::string &path)
-{
+std::string HttpRequest::getMimeType(const std::string &path) const {
 	std::map<std::string, std::string> mimeTypes;
 
 	mimeTypes.insert(std::make_pair("html", "text/html"));

@@ -24,6 +24,7 @@ enum epoll_ptr_type {
 
 void			*tag_ptr(void *ptr, epoll_ptr_type tag);
 epoll_ptr_type 	get_tag(void *ptr);
+void        	*detag_ptr(void *ptr);
 int 			serve(std::vector<TCPServer *> srvs);
 
 #endif

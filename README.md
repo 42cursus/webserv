@@ -35,3 +35,12 @@ echo 12346 | dd bs=1 count=3 status=none
 ```bash
 sudo apt install docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin
 ```
+
+
+### Links:
+- [Apache HTTP Server](https://github.com/apache/httpd)
+- [NGINX Web Server](https://github.com/nginx/nginx)
+- [Muduo C++ network library](https://github.com/chenshuo/muduo)
+- [POCO (Portable Components)](https://github.com/pocoproject/poco)
+- [TinyWebServer](https://github.com/qinguoyi/TinyWebServer)
+- [markparticle's WebServer](https://github.com/markparticle/WebServer)

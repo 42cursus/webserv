@@ -46,7 +46,7 @@ public:
 	void parseRequest(const std::string& rawRequest);
 
 	std::string getHtmlResponse(const Location *conf, HttpResponse& res);
-	std::string getMimeType(const std::string &path);
+	std::string getMimeType(const std::string &path) const;
 	void		printBody() const;
 
 	class GenericException : public  std::exception
