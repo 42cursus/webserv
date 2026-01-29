@@ -29,6 +29,42 @@ enum e_block_type {
     CGI_,
 };
 
+struct TrieNode;
+
+class IBlock {
+    private:
+        bool    _in_block;
+        e_block_type    _type;
+        unsigned int    _line_start;
+        unsigned int    _line_end;
+        IBlock* _parent_block; // if NULL we're in main server block
+        
+        IBlock();
+        
+    public:
+        IBlock(e_block_type type);
+        IBlock(const IBlock& copy);
+        IBlock& operator=(const IBlock& copy);
+        bool    operator==(IBlock& oth);
+        virtual ~IBlock();
+
+    std::string getName() const { return ""; };
+    std::string getCode() const { return ""; };
+
+    // getters
+    bool isInBlock() const;
+    unsigned int getStartLine() const;
+    unsigned int getEndLine() const;
+    e_block_type getBlockType() const;
+    IBlock *getParent() const;
+
+    // setters
+    void setInBlock(bool in_block);
+    void setStartLine(unsigned int line_start);
+    void setEndLine(unsigned int line_end);
+    void setParent(IBlock *parent);
+};
+
 class Parser;
 
 class IState {
@@ -61,40 +97,6 @@ public:
     virtual void toggle(Parser *parser) {
         (void)parser;
     };
-};
-
-class IBlock {
-private:
-    bool _in_block;
-    e_block_type _type;
-    unsigned int _line_start;
-    unsigned int _line_end;
-    IBlock *_parent_block;// if NULL we're in main server block
-
-    IBlock();
-
-public:
-    IBlock(e_block_type type);
-    IBlock(const IBlock &copy);
-    IBlock &operator=(const IBlock &copy);
-    bool operator==(IBlock &oth);
-    virtual ~IBlock();
-
-    std::string getName() const { return ""; };
-    std::string getCode() const { return ""; };
-
-    // getters
-    bool isInBlock() const;
-    unsigned int getStartLine() const;
-    unsigned int getEndLine() const;
-    e_block_type getBlockType() const;
-    IBlock *getParent() const;
-
-    // setters
-    void setInBlock(bool in_block);
-    void setStartLine(unsigned int line_start);
-    void setEndLine(unsigned int line_end);
-    void setParent(IBlock *parent);
 };
 
 struct CGI : public IBlock {

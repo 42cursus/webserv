@@ -12,7 +12,8 @@
 
 #include "State.hpp"
 #include "webserv.hpp"
-#include "Prefix.hpp"
+#include "Prefix_suffix.hpp"
+#include <vector>
 
 IBlock::IBlock(e_block_type type): _in_block(false), _type(type), _line_start(0), _line_end(0) {}
 
@@ -80,9 +81,14 @@ CGI& CGI::operator=(const CGI& copy)
     return *this;
 }
 
-Location::Location(): IBlock(LOCATION_)
+Location::Location(): IBlock(LOCATION_), cgi_trie(NULL)
 {
 	setInBlock(false);
+}
+
+Location::~Location()
+{
+	free_trie(cgi_trie);
 }
 
 Location&   Location::operator=(const Location& copy)
@@ -169,6 +175,17 @@ static void overwrite_error_pages(struct Config& cfg, std::map<std::string, std:
 	}
 }
 
+static TrieNode	*build_cgi_trie(std::vector<CGI>& cgis)
+{
+	TrieNode	*head = new TrieNode();
+
+	for (uint64_t i = 0; i < cgis.size(); i++)
+	{
+		cgi_trie_insert(head, &cgis[i]);
+	}
+	return head;
+}
+
 void Server::get_config(struct Config& cfg)
 {
 	// for (uint64_t i = 0; i < _locations.size(); i++)
@@ -187,6 +204,7 @@ void Server::get_config(struct Config& cfg)
 	for (uint64_t i = 0; i < cfg.http.server.locations.size(); i++)
 	{
 		loc_trie_insert(cfg.http.server.loc_trie, &cfg.http.server.locations[i]);
+		cfg.http.server.locations[i].cgi_trie = build_cgi_trie(cfg.http.server.locations[i]._cgi);
 	}
 }
 
