@@ -108,39 +108,41 @@ static bool ends_with(const std::string &s, const std::string &suffix) {
 	return s.compare(offset, suffix.size(), suffix) == 0;
 }
 
+bool		HttpRequest::is_method_permitted(Location *location) const
+{
+	return std::find(
+		location->_methods.begin(),
+		location->_methods.end(),
+		this->method
+	) != location->_methods.end();
+}
+
 std::string
-HttpRequest::getHtmlResponse(const Location *location, HttpResponse& res)
+HttpRequest::getHtmlResponse(HttpResponse& res)
 {
 	std::string output;
 
-	if (location == NULL)
-	{
-		std::cout << "LOCATION NULL" << std::endl;
-		exit(1);
-	}
-	std::basic_string<char> filename = path.substr(location->_path.length(), path.length());
 	// std::cout << FT_BOLD << FT_RED << path << FT_RESET << std::endl;
 
-	if (filename.empty())
+	if (res.filename.empty())
 	{
-		if (!location->_autoindex)
-			filename = location->_index[0];
+		if (!res.location->_autoindex)
+			res.filename = res.location->_index[0];
 		else
 		{
 			; // DO AUTOINDEX FUNCTION
 		}
 	}
 
-	// Location lc(*location);
-	res.filename = filename;
-	if (ends_with(filename, ".bla"))
+	// LocationConfig lc(*location);
+	if (ends_with(res.filename, ".bla"))
 	{
 	// 	// CgiHandler handler(*this, lc, filename, res);
 	// 	res.statuscode = itoa(handler.do_run());
 	// 	output = handler.raw_output();
 		;
 	}
-	else if (filename == "teapot")
+	else if (res.filename == "teapot")
 	{
 		res.statuscode = "418";
 		res.statusmsg = "I'm a Teapot";
@@ -149,8 +151,8 @@ HttpRequest::getHtmlResponse(const Location *location, HttpResponse& res)
 	}
 	else
 	{
-		res.headers["content-type"] = getMimeType(filename);
-		output = res.readHtmlFile(location->_root + filename);
+		res.headers["content-type"] = getMimeType(res.filename);
+		output = res.readHtmlFile(res.location->_root + res.filename);
 	}
 	return output;
 }
@@ -170,6 +172,19 @@ std::string HttpRequest::getMimeType(const std::string &path) const {
 	std::string fileExtension = path.substr(path.find_last_of(".") + 1);
 
 	return mimeTypes[fileExtension];
+}
+
+HttpRequest::e_method	HttpRequest::get_method() const
+{
+	if (this->method == "GET")
+		return GET;
+	if (this->method == "POST")
+		return POST;
+	if (this->method == "PUT")
+		return PUT;
+	if (this->method == "DELETE")
+		return DELETE;
+	throw GenericException();
 }
 
 

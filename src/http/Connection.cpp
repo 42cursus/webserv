@@ -16,6 +16,7 @@
 #include <cstdlib>
 #include <cerrno>
 #include <fcntl.h>
+#include <cstdio>
 #include <unistd.h>
 
 #include "Location.hpp"
@@ -333,88 +334,121 @@ Connection::e_result Connection::onWritable()
 
 HttpResponse* Connection::_prepareResponse() const
 {
-    HttpResponse* res = new HttpResponse();
-    Location* location = loc_trie_search(_srv->getCfg().http.server.loc_trie, _req->path);
+	HttpResponse*	res = new HttpResponse();
+	res->location = loc_trie_search(_srv->getCfg().http.server.loc_trie, _req->path);
+	res->filename = _req->path.substr(res->location->_path.length(), _req->path.length());
+	std::string		mimetype;
 
-    res->statuscode = "200";
-    res->statusmsg = "OK";
-    res->headers["Server"] = "Webserv/0.69";
+	res->set_response_code(HttpResponse::SC_200);
+	res->headers["Server"] = "Webserv/0.69";
 
-    if (!location)
-    {
-        res->statuscode = "404";
-        res->statusmsg = "Not Found";
-        _handleErrorResponse(res);
-        return res;
-    }
+	if (!_req->is_method_permitted(res->location))
+	{
+		res->set_response_code(HttpResponse::SC_405);
+		_handleErrorResponse(res);
+		return res;
+	}
 
-    if (std::find(location->_methods.begin(), location->_methods.end(), _req->method) == location->_methods.end())
-    {
-        res->statuscode = "405";
-        res->statusmsg = "Method Not Allowed";
-        _handleErrorResponse(res);
-        return res;
-    }
+	CGI	*cgi = cgi_trie_search(res->location->cgi_trie, _req->path);
+	if (cgi != NULL)
+	{
+		res->set_response_code(HttpResponse::SC_500);
+		res->headers["boop"] = "beep";
+		_handleErrorResponse(res);
+		return res;
+	}
 
-    CGI* cgi = cgi_trie_search(location->cgi_trie, _req->path);
-    if (cgi != NULL)
-    {
-        res->statuscode = "500";
-        res->statusmsg = "Internal Server Error";
-        _handleErrorResponse(res);
-        return res;
-    }
+	try {
+		switch (_req->get_method()) {
+			case (HttpRequest::GET):
+				_prepareResponse_get(res);
+				break;
+			case (HttpRequest::PUT):
+				_prepareResponse_put(res);
+				break;
+			case (HttpRequest::POST):
+				_prepareResponse_post(res);
+				break;
+			case (HttpRequest::DELETE):
+				_prepareResponse_delete(res);
+				break;
+		}
+	} catch (std::exception &e)
+	{
+		_handleErrorResponse(res);
+	}
 
-    try {
-        if (_req->method == "GET")
-        {
-            res->body = _req->getHtmlResponse(location, *res);
-            if (_req->headers["range"].empty())
-                res->headers["accept-ranges"] = "bytes";
-            else if (_req->headers["range"].find("bytes") == 0)
-            {
-                _parseRange(*res);
-                res->statuscode = "206";
-                res->statusmsg = "Partial Content";
-            }
-            res->headers["content-length"] = ::itoa(res->body.length());
-        }
-        else if (_req->method == "PUT")
-        {
-            std::string rel_path = _req->path.substr(location->_path.length(), _req->path.length());
-            if (rel_path.empty())
-                rel_path = "default";
-            std::string path = location->_root + rel_path;
-
-            if (access(path.c_str(), F_OK) == 0)
-            {
-                res->statuscode = "204";
-                res->statusmsg = "No Content";
-            }
-            else
-            {
-                res->statuscode = "201";
-                res->statusmsg = "Created";
-            }
-            res->headers["content-length"] = "0";
-            int fd = open(path.c_str(), O_WRONLY | O_TRUNC | O_CREAT, S_IRWXU | S_IROTH | S_IRGRP);
-            if (fd >= 0)
-            {
-                if (!_req->body.empty())
-                    ::write(fd, _req->body.data(), _req->body.size());
-                close(fd);
-            }
-        }
-        else if (_req->method == "DELETE")
-        {
-            // TODO
-        }
-    } catch (std::exception&) {
-        _handleErrorResponse(res);
-    }
-
-    return res;
+	return (res);
 }
+
+void Connection::_prepareResponse_get(HttpResponse *res) const
+{
+	res->body = _req->getHtmlResponse(*res);
+
+	if (_req->headers["range"].empty())
+		res->headers["accept-ranges"] = "bytes";
+	else if (_req->headers["range"].find("bytes") == 0)
+	{
+		_parseRange(*res);
+		res->set_response_code(HttpResponse::SC_206);
+	}
+	res->headers["content-length"] = ::itoa(res->body.length());
+
+}
+
+void Connection::_prepareResponse_put(HttpResponse *res) const
+{
+	std::string	rel_path = _req->path.substr(res->location->_path.length(), _req->path.length());
+	if (rel_path.empty())
+		rel_path = "default";
+	std::string	path = res->location->_root + rel_path;
+
+	if (access(path.c_str(), F_OK) == 0)
+		res->set_response_code(HttpResponse::SC_204);
+	else
+		res->set_response_code(HttpResponse::SC_201);
+
+	res->headers["content-length"] = "0";
+	int	fd = open(path.c_str(), O_WRONLY | O_TRUNC | O_CREAT, S_IRWXU | S_IROTH | S_IRGRP);
+	write(fd, _req->body.data(), _req->body.size());
+	close(fd);
+
+}
+
+void Connection::_prepareResponse_post(HttpResponse *res) const
+{
+	(void)res;
+}
+
+void Connection::_prepareResponse_delete(HttpResponse *res) const
+{
+	std::string path = res->location->_root + res->filename;
+
+	if (access(path.c_str(), F_OK) != 0)
+	{
+		res->set_response_code(HttpResponse::SC_404);
+		_handleErrorResponse(res);
+		return ;
+	}
+
+	if (access(path.c_str(), W_OK) != 0)
+	{
+		res->set_response_code(HttpResponse::SC_403);
+		_handleErrorResponse(res);
+		return ;
+	}
+
+	int retval = std::remove(path.c_str());
+	if (retval == 0)
+	{
+		res->set_response_code(HttpResponse::SC_204);
+		res->headers["content-length"] = "0";
+	}
+	else {
+		; // handle_error
+	}
+}
+
 
 void Connection::_handleErrorResponse(HttpResponse* res) const
 {

@@ -107,6 +107,10 @@ private:
     void            _parseRange(HttpResponse& res) const;
     void            _handleErrorResponse(HttpResponse* res) const;
     HttpResponse*   _prepareResponse() const;
+	void 			_prepareResponse_get(HttpResponse *res) const;
+	void 			_prepareResponse_put(HttpResponse *res) const;
+	void 			_prepareResponse_delete(HttpResponse *res) const;
+	void 			_prepareResponse_post(HttpResponse *res) const;
 };
 
 #endif //CONNECTION_HPP

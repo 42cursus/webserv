@@ -9,6 +9,8 @@
 -I
 ./src/app/
 -I
+./src/handlers/
+-I
 /usr/include
 -I
 ./include/
