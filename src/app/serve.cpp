@@ -141,7 +141,7 @@ int serve(std::vector<TCPServer *> srvs)
 					if (evs[i].events & EPOLLIN)
 					{
 						srv = reinterpret_cast<TCPServer*>(detag_ptr(ptr));
-						srv->assignWorker(wrkrPool, epoll_fd);
+                        srv->acceptAllPendingConns(wrkrPool, epoll_fd);
 					}
 					break;
 				case (EP_WRKR):

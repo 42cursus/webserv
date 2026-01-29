@@ -39,9 +39,12 @@ private:
 	HttpRequest*			_req;
 	HttpResponse*			_res;
 	int						_conn_fd;
-	int						_request_handled;
-	struct sockaddr_in		_addr;
-	socklen_t				_addr_size;
+
+public:
+    void setConnFd(int connFd);
+
+private:
+    int						_request_handled;
 	TCPServer				*_srv;
 	e_status				_status;
 	std::vector<class Connection> _conns;

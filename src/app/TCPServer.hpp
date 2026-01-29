@@ -50,7 +50,7 @@ public:
 	};
 	int getSocketFd() const;
 	int start();
-	void assignWorker(WorkerPool& wrkrPool, int epoll_fd);
+	void acceptAllPendingConns(WorkerPool& wrkrPool, int epoll_fd);
 	void stop();
 	unsigned long	requests_handled;
 	unsigned long	requests_failed;

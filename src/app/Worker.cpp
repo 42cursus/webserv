@@ -34,8 +34,6 @@ Worker::Worker()
     _res(NULL),
 	_conn_fd(-1),
 	_request_handled(),
-	_addr(),
-	_addr_size(),
 	_srv(NULL),
 	_status(REQ_HEADERS)
 {
@@ -60,7 +58,10 @@ Worker::~Worker()
  */
 void Worker::acceptConnection()
 {
-	struct sockaddr *addr = reinterpret_cast<struct sockaddr*>(&_addr); // NOLINT(*-pro-type-reinterpret-cast)
+    struct sockaddr_in		_addr;
+    socklen_t				_addr_size = sizeof(_addr);
+    struct sockaddr         *addr = reinterpret_cast<struct sockaddr*>(&_addr); // NOLINT(*-pro-type-reinterpret-cast)
+
 	_conn_fd = /* global namespace */ ::accept(_srv->getSocketFd(), addr, &_addr_size);
 	if (_conn_fd < 0) {
 		std::cerr << "Failed to accept client request." << std::endl;
@@ -406,4 +407,8 @@ void	Worker::reset()
 Worker::e_status	Worker::getStatus(void) const
 {
 	return (_status);
+}
+
+void Worker::setConnFd(int connFd) {
+    _conn_fd = connFd;
 }

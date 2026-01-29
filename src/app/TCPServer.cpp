@@ -75,6 +75,12 @@ int TCPServer::start()
 		std::cerr << "Failed to create server socket." << std::endl;
 		throw TCPServer::GenericException();
 	}
+    int flags = fcntl(_socket_fd, F_GETFL, 0);
+    if (flags < 0 || fcntl(_socket_fd, F_SETFL, flags | O_NONBLOCK) < 0)
+    {
+        std::cerr << "Failed to set O_NONBLOCK on listen socket: " << strerror(errno) << std::endl;
+        throw TCPServer::GenericException();
+    }
 	int reuse = 1;
 	int result = setsockopt(_socket_fd, SOL_SOCKET, SO_REUSEADDR, (void *)&reuse, sizeof(reuse));
 	if (result < 0)
@@ -124,19 +130,44 @@ const Config &TCPServer::getCfg() const
 	return cfg;
 }
 
-void	TCPServer::assignWorker(WorkerPool& wrkrPool, int epoll_fd)
+void	TCPServer::acceptAllPendingConns(WorkerPool& wrkrPool, int epoll_fd)
 {
-	Worker* wrkr;
+    Worker* wrkr;
 
-	// if (wrkrPool.getNumAlloced() > 900)
-	// 	continue ;
-	wrkr = wrkrPool.alloc(this);
-	wrkr->acceptConnection();
-	struct epoll_event ev;
-	// wrkr->setReq(new HttpRequest());
-	ev.data.ptr = tag_ptr(wrkr, EP_WRKR);
-	ev.events = EPOLLIN;
-	epoll_ctl(epoll_fd, EPOLL_CTL_ADD, wrkr->getConnFd(), &ev);
+    while (true) // multiple connections may already be queued on the listen socket
+    {
+
+
+        struct sockaddr_in		_addr;
+        socklen_t				_addr_size = sizeof(_addr);
+        struct sockaddr         *addr = reinterpret_cast<struct sockaddr*>(&_addr); // NOLINT(*-pro-type-reinterpret-cast)
+
+        int conn_fd = /* global namespace */ ::accept(_socket_fd, addr, &_addr_size);
+        if (conn_fd < 0) {
+            std::cerr << "Failed to accept client request." << std::endl;
+            if (errno == EINTR)
+                continue;
+            if (errno == EAGAIN || errno == EWOULDBLOCK)
+                break;
+            break;
+        }
+
+        wrkr = wrkrPool.alloc(this);
+        wrkr->setConnFd(conn_fd);
+
+        std::cout << "Accepted connection. fd: " << conn_fd << std::endl;
+        struct timeval timeout;
+        timeout.tv_sec = 0;  // 5 seconds timeout
+        timeout.tv_usec = 20;
+
+        setsockopt(conn_fd, SOL_SOCKET, SO_SNDTIMEO, (char *)&timeout, sizeof(timeout));
+
+        struct epoll_event ev;
+        std::memset(&ev, 0, sizeof(ev));
+        ev.data.ptr = tag_ptr(wrkr, EP_WRKR);
+        ev.events = EPOLLIN;
+        epoll_ctl(epoll_fd, EPOLL_CTL_ADD, conn_fd, &ev);
+    }
 };
 
 int TCPServer::serve(TCPServer &srv)
@@ -187,7 +218,7 @@ int TCPServer::serve(TCPServer &srv)
 			{
 				// std::cout << "Read ready on fd " << std::endl;
 				if (evs[i].data.fd == sockfd)
-					assignWorker(wrkrPool, epoll_fd); // <==
+                    acceptAllPendingConns(wrkrPool, epoll_fd); // <==
 				else
 				{
 					int retval = wrkr->handleRequest();
