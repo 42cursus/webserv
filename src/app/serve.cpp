@@ -83,13 +83,16 @@ void epoll_del(int epoll_fd, int fd)
 
 void serve_handle_worker(ConnWorker *wrkr, int epoll_fd, WorkerPool &wrkrPool, struct epoll_event &ev)
 {
-	if (ev.events & (EPOLLERR | EPOLLHUP))
-	{
-		std::cout << "error occured on fd: " << wrkr->getConnFd() << "(EPOLLERR | EPOLLHUP)" << std::endl;
+    const bool hup = (ev.events & EPOLLHUP);
+
+    if (ev.events & EPOLLERR)
+    {
+        std::cout << "error occured on fd: " << wrkr->getConnFd() << " (EPOLLERR)" << std::endl;
         epoll_del(epoll_fd, wrkr->getConnFd());
         wrkr->resetForReuse();
-		wrkrPool.free(wrkr);
-	}
+        wrkrPool.free(wrkr);
+        return;
+    }
 
     if (ev.events & EPOLLIN)
     {
@@ -101,12 +104,23 @@ void serve_handle_worker(ConnWorker *wrkr, int epoll_fd, WorkerPool &wrkrPool, s
             epoll_del(epoll_fd, wrkr->getConnFd());
             wrkr->resetForReuse();
             wrkrPool.free(wrkr);
+            return;
         }
-        if (retval == Connection::WANT_WRITE)
+        if (retval == Connection::WANT_WRITE || wrkr->getStatus() == Connection::READY_TO_WRITE)
             epoll_mod(epoll_fd, wrkr->getConnFd(), tag_ptr(wrkr, EP_WRKR), EPOLLOUT);
-	}
-	else if (ev.events & EPOLLOUT && wrkr->getStatus() == Connection::READY_TO_WRITE)
-	{
+
+        // If peer hung up and we have nothing queued to write, we can close now.
+        if (hup && !wrkr->hasPendingResponses())
+        {
+            std::cout << "Peer hung up (EPOLLHUP) and no pending responses on fd: " << wrkr->getConnFd() << std::endl;
+            epoll_del(epoll_fd, wrkr->getConnFd());
+            wrkr->resetForReuse();
+            wrkrPool.free(wrkr);
+            return;
+        }
+    }
+    else if (ev.events & EPOLLOUT && wrkr->getStatus() == Connection::READY_TO_WRITE)
+    {
 		// std::cout << "Write ready on fd: " << wrkr->getConnFd() << std::endl;
         Connection::e_result retval = wrkr->sendResponse();
         if (retval == Connection::CLOSED || retval == Connection::ERROR)
@@ -115,9 +129,22 @@ void serve_handle_worker(ConnWorker *wrkr, int epoll_fd, WorkerPool &wrkrPool, s
             epoll_del(epoll_fd, wrkr->getConnFd());
             wrkr->resetForReuse();
             wrkrPool.free(wrkr);
+            return;
         }
+
         if (retval == Connection::OK)
+        {
+            // If peer hung up, don’t switch back to EPOLLIN; close once drained.
+            if (hup && !wrkr->hasPendingResponses())
+            {
+                std::cout << "Finished writes after peer hangup on fd: " << wrkr->getConnFd() << std::endl;
+                epoll_del(epoll_fd, wrkr->getConnFd());
+                wrkr->resetForReuse();
+                wrkrPool.free(wrkr);
+                return;
+            }
             epoll_mod(epoll_fd, wrkr->getConnFd(), tag_ptr(wrkr, EP_WRKR), EPOLLIN);
+        }
     }
 }
 

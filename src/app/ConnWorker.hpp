@@ -36,6 +36,8 @@ public:
     Connection::e_result handleRequest();
     Connection::e_result sendResponse();
 
+    bool hasPendingResponses() const;
+
     void resetForReuse();
     void clearRequest();
 

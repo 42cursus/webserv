@@ -41,9 +41,15 @@ Connection::Connection()
       _req(NULL),
       _in(),
       _in_off(0),
+      _peerClosedInput(false),
       _pendingResponses(),
       _req_buffer()
 {
+}
+
+bool Connection::hasPendingResponses() const
+{
+    return !_pendingResponses.empty();
 }
 
 Connection::Connection(const Connection &other)
@@ -61,6 +67,7 @@ Connection::Connection(int fd, TCPServer* srv)
       _req(NULL),
       _in(),
       _in_off(0),
+      _peerClosedInput(false),
       _pendingResponses(),
       _req_buffer()
 {
@@ -107,7 +114,11 @@ Connection::e_result Connection::_recvFromClient()
             continue; // drain the kernel buffer
         }
         if (nread == 0)
-            return CLOSED;
+        {
+            // Peer closed its write-side (FIN). We might still have a full request in _in.
+            _peerClosedInput = true;
+            return OK;
+        }
 
         if (_status == READING_BODY) {
             size_t old_size = _req->body.size();
@@ -339,6 +350,10 @@ Connection::e_result Connection::onReadable()
     e_result pr = _processInput();
     if (pr == WANT_WRITE)
         return WANT_WRITE;
+
+    // If peer already closed input and we produced nothing to write, close now.
+    if (_peerClosedInput && _pendingResponses.empty())
+        return CLOSED;
 
     return OK;
 }
@@ -601,6 +616,7 @@ void Connection::reset()
     _in.clear();
     _in_off = 0;
 
+    _peerClosedInput = false;
     _status = READING_HEADERS;
 }
 

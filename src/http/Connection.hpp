@@ -58,6 +58,8 @@ public:
     e_result    onReadable();
     e_result    onWritable();
 
+
+    bool        hasPendingResponses() const;
     void        closeSocketFd();
     e_status    getStatus() const;
     void        reset();
@@ -89,6 +91,8 @@ private:
     // input buffering
     std::string _in;
     size_t      _in_off;
+
+    bool        _peerClosedInput; // read() returned 0 at least once
 
     // output queue
     struct PendingResponse {

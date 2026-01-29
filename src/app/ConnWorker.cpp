@@ -97,6 +97,11 @@ Connection::e_result ConnWorker::sendResponse()
     return Connection::OK;
 }
 
+bool ConnWorker::hasPendingResponses() const
+{
+    return _conn.hasPendingResponses();
+}
+
 void ConnWorker::resetForReuse()
 {
     _conn.reset();
