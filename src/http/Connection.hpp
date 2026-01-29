@@ -21,6 +21,8 @@
 #include "CgiHandler.hpp"
 #include "StaticFileHandler.hpp"
 
+#define REQUEST_BUF_SIZE 4096
+#define RESPONSE_MSG_SIZE 4096
 #ifndef CRLF
 #define CRLF "\r\n"
 #endif

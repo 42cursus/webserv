@@ -20,10 +20,6 @@
 #include "TCPServer.hpp"
 #include <netinet/in.h>
 
-#define REQUEST_BUF_SIZE 4096
-#define RESPONSE_MSG_SIZE 4096
-#define CRLF "\r\n"
-
 class ConnWorker {
 public:
     typedef Connection::e_status e_status;

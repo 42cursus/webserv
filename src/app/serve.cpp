@@ -87,7 +87,7 @@ void serve_handle_worker(ConnWorker *wrkr, int epoll_fd, WorkerPool &wrkrPool, s
 {
 	if (ev.events & (EPOLLERR | EPOLLHUP))
 	{
-		std::cout << "error occured on fd: " << wrkr->getConnFd() << std::endl;
+		std::cout << "error occured on fd: " << wrkr->getConnFd() << "(EPOLLERR | EPOLLHUP)" << std::endl;
         epoll_del(epoll_fd, wrkr->getConnFd());
 		wrkr->reset();
 		wrkrPool.free(wrkr);

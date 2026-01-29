@@ -18,9 +18,9 @@
 #include <fcntl.h>
 #include <unistd.h>
 
-#include "TCPServer.hpp"
-#include "Prefix_suffix.hpp"
 #include "Location.hpp"
+#include "Prefix_suffix.hpp"
+#include "TCPServer.hpp"
 #include "webserv.hpp"
 
 /*
@@ -80,7 +80,7 @@ Connection::Result Connection::_recvFromClient()
 {
     while (true)
     {
-        ssize_t nread = ::read(_fd, _req_buffer, 4096);
+        ssize_t nread = ::read(_fd, _req_buffer, REQUEST_BUF_SIZE);
         if (nread > 0)
         {
             _req_buffer[nread] = '\0';
@@ -89,6 +89,13 @@ Connection::Result Connection::_recvFromClient()
         }
         if (nread == 0)
             return CLOSED;
+
+        if (_status == REQ_BODY) {
+            size_t old_size = _req->body.size();
+            _req->body.resize(old_size + nread); // FIXME: Why do we need this?
+            std::memcpy(_req->body.data() + old_size, _req_buffer, nread);
+            _req->printBody();
+        }
 
         if (errno == EINTR)
             continue;
@@ -99,6 +106,10 @@ Connection::Result Connection::_recvFromClient()
     }
 }
 
+void logServingFile(const std::string& path, const std::string& mimetype) {
+    std::cout << "Serving file: " << path << " with MIME type: " << mimetype << std::endl;
+}
+
 Connection::Result Connection::_sendToClient()
 {
     if (!_res)
@@ -107,8 +118,21 @@ Connection::Result Connection::_sendToClient()
     std::string& response = _res->response;
     if (_res->start >= response.size())
         return OK;
+    if (_res->start == 0)
+    {
+        std::string& type = _res->headers["content-type"];
+        if (!_res->body.empty())
+            logServingFile(_res->filename, type);
+        if (type.substr(0, type.find_first_of("/")) == "text")
+            std::cout << FT_BLUE << response << FT_RESET << std::endl;
+        else
+            std::cout << FT_BLUE << response.substr(0, response.find(CRLF CRLF)) << "\n<Binary file>" << FT_RESET << std::endl;
+    }
+    // size_t	msg_size = RESPONSE_MSG_SIZE;
+    size_t	remaining = response.length() - _res->start;
+    // resize_socket_buffer(_conn_fd, msg_size);
+    remaining = std::min(remaining, response.length() - _res->start);
 
-    size_t remaining = response.size() - _res->start;
     ssize_t w = ::write(_fd, response.data() + _res->start, remaining);
 
     if (w > 0)
@@ -148,6 +172,8 @@ Connection::Result Connection::onReadable()
             size_t clcr_pos = _rawRequest.find(CRLF CRLF);
             if (clcr_pos == std::string::npos)
                 return OK;
+            std::cout << FT_MAGENTA << "Request ready on fd: " << _fd << std::endl;
+            std::cout << FT_GREEN << _rawRequest.substr(0, clcr_pos + 2) << FT_RESET << std::endl;
 
             _req = new HttpRequest();
             try {
@@ -174,6 +200,7 @@ Connection::Result Connection::onReadable()
 
                 if (_req->body.size() < _req->content_length)
                     return OK;
+                _req->printBody();
             }
             break;
         }
