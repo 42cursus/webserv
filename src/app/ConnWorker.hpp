@@ -33,10 +33,10 @@ public:
 
     int getConnFd() const;
 
-    int onReadable();
-    int onWritable();
+    int handleRequest();
+    int sendResponse();
 
-    void reset();
+    void resetForReuse();
     void clearRequest();
 
     e_status getStatus() const;

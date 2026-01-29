@@ -197,13 +197,13 @@ int TCPServer::serve(TCPServer &srv)
 			{
 				std::cout << "error occured on fd: " << wrkr->getConnFd() << std::endl;
 				epoll_ctl(epoll_fd, EPOLL_CTL_DEL, wrkr->getConnFd(), NULL);
-				wrkr->reset();
+                wrkr->resetForReuse();
 				wrkrPool.free(wrkr);
 			}
 			else if (evs[i].events & EPOLLOUT && wrkr->getStatus() == Connection::REQ_RESPONSE_READY)
 			{
 				// std::cout << "Write ready on fd: " << wrkr->getConnFd() << std::endl;
-				int retval = wrkr->onWritable();
+				int retval = wrkr->sendResponse();
 				if (retval == 0)
 				{
 					struct epoll_event ev;
@@ -219,7 +219,7 @@ int TCPServer::serve(TCPServer &srv)
                     acceptAllPendingConns(wrkrPool, epoll_fd); // <==
 				else
 				{
-					int retval = wrkr->onReadable();
+					int retval = wrkr->handleRequest();
 					if (wrkr->getStatus() == Connection::REQ_RESPONSE_READY)
 					{
 						struct epoll_event ev;
@@ -231,7 +231,7 @@ int TCPServer::serve(TCPServer &srv)
 					{
 						std::cout << "Connection closed on fd: " << wrkr->getConnFd() << std::endl;
 						epoll_ctl(epoll_fd, EPOLL_CTL_DEL, wrkr->getConnFd(), NULL);
-						wrkr->reset();
+                        wrkr->resetForReuse();
 						wrkrPool.free(wrkr);
 					}
 				}

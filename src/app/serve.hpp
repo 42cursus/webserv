@@ -16,6 +16,7 @@
 #include <vector>
 #include "TCPServer.hpp"
 
+#define EVS_SIZE 1024
 enum epoll_ptr_type {
 	EP_SRV,
 	EP_WRKR,

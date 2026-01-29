@@ -89,27 +89,27 @@ void serve_handle_worker(ConnWorker *wrkr, int epoll_fd, WorkerPool &wrkrPool, s
 	{
 		std::cout << "error occured on fd: " << wrkr->getConnFd() << "(EPOLLERR | EPOLLHUP)" << std::endl;
         epoll_del(epoll_fd, wrkr->getConnFd());
-		wrkr->reset();
+        wrkr->resetForReuse();
 		wrkrPool.free(wrkr);
 	}
 	else if (ev.events & EPOLLIN)
 	{
 		// std::cout << "Read ready on fd " << std::endl;
-		int retval = wrkr->onReadable();
+		int retval = wrkr->handleRequest();
         if (wrkr->getStatus() == Connection::REQ_RESPONSE_READY)
             epoll_mod(epoll_fd, wrkr->getConnFd(), tag_ptr(wrkr, EP_WRKR), EPOLLOUT);
         if (retval == 2)
 		{
 			std::cout << "Connection closed on fd: " << wrkr->getConnFd() << std::endl;
             epoll_del(epoll_fd, wrkr->getConnFd());
-			wrkr->reset();
+            wrkr->resetForReuse();
 			wrkrPool.free(wrkr);
 		}
 	}
 	else if (ev.events & EPOLLOUT && wrkr->getStatus() == Connection::REQ_RESPONSE_READY)
 	{
 		// std::cout << "Write ready on fd: " << wrkr->getConnFd() << std::endl;
-		int retval = wrkr->onWritable();
+		int retval = wrkr->sendResponse();
         if (retval == 0)
             epoll_mod(epoll_fd, wrkr->getConnFd(), tag_ptr(wrkr, EP_WRKR), EPOLLIN);
     }
@@ -118,14 +118,14 @@ void serve_handle_worker(ConnWorker *wrkr, int epoll_fd, WorkerPool &wrkrPool, s
 int serve(std::vector<TCPServer *> srvs)
 {
 	extern sig_atomic_t				g_var;
-	WorkerPool						wrkrPool(1024);
+	WorkerPool						wrkrPool(TCPServer::WRKR_POOL_SIZE);
 	int								epoll_fd = epoll_create(1);
 	std::vector<struct epoll_event>	evs;
 	int								nfds;
     ConnWorker* 					wrkr;
 	TCPServer*						srv;
 
-	evs.resize(1024);
+	evs.resize(EVS_SIZE);
 	for (uint64_t i = 0; i < srvs.size(); i++)
 	{
 		evs[i].events = EPOLLIN;

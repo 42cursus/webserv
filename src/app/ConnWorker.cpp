@@ -39,7 +39,7 @@ ConnWorker::~ConnWorker()
 {
     // Connection destructor closes fd; keep explicit close safe:
     closeSocketFd();
-    reset();
+    resetForReuse();
 }
 
 
@@ -84,7 +84,7 @@ ConnWorker::e_status ConnWorker::getStatus() const
     return _conn.getStatus();
 }
 
-int ConnWorker::onReadable()
+int ConnWorker::handleRequest()
 {
     Connection::Result r = _conn.onReadable();
     if (r == Connection::CLOSED)
@@ -96,7 +96,7 @@ int ConnWorker::onReadable()
     return 1;
 }
 
-int ConnWorker::onWritable()
+int ConnWorker::sendResponse()
 {
     Connection::Result r = _conn.onWritable();
     if (r == Connection::WANT_WRITE)
@@ -104,7 +104,7 @@ int ConnWorker::onWritable()
     return 0;
 }
 
-void ConnWorker::reset()
+void ConnWorker::resetForReuse()
 {
     _conn.reset();
 }
