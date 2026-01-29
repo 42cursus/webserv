@@ -76,17 +76,73 @@ Connection::~Connection()
 ** --------------------------------- METHODS ----------------------------------
 */
 
-Connection::Result Connection::onReadable()
+Connection::Result Connection::_recvFromClient()
 {
-    ssize_t nread = ::read(_fd, _req_buffer, 4096);
-    if (nread <= 0)
+    while (true)
+    {
+        ssize_t nread = ::read(_fd, _req_buffer, 4096);
+        if (nread > 0)
+        {
+            _req_buffer[nread] = '\0';
+            _rawRequest.append(_req_buffer, static_cast<size_t>(nread));
+            continue; // drain kernel buffer
+        }
+        if (nread == 0)
+            return CLOSED;
+
+        if (errno == EINTR)
+            continue;
+        if (errno == EAGAIN || errno == EWOULDBLOCK)
+            return OK;
+
+        return ERROR;
+    }
+}
+
+Connection::Result Connection::_sendToClient()
+{
+    if (!_res)
+        return ERROR;
+
+    std::string& response = _res->response;
+    if (_res->start >= response.size())
+        return OK;
+
+    size_t remaining = response.size() - _res->start;
+    ssize_t w = ::write(_fd, response.data() + _res->start, remaining);
+
+    if (w > 0)
+    {
+        _res->start += static_cast<size_t>(w);
+        if (_res->start >= response.size())
+        {
+            _srv->requests_handled++;
+            _rawRequest.erase();
+            reset();
+            return OK;
+        }
+        return WANT_WRITE;
+    }
+
+    if (w == 0)
         return CLOSED;
 
-    _req_buffer[nread] = '\0';
+    if (errno == EINTR)
+        return WANT_WRITE;
+    if (errno == EAGAIN || errno == EWOULDBLOCK)
+        return WANT_WRITE;
+
+    return ERROR;
+}
+
+Connection::Result Connection::onReadable()
+{
+    Result rr = _recvFromClient();
+    if (rr != OK)
+        return rr;
 
     switch (_status) {
         case REQ_HEADERS: {
-            size_t old_size = _rawRequest.size();
             _rawRequest += _req_buffer;
 
             size_t clcr_pos = _rawRequest.find(CRLF CRLF);
@@ -108,18 +164,22 @@ Connection::Result Connection::onReadable()
             if (_req->content_length > 0)
             {
                 _status = REQ_BODY;
-                size_t body_size = extract_body(static_cast<size_t>(nread), old_size, clcr_pos);
-                if (body_size < _req->content_length)
+                const size_t body_start = clcr_pos + 4;
+                const size_t have = (_rawRequest.size() >= body_start) ? (_rawRequest.size() - body_start) : 0;
+                const size_t take = std::min(have, _req->content_length);
+
+                _req->body.resize(take);
+                if (take > 0)
+                    std::memcpy(_req->body.data(), _rawRequest.data() + body_start, take);
+
+                if (_req->body.size() < _req->content_length)
                     return OK;
             }
             break;
         }
         case REQ_BODY: {
-            size_t old_size = _req->body.size();
-            _req->body.resize(old_size + static_cast<size_t>(nread));
-            std::memcpy(_req->body.data() + old_size, _req_buffer, static_cast<size_t>(nread));
-            if (_req->body.size() < _req->content_length)
-                return OK;
+            if (_req && _req->body.size() < _req->content_length)
+                return OK; // Fallback
             break;
         }
         default:
@@ -134,26 +194,9 @@ Connection::Result Connection::onReadable()
 
 Connection::Result Connection::onWritable()
 {
-    if (!_res)
-        return ERROR;
-
-    std::string& response = _res->response;
-    size_t msg_size = response.length() - _res->start;
-    msg_size = std::min(msg_size, response.length() - _res->start);
-
-    ssize_t w = ::write(_fd, &response.c_str()[_res->start], msg_size);
-    if (w <= 0)
+    if (_status != REQ_RESPONSE_READY)
         return OK;
-
-    _res->start += static_cast<size_t>(w);
-    if (_res->start >= response.length())
-    {
-        _srv->requests_handled++;
-        _rawRequest.erase();
-        reset();
-        return OK;
-    }
-    return WANT_WRITE;
+    return _sendToClient();
 }
 
 HttpResponse* Connection::prepareResponse() const

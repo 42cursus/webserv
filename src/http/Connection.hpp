@@ -62,6 +62,10 @@ public:
 private:
     Connection& operator=(const Connection&);
 
+
+    Result _recvFromClient();
+    Result _sendToClient();
+
     // transport
     int         _fd;
     TCPServer*  _srv;

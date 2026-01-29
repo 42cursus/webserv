@@ -17,20 +17,25 @@
 #include "WorkerPool.hpp"
 #include "serve.hpp"
 
+#define TAG_MASK 0xF000000000000000
+#define DETAG_MASK 0x00FFFFFFFFFFFFFF
+#define TAG_A 0xA000000000000000
+#define TAG_B 0xB000000000000000
+
 void	*tag_ptr(void *ptr, epoll_ptr_type tag)
 {
 	uint64_t	tagged = reinterpret_cast<uint64_t>(ptr);
 
 	// std::cout << std::hex << "orig:      " << reinterpret_cast<void*>(tagged)<< std::endl;
-	tagged &= 0x00FFFFFFFFFFFFFF;
+	tagged &= DETAG_MASK;
 	// std::cout << std::hex << "after mask:" << reinterpret_cast<void*>(tagged)<< std::endl;
 
 	switch (tag) {
 		case (EP_SRV):
-			tagged |= 0xA000000000000000;
+			tagged |= TAG_A;
 			break;
 		case (EP_WRKR):
-			tagged |= 0xB000000000000000;
+			tagged |= TAG_B;
 			break;
 		case (EP_NONE):
 			break;
@@ -41,7 +46,7 @@ void	*tag_ptr(void *ptr, epoll_ptr_type tag)
 
 epoll_ptr_type	get_tag(void *ptr)
 {
-	uint64_t	tag = (reinterpret_cast<uint64_t>(ptr) & 0xF000000000000000) >> 60;
+	uint64_t	tag = (reinterpret_cast<uint64_t>(ptr) & TAG_MASK) >> 60;
 
 	switch (tag) {
 		case (0xA):
@@ -60,7 +65,7 @@ void	*detag_ptr(void *ptr)
 {
 	uint64_t	tagged = reinterpret_cast<uint64_t>(ptr);
 
-	return reinterpret_cast<void *>(tagged & 0x00FFFFFFFFFFFFFF);
+	return reinterpret_cast<void *>(tagged & DETAG_MASK);
 }
 
 void epoll_del(int epoll_fd, int fd)
