@@ -3,10 +3,10 @@
 /*                                                        :::      ::::::::   */
 /*   Parser.cpp                                         :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By: margo <margo@student.42.fr>                +#+  +:+       +#+        */
+/*   By: mganchev <mganchev@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/01/21 21:52:43 by margo             #+#    #+#             */
-/*   Updated: 2026/01/27 18:57:53 by margo            ###   ########.fr       */
+/*   Updated: 2026/01/29 10:12:35 by mganchev         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -160,7 +160,9 @@ void    Parser::handleBlockIn(std::vector<t_token> line)
             throw Error("Error: invalid config: location syntax error");
         if (_current_block->isInBlock())
             throw Error("Error: invalid config: location syntax error");
-        
+        if (!(it + 1)->literal.empty() && (it + 1)->type != REGEX)
+            throw Error("Error: invalid location: missing path");
+
         Server& temp = getLastServer();
         temp.addLocation(Location());
         _current_block = &temp.getLocations().back();
@@ -210,6 +212,9 @@ void    Parser::handleBlockOut()
     }
     else if (_current_block->getBlockType() == CGI_)
     {
+        if (!validateCgiScriptExt(getLastCGI()._ext, getLastCGI()._script))
+            throw Error("Error: invalid cgi script extension");
+        
         getLastCGI().setEndLine(_current_line);
         _current_block->getParent()->setInBlock(false);
         _current_block = _current_block->getParent();

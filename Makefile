@@ -3,10 +3,10 @@
 #                                                         :::      ::::::::    #
 #    Makefile                                           :+:      :+:    :+:    #
 #                                                     +:+ +:+         +:+      #
-#    By: margo <margo@student.42.fr>                +#+  +:+       +#+         #
+#    By: mganchev <mganchev@student.42.fr>          +#+  +:+       +#+         #
 #                                                 +#+#+#+#+#+   +#+            #
 #    Created: 2025/07/17 22:30:53 by abelov            #+#    #+#              #
-#    Updated: 2026/01/27 17:32:06 by margo            ###   ########.fr        #
+#    Updated: 2026/01/29 10:08:37 by mganchev         ###   ########.fr        #
 #                                                                              #
 # **************************************************************************** #
 
@@ -15,7 +15,7 @@ NAME 			= webserv
 BUILD_DIR		= build
 INC_DIR			= ./include
 
-CFLAGS 			:= -Wall -Wextra -Werror -std=c++98 -g3 -gdwarf-3 -O0 # -fsanitize=address
+CFLAGS 			:= -Wall -Wextra -Werror -std=c++98 -gdwarf-3 -O0 -g3 #-fsanitize=address -fsanitize=undefined
 CPP 			= c++
 
 INCLUDE_FLAGS	:= -I. -I./src/http -I./src/app -I./src/utils -I./src/parser -I$(INC_DIR) -I/usr/include
@@ -30,6 +30,7 @@ SRCS			= src/main.cpp \
 				  src/parser/Prefix_suffix.cpp \
 				  src/parser/DirectiveHandlers.cpp \
 				  src/parser/State.cpp \
+				  src/parser/Error.cpp \
 				  src/parser/ParserUtils.cpp \
 				  src/parser/Parser.cpp \
 				  src/utils/Utils.cpp \
