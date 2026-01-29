@@ -34,9 +34,12 @@
 Connection::Connection()
     : _fd(-1),
       _srv(NULL),
-      _status(REQ_HEADERS),
+      _status(READING_HEADERS),
       _req(NULL),
       _res(NULL),
+      _in_off(0),
+      _expected_body(0),
+      _keep_alive_for_current(true),
       _req_buffer()
 {
 }
@@ -45,10 +48,22 @@ Connection::Connection(const Connection &other)
     : _fd(other._fd),
       _srv(other._srv),
       _status(other._status),
-      _rawRequest(other._rawRequest),
       _req(other._req),
       _res(other._res) {}
 
+Connection::Connection(int fd, TCPServer* srv)
+    : _fd(fd),
+      _srv(srv),
+      _status(READING_HEADERS),
+      _header_end(std::string::npos),
+      _req(),
+      _res(),
+      _write_off(0)
+{
+    int flags = fcntl(_fd, F_GETFL, 0);
+    if (flags >= 0)
+        fcntl(_fd, F_SETFL, flags | O_NONBLOCK);
+}
 
 /*
 ** ------------------------------- DESTRUCTORS --------------------------------
@@ -76,7 +91,7 @@ Connection::~Connection()
 ** --------------------------------- METHODS ----------------------------------
 */
 
-Connection::Result Connection::_recvFromClient()
+Connection::e_result Connection::_recvFromClient()
 {
     while (true)
     {
@@ -84,15 +99,15 @@ Connection::Result Connection::_recvFromClient()
         if (nread > 0)
         {
             _req_buffer[nread] = '\0';
-            _rawRequest.append(_req_buffer, static_cast<size_t>(nread));
-            continue; // drain kernel buffer
+            _in.append(_req_buffer, static_cast<size_t>(nread));
+            continue; // drain the kernel buffer
         }
         if (nread == 0)
             return CLOSED;
 
-        if (_status == REQ_BODY) {
+        if (_status == READING_BODY) {
             size_t old_size = _req->body.size();
-            _req->body.resize(old_size + nread); // FIXME: Why do we need this?
+            _req->body.resize(old_size + nread);
             std::memcpy(_req->body.data() + old_size, _req_buffer, nread);
             _req->printBody();
         }
@@ -110,40 +125,58 @@ void logServingFile(const std::string& path, const std::string& mimetype) {
     std::cout << "Serving file: " << path << " with MIME type: " << mimetype << std::endl;
 }
 
-Connection::Result Connection::_sendToClient()
+Connection::e_result Connection::_sendToClient()
 {
-    if (!_res)
+    if (_outq.empty())
+        return OK;
+
+    HttpResponse* cur = _outq.front();
+    if (!cur)
         return ERROR;
 
-    std::string& response = _res->response;
-    if (_res->start >= response.size())
+    std::string& response = cur->response;
+    if (cur->start >= response.size())
         return OK;
-    if (_res->start == 0)
+    if (cur->start == 0)
     {
-        std::string& type = _res->headers["content-type"];
-        if (!_res->body.empty())
-            logServingFile(_res->filename, type);
-        if (type.substr(0, type.find_first_of("/")) == "text")
+        std::string& type = cur->headers["content-type"];
+        if (!cur->body.empty())
+            logServingFile(cur->filename, type);
+        if (!type.empty() && type.substr(0, type.find_first_of("/")) == "text")
             std::cout << FT_BLUE << response << FT_RESET << std::endl;
         else
             std::cout << FT_BLUE << response.substr(0, response.find(CRLF CRLF)) << "\n<Binary file>" << FT_RESET << std::endl;
     }
     // size_t	msg_size = RESPONSE_MSG_SIZE;
-    size_t	remaining = response.length() - _res->start;
+    size_t	remaining = response.length() - cur->start;
     // resize_socket_buffer(_conn_fd, msg_size);
-    remaining = std::min(remaining, response.length() - _res->start);
-
-    ssize_t w = ::write(_fd, response.data() + _res->start, remaining);
+    remaining = std::min(remaining, response.length() - cur->start);
+    ssize_t w = ::write(_fd, response.data() + cur->start, remaining);
 
     if (w > 0)
     {
-        _res->start += static_cast<size_t>(w);
-        if (_res->start >= response.size())
+        cur->start += static_cast<size_t>(w);
+        if (cur->start >= response.size())
         {
             _srv->requests_handled++;
-            _rawRequest.erase();
-            reset();
-            return OK;
+
+            bool keep = _keep_alive_for_current;
+            delete cur;
+            _outq.pop_front();
+
+            if (_outq.empty())
+            {
+                if (!keep)
+                    return CLOSED;
+
+                _status = READING_HEADERS;
+
+                Connection::e_result pr = _processInput(); // try to parse / enqueue immediately so we don't wait for another EPOLLIN.
+                if (pr == WANT_WRITE)
+                    return WANT_WRITE;
+                return OK;
+            }
+            return WANT_WRITE;
         }
         return WANT_WRITE;
     }
@@ -151,82 +184,154 @@ Connection::Result Connection::_sendToClient()
     if (w == 0)
         return CLOSED;
 
-    if (errno == EINTR)
-        return WANT_WRITE;
-    if (errno == EAGAIN || errno == EWOULDBLOCK)
+    if (errno == EINTR || errno == EAGAIN || errno == EWOULDBLOCK)
         return WANT_WRITE;
 
     return ERROR;
 }
 
-Connection::Result Connection::onReadable()
+void Connection::_consume(size_t nbytes)
 {
-    Result rr = _recvFromClient();
+    _in_off += nbytes;
+
+    if (_in_off > 65536 || (_in_off > 0 && _in_off * 2 > _in.size()))
+    {
+        _in.erase(0, _in_off);
+        _in_off = 0;
+    }
+}
+
+void Connection::_resetCurrentRequest()
+{
+    delete _req;
+    _req = NULL;
+    _expected_body = 0;
+    _keep_alive_for_current = true;
+    _status = READING_HEADERS;
+}
+
+/**
+ * - HTTP/1.1 => keep-alive by default unless "connection: close"
+ * - HTTP/1.0 => close by default unless "connection: keep-alive"
+ * @param req
+ * @return
+ */
+bool Connection::_shouldKeepAlive(const HttpRequest& req) const
+{
+    std::string proto = req.protocol;
+    std::string conn = req.headers.count("connection") ? req.headers.find("connection")->second : "";
+
+    // normalize to lowercase
+    for (size_t i = 0; i < conn.size(); i++)
+        conn[i] = static_cast<char>(std::tolower(conn[i]));
+
+    if (proto.find("HTTP/1.1") == 0)
+        return conn != "close";
+    return conn == "keep-alive";
+}
+
+bool Connection::_tryExtractOneRequest()
+{
+    size_t hdr_end = _in.find(CRLF CRLF, _in_off);
+    if (hdr_end == std::string::npos)
+        return false;
+
+    const size_t body_start = (hdr_end - _in_off) + 4;
+    const std::string header_block = _in.substr(_in_off, body_start);
+
+    std::cout << FT_MAGENTA << "Request ready on fd: " << _fd << std::endl;
+    std::cout << FT_GREEN << header_block << FT_RESET << std::endl;
+
+	HttpRequest* req = new HttpRequest();
+	try {
+		req->parseRequest(header_block);
+	} catch (HttpRequest::GenericException&) {
+        _srv->requests_failed++;
+        _raw.erase();
+        delete _req;
+        _req = NULL;
+        return false; // err
+	}
+
+    size_t content_length = 0;
+    if (req->headers.count("content-length"))
+        content_length = static_cast<size_t>(std::atoi(req->headers["content-length"].c_str()));
+    req->content_length = content_length;
+
+	const size_t need_total = body_start + content_length;
+	if (_in.size() - _in_off < need_total)
+	{
+		delete req;
+		return false; // not enough body yet
+	}
+
+    // TODO: reuse extract body function
+	if (req->content_length > 0)
+	{
+		req->body.resize(content_length);
+		std::memcpy(req->body.data(), _in.data() + _in_off + body_start, content_length);
+	}
+
+    _consume(need_total);
+
+    delete _req;
+    _req = req;
+
+    _req->printBody();
+    _keep_alive_for_current = _shouldKeepAlive(*_req); // FIXME
+
+    HttpResponse* res = _prepareResponse();
+    res->buildHttpResponse();
+    _outq.push_back(res);
+
+    _status = READY_TO_WRITE;
+    return true;
+}
+
+Connection::e_result Connection::_processInput()
+{
+    // If we're currently writing, we still can parse and enqueue more
+    // pipelined requests, but we should not drop back to EPOLLIN-only
+    // if there's data to send.
+    bool enqueued_any = false;
+
+    while (true)
+    {
+        const size_t before = _outq.size();
+        if (!_tryExtractOneRequest())
+            break;
+        if (_outq.size() > before)
+            enqueued_any = true;
+    }
+
+    if (!_outq.empty())
+        return WANT_WRITE;
+
+    return enqueued_any ? WANT_WRITE : OK;
+}
+
+Connection::e_result Connection::onReadable()
+{
+    e_result rr = _recvFromClient();
     if (rr != OK)
         return rr;
 
-    switch (_status) {
-        case REQ_HEADERS: {
-            _rawRequest += _req_buffer;
+    // parse/enqueue as much as possible
+    e_result pr = _processInput();
+    if (pr == WANT_WRITE)
+        return WANT_WRITE;
 
-            size_t clcr_pos = _rawRequest.find(CRLF CRLF);
-            if (clcr_pos == std::string::npos)
-                return OK;
-            std::cout << FT_MAGENTA << "Request ready on fd: " << _fd << std::endl;
-            std::cout << FT_GREEN << _rawRequest.substr(0, clcr_pos + 2) << FT_RESET << std::endl;
-
-            _req = new HttpRequest();
-            try {
-                _req->parseRequest(_rawRequest);
-            } catch (HttpRequest::GenericException&) {
-                _srv->requests_failed++;
-                _rawRequest.erase();
-                delete _req;
-                _req = NULL;
-                return ERROR;
-            }
-
-            _req->content_length = std::atoi(_req->headers["content-length"].c_str());
-            if (_req->content_length > 0)
-            {
-                _status = REQ_BODY;
-                const size_t body_start = clcr_pos + 4;
-                const size_t have = (_rawRequest.size() >= body_start) ? (_rawRequest.size() - body_start) : 0;
-                const size_t take = std::min(have, _req->content_length);
-
-                _req->body.resize(take);
-                if (take > 0)
-                    std::memcpy(_req->body.data(), _rawRequest.data() + body_start, take);
-
-                if (_req->body.size() < _req->content_length)
-                    return OK;
-                _req->printBody();
-            }
-            break;
-        }
-        case REQ_BODY: {
-            if (_req && _req->body.size() < _req->content_length)
-                return OK; // Fallback
-            break;
-        }
-        default:
-            break;
-    }
-
-    _res = prepareResponse();
-    _res->buildHttpResponse();
-    _status = REQ_RESPONSE_READY;
-    return WANT_WRITE;
+    return OK;
 }
 
-Connection::Result Connection::onWritable()
+Connection::e_result Connection::onWritable()
 {
-    if (_status != REQ_RESPONSE_READY)
+    if (_status != READY_TO_WRITE)
         return OK;
     return _sendToClient();
 }
 
-HttpResponse* Connection::prepareResponse() const
+HttpResponse* Connection::_prepareResponse() const
 {
     HttpResponse* res = new HttpResponse();
     Location* location = loc_trie_search(_srv->getCfg().http.server.loc_trie, _req->path);
@@ -239,7 +344,7 @@ HttpResponse* Connection::prepareResponse() const
     {
         res->statuscode = "404";
         res->statusmsg = "Not Found";
-        handle_error_response(res);
+        _handleErrorResponse(res);
         return res;
     }
 
@@ -247,7 +352,7 @@ HttpResponse* Connection::prepareResponse() const
     {
         res->statuscode = "405";
         res->statusmsg = "Method Not Allowed";
-        handle_error_response(res);
+        _handleErrorResponse(res);
         return res;
     }
 
@@ -256,7 +361,7 @@ HttpResponse* Connection::prepareResponse() const
     {
         res->statuscode = "500";
         res->statusmsg = "Internal Server Error";
-        handle_error_response(res);
+        _handleErrorResponse(res);
         return res;
     }
 
@@ -268,7 +373,7 @@ HttpResponse* Connection::prepareResponse() const
                 res->headers["accept-ranges"] = "bytes";
             else if (_req->headers["range"].find("bytes") == 0)
             {
-                parse_range(*res);
+                _parseRange(*res);
                 res->statuscode = "206";
                 res->statusmsg = "Partial Content";
             }
@@ -305,13 +410,13 @@ HttpResponse* Connection::prepareResponse() const
             // TODO
         }
     } catch (std::exception&) {
-        handle_error_response(res);
+        _handleErrorResponse(res);
     }
 
     return res;
 }
 
-void Connection::handle_error_response(HttpResponse* res) const
+void Connection::_handleErrorResponse(HttpResponse* res) const
 {
     std::string path = _srv->getCfg().http.server.error_pages.at(res->statuscode);
     if (!path.empty() && path[0] != '.')
@@ -324,7 +429,7 @@ void Connection::handle_error_response(HttpResponse* res) const
     res->headers["content-length"] = ::itoa(res->body.length());
 }
 
-void Connection::parse_range(HttpResponse& res) const
+void Connection::_parseRange(HttpResponse& res) const
 {
     std::string rangestr = _req->headers["range"];
     size_t i = rangestr.find('=');
@@ -344,38 +449,41 @@ void Connection::parse_range(HttpResponse& res) const
     res.body.erase(0, start);
 }
 
-size_t Connection::extract_body(size_t nread, size_t old_size, size_t clcr_pos) const
-{
-    const size_t body_start = clcr_pos + 4 - old_size;
-    const size_t body_size = nread - body_start;
-    const char*  src = &_req_buffer[0] + body_start;
-
-    _req->body.resize(body_size);
-    std::memcpy(_req->body.data(), src, body_size);
-    return body_size;
-}
-
 void Connection::clearRequest()
 {
-    if (!_rawRequest.empty())
-        _rawRequest.erase();
+	_in.clear();
+	_in_off = 0;
+	_resetCurrentRequest();
 }
 
 void Connection::closeSocketFd()
 {
-    int fd = _fd;
-    if (fd != -1)
-        ::close(fd);
-    _fd = -1;
+	int fd = _fd;
+	if (fd != -1)
+		::close(fd);
+	_fd = -1;
 }
 
 void Connection::reset()
 {
+    // drain queued responses
+    while (!_outq.empty())
+    {
+        delete _outq.front();
+        _outq.pop_front();
+    }
+
     delete _res;
     delete _req;
     _res = NULL;
     _req = NULL;
-    _status = REQ_HEADERS;
+
+    _in.clear();
+    _in_off = 0;
+    _expected_body = 0;
+    _keep_alive_for_current = true;
+
+    _status = READING_HEADERS;
 }
 
 /*
@@ -383,6 +491,7 @@ void Connection::reset()
 */
 
 void Connection::setSrv(TCPServer* srv) { _srv = srv; }
+
 void Connection::setFd(int fd)
 {
     _fd = fd;

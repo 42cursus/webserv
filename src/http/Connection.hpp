@@ -13,13 +13,14 @@
 #ifndef CONNECTION_HPP
 #define CONNECTION_HPP
 
+#include "CgiHandler.hpp"
 #include "HttpRequest.hpp"
 #include "HttpResponse.hpp"
-#include "State.hpp"
 #include "HttpTransaction.hpp"
 #include "Router.hpp"
-#include "CgiHandler.hpp"
+#include "State.hpp"
 #include "StaticFileHandler.hpp"
+#include <deque>
 
 #define REQUEST_BUF_SIZE 4096
 #define RESPONSE_MSG_SIZE 4096
@@ -31,7 +32,7 @@ class TCPServer;
 
 class Connection {
 public:
-    enum Result {
+    enum e_result {
         OK = 0,
         WANT_WRITE = 1,
         CLOSED = 2,
@@ -39,13 +40,13 @@ public:
     };
 
     enum e_status {
-        REQ_HEADERS = 0,
-        REQ_BODY,
-        REQ_RESPONSE_READY,
-        REQ_MAX
+        READING_HEADERS = 0,
+        READING_BODY,
+        READY_TO_WRITE
     };
 
     Connection();
+    explicit Connection(int fd, TCPServer* srv);
     Connection(const Connection &other);
     ~Connection();
 
@@ -53,8 +54,8 @@ public:
     void        setFd(int fd);
     int         getFd() const;
 
-    Result      onReadable();
-    Result      onWritable();
+    e_result    onReadable();
+    e_result    onWritable();
 
     void        closeSocketFd();
     e_status    getStatus() const;
@@ -64,9 +65,16 @@ public:
 private:
     Connection& operator=(const Connection&);
 
+    e_result _recvFromClient();
+    e_result _sendToClient();
 
-    Result _recvFromClient();
-    Result _sendToClient();
+    // incremental parsing helpers
+    e_result _processInput();
+    bool    _tryExtractOneRequest();
+    void    _consume(size_t nbytes);
+    void    _resetCurrentRequest();
+
+    bool    _shouldKeepAlive(const HttpRequest& req) const;
 
     // transport
     int         _fd;
@@ -74,17 +82,31 @@ private:
 
     // HTTP state
     e_status    _status;
-    std::string _rawRequest;
+    std::string _raw;
+    size_t      _header_end;
 
-    HttpRequest*  _req;
-    HttpResponse* _res;
+    HttpRequest*    _req;
+    HttpResponse*   _res;
+    size_t          _write_off;
 
-    char        _req_buffer[4096 + 1];
+    // input buffering
+    std::string _in;
+    size_t      _in_off;
+    size_t      _expected_body;
+    bool        _keep_alive_for_current;
 
-    size_t      extract_body(size_t nread, size_t old_size, size_t clcr_pos) const;
-    void        parse_range(HttpResponse& res) const;
-    void        handle_error_response(HttpResponse* res) const;
-    HttpResponse* prepareResponse() const;
+    // output queue
+    std::deque<HttpResponse*> _outq;
+
+    char        _req_buffer[REQUEST_BUF_SIZE + 1];
+
+    e_result    _readIntoBuffer();
+    e_result    _tryParseRequest();
+    void        _resetForNextRequest();
+
+    void            _parseRange(HttpResponse& res) const;
+    void            _handleErrorResponse(HttpResponse* res) const;
+    HttpResponse*   _prepareResponse() const;
 };
 
 #endif //CONNECTION_HPP

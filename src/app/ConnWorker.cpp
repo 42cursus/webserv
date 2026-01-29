@@ -84,24 +84,17 @@ ConnWorker::e_status ConnWorker::getStatus() const
     return _conn.getStatus();
 }
 
-int ConnWorker::handleRequest()
+Connection::e_result ConnWorker::handleRequest()
 {
-    Connection::Result r = _conn.onReadable();
-    if (r == Connection::CLOSED)
-        return 2;
-    if (r == Connection::WANT_WRITE)
-        return 0;
-    if (r == Connection::ERROR)
-        return 2;
-    return 1;
+    return _conn.onReadable();
 }
 
-int ConnWorker::sendResponse()
+Connection::e_result ConnWorker::sendResponse()
 {
-    Connection::Result r = _conn.onWritable();
+    Connection::e_result r = _conn.onWritable();
     if (r == Connection::WANT_WRITE)
-        return 1;
-    return 0;
+        return Connection::WANT_WRITE;
+    return Connection::OK;
 }
 
 void ConnWorker::resetForReuse()

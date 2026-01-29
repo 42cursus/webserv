@@ -33,8 +33,8 @@ public:
 
     int getConnFd() const;
 
-    int handleRequest();
-    int sendResponse();
+    Connection::e_result handleRequest();
+    Connection::e_result sendResponse();
 
     void resetForReuse();
     void clearRequest();

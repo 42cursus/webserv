@@ -64,13 +64,7 @@ epoll_ptr_type	get_tag(void *ptr)
 void	*detag_ptr(void *ptr)
 {
 	uint64_t	tagged = reinterpret_cast<uint64_t>(ptr);
-
 	return reinterpret_cast<void *>(tagged & DETAG_MASK);
-}
-
-void epoll_del(int epoll_fd, int fd)
-{
-    epoll_ctl(epoll_fd, EPOLL_CTL_DEL, fd, NULL);
 }
 
 void epoll_mod(int epoll_fd, int fd, void* tagged_ptr, uint32_t events)
@@ -82,6 +76,10 @@ void epoll_mod(int epoll_fd, int fd, void* tagged_ptr, uint32_t events)
     epoll_ctl(epoll_fd, EPOLL_CTL_MOD, fd, &ev);
 }
 
+void epoll_del(int epoll_fd, int fd)
+{
+    epoll_ctl(epoll_fd, EPOLL_CTL_DEL, fd, NULL);
+}
 
 void serve_handle_worker(ConnWorker *wrkr, int epoll_fd, WorkerPool &wrkrPool, struct epoll_event &ev)
 {
@@ -92,25 +90,33 @@ void serve_handle_worker(ConnWorker *wrkr, int epoll_fd, WorkerPool &wrkrPool, s
         wrkr->resetForReuse();
 		wrkrPool.free(wrkr);
 	}
-	else if (ev.events & EPOLLIN)
-	{
+
+    if (ev.events & EPOLLIN)
+    {
 		// std::cout << "Read ready on fd " << std::endl;
-		int retval = wrkr->handleRequest();
-        if (wrkr->getStatus() == Connection::REQ_RESPONSE_READY)
-            epoll_mod(epoll_fd, wrkr->getConnFd(), tag_ptr(wrkr, EP_WRKR), EPOLLOUT);
-        if (retval == 2)
-		{
-			std::cout << "Connection closed on fd: " << wrkr->getConnFd() << std::endl;
+        Connection::e_result retval = wrkr->handleRequest();
+        if (retval == Connection::CLOSED || retval == Connection::ERROR)
+        {
+            std::cout << "Connection closed on fd: " << wrkr->getConnFd() << std::endl;
             epoll_del(epoll_fd, wrkr->getConnFd());
             wrkr->resetForReuse();
-			wrkrPool.free(wrkr);
-		}
+            wrkrPool.free(wrkr);
+        }
+        if (retval == Connection::WANT_WRITE)
+            epoll_mod(epoll_fd, wrkr->getConnFd(), tag_ptr(wrkr, EP_WRKR), EPOLLOUT);
 	}
-	else if (ev.events & EPOLLOUT && wrkr->getStatus() == Connection::REQ_RESPONSE_READY)
+	else if (ev.events & EPOLLOUT && wrkr->getStatus() == Connection::READY_TO_WRITE)
 	{
 		// std::cout << "Write ready on fd: " << wrkr->getConnFd() << std::endl;
-		int retval = wrkr->sendResponse();
-        if (retval == 0)
+        Connection::e_result retval = wrkr->sendResponse();
+        if (retval == Connection::CLOSED || retval == Connection::ERROR)
+        {
+            std::cout << "Connection closed on fd: " << wrkr->getConnFd() << std::endl;
+            epoll_del(epoll_fd, wrkr->getConnFd());
+            wrkr->resetForReuse();
+            wrkrPool.free(wrkr);
+        }
+        if (retval == Connection::OK)
             epoll_mod(epoll_fd, wrkr->getConnFd(), tag_ptr(wrkr, EP_WRKR), EPOLLIN);
     }
 }
@@ -121,9 +127,7 @@ int serve(std::vector<TCPServer *> srvs)
 	WorkerPool						wrkrPool(TCPServer::WRKR_POOL_SIZE);
 	int								epoll_fd = epoll_create(1);
 	std::vector<struct epoll_event>	evs;
-	int								nfds;
     ConnWorker* 					wrkr;
-	TCPServer*						srv;
 
 	evs.resize(EVS_SIZE);
 	for (uint64_t i = 0; i < srvs.size(); i++)
@@ -135,28 +139,30 @@ int serve(std::vector<TCPServer *> srvs)
 
 	while(g_var != SIGINT)
 	{
-		nfds = epoll_wait(epoll_fd, evs.data(), 1024, -1);
+        int nfds = epoll_wait(epoll_fd, evs.data(), 1024, -1);
 		for (int i = 0; i < nfds; i++)
 		{
 			void *ptr = evs[i].data.ptr;
 			switch (get_tag(ptr)) {
-				case (EP_SRV):
-					if (evs[i].events & EPOLLIN)
-					{
-						srv = reinterpret_cast<TCPServer*>(detag_ptr(ptr));
+				case (EP_SRV): {
+                    if (evs[i].events & EPOLLIN)
+                    {
+                        TCPServer* srv = reinterpret_cast<TCPServer*>(detag_ptr(ptr));
                         srv->acceptAllPendingConns(wrkrPool, epoll_fd);
-					}
+                    }
+                    break;
+                }
+				case (EP_WRKR): {
+                    wrkr = reinterpret_cast<ConnWorker *>(detag_ptr(ptr));
+                    serve_handle_worker(wrkr, epoll_fd, wrkrPool, evs[i]);
 					break;
-				case (EP_WRKR):
-					wrkr = reinterpret_cast<ConnWorker *>(detag_ptr(ptr));
-					serve_handle_worker(wrkr, epoll_fd, wrkrPool, evs[i]);
-					break;
+				}
 				default:
 					break;
 			}
 		}
 	}
+
 	close(epoll_fd);
 	return 0;
-
 }
