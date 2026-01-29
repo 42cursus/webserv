@@ -14,6 +14,7 @@
 # define PREFIX_HPP
 
 #include "webserv.hpp"
+#include "Location.hpp"
 
 struct TrieNode
 {

@@ -1,27 +1,23 @@
 /* ************************************************************************** */
 /*                                                                            */
 /*                                                        :::      ::::::::   */
-/*   LocationConfig.hpp                                 :+:      :+:    :+:   */
+/*   HttpTransaction.hpp                                :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
 /*   By: abelov <abelov@student.42london.com>       +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
-/*   Created: 2025/11/26 02:32:33 by abelov            #+#    #+#             */
-/*   Updated: 2025/11/26 02:32:33 by abelov           ###   ########.fr       */
+/*   Created: 2025/12/04 16:38:19 by abelov            #+#    #+#             */
+/*   Updated: 2025/12/04 16:38:19 by abelov           ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
-#ifndef WEBSERV_LOCATIONCONFIG_HPP
-#define WEBSERV_LOCATIONCONFIG_HPP
+#pragma once
+#ifndef HTTPTRANSACTION_HPP
+#define HTTPTRANSACTION_HPP
 
-#include "webserv.hpp"
 
-class LocationConfig
-{
-public:
-    LocationConfig(Config::Http::Server::Location &loc);
-private:
-    Config::Http::Server::Location::Conf _conf;
+class HttpTransaction {
+
 };
 
 
-#endif //WEBSERV_LOCATIONCONFIG_HPP
+#endif //HTTPTRANSACTION_HPP

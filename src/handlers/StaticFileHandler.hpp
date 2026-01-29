@@ -1,18 +1,28 @@
 /* ************************************************************************** */
 /*                                                                            */
 /*                                                        :::      ::::::::   */
-/*   LocationConfig.cpp                                 :+:      :+:    :+:   */
+/*   StaticFileHandler.hpp                              :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
 /*   By: abelov <abelov@student.42london.com>       +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
-/*   Created: 2025/11/26 02:34:08 by abelov            #+#    #+#             */
-/*   Updated: 2025/11/26 02:34:08 by abelov           ###   ########.fr       */
+/*   Created: 2026/01/20 14:41:53 by abelov            #+#    #+#             */
+/*   Updated: 2026/01/20 14:41:54 by abelov           ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
-#include "LocationConfig.hpp"
+#ifndef STATICFILEHANDLER_HPP
+#define STATICFILEHANDLER_HPP
 
-LocationConfig::LocationConfig(Config::Http::Server::Location& loc)
-  : _conf(loc.config)
-{
-}
+#include "IHandler.hpp"
+#include "Location.hpp"
+
+class StaticFileHandler  : public IHandler {
+public:
+    explicit StaticFileHandler(const Location& loc);
+    int handle(HttpRequest& req, HttpResponse& res);
+private:
+    const Location& _loc;
+};
+
+
+#endif //STATICFILEHANDLER_HPP

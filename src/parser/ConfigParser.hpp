@@ -95,7 +95,6 @@ public:
     static std::string read_file(const char *filename);
     Token	makeToken(TokenType key, std::string word, int linecount);
     std::vector<Parser::Token> tokenize();
-    Comment	makeComment(std::string buf, int line);
     static	std::map<std::string, std::string> init_mime_types();
     void	parse(std::vector<Parser::Token>& tokens);
     void	printTokens(std::vector<Parser::Token> tokens);

@@ -15,6 +15,7 @@
 #include <iostream>
 #include "HttpResponse.hpp"
 #include "webserv.hpp"
+#include "Location.hpp"
 
 std::string itoa(int value)
 {

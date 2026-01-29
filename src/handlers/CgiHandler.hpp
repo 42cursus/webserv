@@ -10,17 +10,18 @@
 /*                                                                            */
 /* ************************************************************************** */
 
-#ifndef WEBSERV_CGIHANDLER_HPP
-#define WEBSERV_CGIHANDLER_HPP
+#ifndef CGIHANDLER_HPP
+#define CGIHANDLER_HPP
 
 #include <string>
 #include <vector>
 
 #include "HttpRequest.hpp"
 #include "HttpResponse.hpp"
+#include "Location.hpp"
+#include "IHandler.hpp"
 
-class CgiHandler
-{
+class CgiHandler  : public IHandler {
 public:
     enum State {
         READY,
@@ -30,42 +31,28 @@ public:
         ERROR
     };
 
-    CgiHandler(HttpRequest &req,
-               const LocationConfig &loc,
-               const std::string &script_path,
-			   HttpResponse& res);
+    CgiHandler(const Location &loc);
 
-    std::string body_buffer() const
-    {
-        return _body_buffer;
-    }
+    std::string body_buffer() const;
 
     std::string raw_output() const;
 
-    HttpResponse& res() const
-    {
-        return _res;
-    }
+    HttpResponse& res() const;
+    HttpRequest& req() const;
 
-    HttpRequest& req() const
-    {
-        return _req;
-    }
-
-	int	do_run(void);
+    int handle(HttpRequest& req, HttpResponse& res);
 
 private:
-    State           _state;
-    pid_t           _pid;
-    int             _stdin_pipe[2];   // server -> CGI
-    int             _stdout_pipe[2];  // CGI -> server
-    std::string     _body_buffer;
-    std::string     _raw_output;
-    HttpResponse&    _res;
-    HttpRequest&	_req;
-
+    State               _state;
+    pid_t               _pid;
+    int                 _stdin_pipe[2];   // server -> CGI
+    int                 _stdout_pipe[2];  // CGI -> server
+    std::string         _body_buffer;
+    std::string         _raw_output;
+//    const std::string   &_script_path;
+    const Location& _loc;
     void _build_env(std::vector<std::string> &env);
     void _parse_output_into_response();
 };
 
-#endif //WEBSERV_CGIHANDLER_HPP
+#endif //CGIHANDLER_HPP
