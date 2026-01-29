@@ -19,6 +19,8 @@
 #include <cstdio>
 #include <unistd.h>
 
+#include "HttpRequest.hpp"
+#include "HttpResponse.hpp"
 #include "Location.hpp"
 #include "Prefix_suffix.hpp"
 #include "TCPServer.hpp"
@@ -332,6 +334,70 @@ Connection::e_result Connection::onWritable()
     return _sendToClient();
 }
 
+int	cgi_handle(HttpRequest& req, HttpResponse& res, CGI *cgi)
+{
+	int in_pipe[2];
+	int out_pipe[2];
+
+	pipe(in_pipe);
+	pipe(out_pipe);
+
+
+    pid_t child_pid = fork();
+    if (child_pid == 0) // child
+	{
+        dup2(out_pipe[1], STDOUT_FILENO); // stdout -> pipe
+		close(out_pipe[0]);
+		close(out_pipe[1]);
+
+        dup2(in_pipe[0], STDIN_FILENO); // pipe -> stdin
+		close(in_pipe[1]);
+		close(in_pipe[0]);
+
+		// build ENVP
+		
+		std::string script = apply_location(req.path, res.location);
+		// build ARGV
+		
+
+		const char *argv[3] = {
+			"/usr/bin/python3",
+			script.c_str(),
+			NULL,
+		};
+		const char *envp[3] = {
+			"FUCK=me",
+			"TWAT=you",
+			NULL,
+		};
+		execve(argv[0], (char *const *)argv, (char *const *)envp);
+	}
+	else if (child_pid < 0)
+	{
+		return (1);
+	}
+
+	close(out_pipe[1]);
+	close(in_pipe[0]);
+
+	write(in_pipe[1], "", 0);
+	close(in_pipe[1]);
+
+	FILE*	fp = fdopen(out_pipe[0], "r");
+	char	*line = NULL;
+	size_t	n = 0;
+	ssize_t	nread = 0;
+	while ((nread = getline(&line, &n, fp)) != -1)
+	{
+		res.body.append(line);
+	}
+	fclose(fp);
+	free(line);
+	wait(NULL);
+	return 0;
+	(void)cgi;
+}
+
 HttpResponse* Connection::_prepareResponse() const
 {
 	HttpResponse*	res = new HttpResponse();
@@ -352,9 +418,15 @@ HttpResponse* Connection::_prepareResponse() const
 	CGI	*cgi = cgi_trie_search(res->location->cgi_trie, _req->path);
 	if (cgi != NULL)
 	{
-		res->set_response_code(HttpResponse::SC_500);
-		res->headers["boop"] = "beep";
-		_handleErrorResponse(res);
+		if (cgi_handle(*_req, *res, cgi))
+		{
+			res->set_response_code(HttpResponse::SC_500);
+			_handleErrorResponse(res);
+			return res;
+		}
+		// res->body = "{\"return\": \"OK\"}";
+		res->headers["content-type"] = "text/plain";
+		res->headers["content-length"] = ::itoa(res->body.length());
 		return res;
 	}
 

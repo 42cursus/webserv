@@ -12,6 +12,7 @@
 
 #include "CgiHandler.hpp"
 #include "HttpResponse.hpp"
+#include "HttpRequest.hpp"
 
 #include <cerrno>
 #include <cstdlib>

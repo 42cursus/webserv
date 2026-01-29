@@ -144,9 +144,8 @@ HttpRequest::getHtmlResponse(HttpResponse& res)
 	}
 	else if (res.filename == "teapot")
 	{
-		res.statuscode = "418";
-		res.statusmsg = "I'm a Teapot";
-		output = "{\"msg\" = \"I'm a Teapot\"}";
+		res.set_response_code(HttpResponse::SC_418);
+		output = "{\"msg\": \"I'm a Teapot\"}";
 		res.headers["content-type"] = "application/json";
 	}
 	else
