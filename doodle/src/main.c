@@ -1,9 +1,10 @@
 #include <assert.h>
+#include <errno.h>
 #include <netinet/in.h>
 #include <signal.h>
 #include <stdbool.h>
-#include <stdio.h>
 #include <stdint.h>
+#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
@@ -33,6 +34,12 @@ int main(int argc, char *argv[])
     assert(sigaction(SIGINT, &sa, NULL) != -1);
     assert(sigaction(SIGTERM, &sa, NULL) != -1);
 
+    /* Prevent SIGPIPE from killing the server when a client disconnects mid-write */
+    struct sigaction sa_pipe;
+    memset(&sa_pipe, 0, sizeof(sa_pipe));
+    sa_pipe.sa_handler = SIG_IGN;
+    assert(sigaction(SIGPIPE, &sa_pipe, NULL) != -1);
+
     /* Get the port number from the command line and set up the
        server. If the setup does not work, the socket file
        descriptor will be negative; exit if that happens. */
@@ -54,13 +61,19 @@ int main(int argc, char *argv[])
         ASM_L(server_loop_start);
         struct sockaddr_in address;
         memset(&address, 0, sizeof(address));
-        socklen_t addrlen = 0;
+        socklen_t addrlen = sizeof(address);
 
         int connection = accept(serverfd,(struct sockaddr *)&address, &addrlen);
-        if(connection < 0) {
-            perror("connection < 0");
+
+        if (connection < 0) {
+            if (errno == EAGAIN || errno == EWOULDBLOCK)
+                continue; // no pending connection right now
+            if (errno == EINTR)
+                continue; // interrupted by the signal
+            fprintf(stderr, "connection < 0: %m");
             break;
         }
+
         running = process_request(connection);
         ASM_L(server_loop_iter);
     }

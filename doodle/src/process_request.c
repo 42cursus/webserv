@@ -2,140 +2,277 @@
 #include <sys/socket.h>
 #include <string.h>
 
-#include <sys/wait.h>
+#include <errno.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <sys/wait.h>
 
-#define BUFFER_LENGTH 1000
-#define WHITESPACE " \t\r\n"
+#define BUFFER_LENGTH 1024
+#define STREAM_BUF_SIZE 8192
+#define INSTREAM_BUF_SIZE 8192
+#define OUTSTREAM_BUF_SIZE 8192
 #define CRLF "\r\n"
 
+enum e_exec_exit_code {
+    EXIT_CANNOT_EXECUTE = 126,
+    EXIT_COMMAND_NOT_FOUND = 127
+};
 
-/* Parse the incoming HTTP request and look for the requested
-   file. It must be of the form /cgi-bin/foo.cgi or it must be
-   shutdown. All other requests are ignored. Returning true
-   from this function keeps the server running, while returning
-   false will shut the server down. */
+int file_write_and_flush(FILE *out, const void *buf, size_t len)
+{
+    if (len == 0)
+        return 0;
+
+    errno = 0;
+    size_t nw = fwrite(buf, 1, len, out);
+    if (nw != len)
+    {
+        /* fwrite failed (or shortly wrote).
+         * errno is (usually) set by the underlying write(2). */
+        if (errno == EPIPE || errno == ECONNRESET)
+            return -1; // peer closed while we were writing
+        return -2;
+    }
+
+    if (fflush(out) != 0)
+    {
+        if (errno == EPIPE || errno == ECONNRESET)
+            return -1; // the peer closed while we were flushing
+        return -2;
+    }
+    return 0;
+}
+
+
+int peer_closed_now(int fd)
+{
+    ssize_t n;
+    char    ch;
+
+    while (1)
+    {
+        // use MSG_PEEK so to not consume bytes and keep using stdio for parsing.
+        n = recv(fd, &ch, 1, MSG_PEEK);
+        if (n > 0) return 0; // data available
+        if (n == 0) return 1; // peer closed (FIN)
+        if (errno == EINTR) continue; // syscall was interrupted before completion => retry (hence looping)
+        break; // other errors (EAGAIN/EWOULDBLOCK, ECONNRESET, etc.)
+    }
+    return 0;
+}
+
 int process_request(int connection)
 {
-    /* Read the HTTP request from the socket into a local buffer */
-    char buffer[BUFFER_LENGTH] = {};
-    size_t bytes = read(connection, buffer, BUFFER_LENGTH - 1);
-    if(bytes <= 0)
+    int in_fd = dup(connection);
+    if (in_fd < 0)
     {
-        perror("No data read from socket");
         shutdown(connection, SHUT_RDWR);
         close(connection);
         return 1;
     }
 
-    /* This minimal web server only supports requests of the
-       following formats:
-
-         GET /cgi-bin/hello.cgi HTTP/1.1 ...
-         GET /cgi-bin/hello.cgi?username=me HTTP/1.1 ...
-         GET /shutdown ...
-
-     */
-
-    /* Reject any request that doesn't start with "GET" */
-    char *token = strtok(buffer, WHITESPACE);
-    if(strncmp(token, "GET", 4))
+    FILE    *in = fdopen(in_fd, "r");
+    FILE    *out = fdopen(connection, "w");
+    if (!in || !out)
     {
-        perror("Invalid HTTP request received");
-        shutdown(connection, SHUT_RDWR);
-        close(connection);
+        if (in) fclose(in); // closes in_fd
+        else  close(in_fd);
+
+        if (out) fclose(out); // closes the connection
+        else {
+            shutdown(connection, SHUT_RDWR);
+            close(connection);
+        }
         return 1;
     }
 
-    /* Check for a shutdown request. Note that all URIs passed from
-       the web browser will begin with a '/' character, so we are
-       looking for "/shutdown". */
-    token = strtok(NULL, WHITESPACE);
-    if(!strncmp(token, "/shutdown", 10))
-    {
-        /* Send a message confirming the shutdown request, then
-           return false to shut the server down */
-        char *message = "HTTP/1.1 200 OK" CRLF
-        "Connection: close" CRLF
-        "Content-Type: text/html; charset=UTF-8" CRLF CRLF
-        "<html><body><h2>Shutdown received</h2>"
-        "<p>Goodbye</p></body></html>\n";
+    char inbuf[INSTREAM_BUF_SIZE];
+    char outbuf[OUTSTREAM_BUF_SIZE];
+    setvbuf(in, inbuf, _IOFBF, INSTREAM_BUF_SIZE);
+    setvbuf(out, outbuf, _IOFBF, OUTSTREAM_BUF_SIZE);
 
-        write(connection, message, strlen(message));
-        shutdown(connection, SHUT_RDWR);
-        close(connection);
+    FILE *req_dump = tmpfile();
+    if (!req_dump)
+    {
+        fclose(in);
+        fclose(out);
+        return 1;
+    }
+    setvbuf(req_dump, NULL, _IOFBF, STREAM_BUF_SIZE);
+
+    char    line[BUFFER_LENGTH + 1] = {0x00};
+    char    request_line[BUFFER_LENGTH + 1] = {0x00};
+    if (peer_closed_now(in_fd))
+    {
+        fclose(in);
+        fclose(out);
+        return 1;
+    }
+
+    while (fgets(line, sizeof(line), in) != NULL)
+    {
+        fputs(line, req_dump);
+
+        if (request_line[0] == '\0')
+        {
+            strncpy(request_line, line, BUFFER_LENGTH);
+            request_line[BUFFER_LENGTH] = '\0';
+        }
+
+        if (strcmp(line, "\n") == 0 || strcmp(line, CRLF) == 0)
+            break;
+    }
+
+    // fgets==NULL + feof() => peer closed
+    if (request_line[0] == '\0' || ferror(in) || feof(in))
+    {
+        fclose(req_dump);
+        fclose(in);
+        fclose(out);
+        return 1;
+    }
+
+    // Parse: METHOD _ URI _ HTTP/VERSION
+    char method[16] = {0};
+    char uri[BUFFER_LENGTH] = {0};
+    if (sscanf(request_line, "%15s %999s", method, uri) != 2)
+    {
+        fclose(req_dump);
+        fclose(in);
+        fclose(out);
+        return 1;
+    }
+
+    if (strcmp(method, "GET") != 0)
+    {
+        fclose(req_dump);
+        fclose(in);
+        fclose(out);
+        return 1;
+    }
+
+    if (strncmp(uri, "/shutdown", sizeof("/shutdown") + 1) == 0)
+    {
+        const char *message =
+            "HTTP/1.1 200 OK" CRLF
+            "Connection: close" CRLF
+            "Content-Type: text/html; charset=UTF-8" CRLF CRLF
+            "<html><body><h2>Shutdown received</h2>"
+            "<p>Goodbye</p></body></html>\n";
+
+        if (file_write_and_flush(out, message, strlen(message)) < 0)
+        {
+            fclose(req_dump);
+            fclose(in);
+            fclose(out);
+            return 1;
+        }
+
+        fclose(req_dump);
+        fclose(in);
+        fclose(out);
         return 0;
     }
 
-    /* For this example, we are only supporting CGI executable
-       files and they must exist in a "cgi-bin" subdirectory of the
-       server's working directory. Reject any request that does not
-       begin with "/cgi-bin/". */
-    if(strncmp(token, CGI_DIR, 9) != 0)
+    /* we only support /cgi-bin/... */
+    if (strncmp(uri, CGI_DIR, 9) != 0)
     {
-        shutdown(connection, SHUT_RDWR);
-        close(connection);
+        fclose(req_dump);
+        fclose(in);
+        fclose(out);
         return 1;
     }
 
     /* Remove the leading '/' character, as we are looking for
-       files based on an relative path, not an absolute path */
-    char *cgi_file = token + 1;
+       files based on a relative path, not an absolute path */
+    char *cgi_file = uri + 1;
 
-    /* Search for a query string, which begins immediately following
-       the '?' character if it exists. If one is found, keep track
-       of where the query string starts and replace the '?' with a
-       null byte. This will ensure the file name is properly
-       terminated. For example, "cgi-bin/hello.cgi?user=me" will be
-       converted to the cgi_file "cgi-bin/hello.cgi" while the
-       question pointer will point to "user=me". */
-    char *question = strchr(cgi_file, '?');
-    if(question != NULL)
+    /* Split query string */
+    char *qmark = strchr(cgi_file, '?');
+    if (qmark != NULL)
     {
-        *question = '\0';
-        question++;
+        *qmark = '\0';
+        qmark++;
     }
-    /* Check for file read and execute permissions */
-    if(access(cgi_file, R_OK | X_OK) != 0)
+
+    if (access(cgi_file, R_OK | X_OK) != 0)
     {
-        shutdown(connection, SHUT_RDWR);
-        close(connection);
+        fclose(req_dump);
+        fclose(in);
+        fclose(out);
         return 1;
     }
 
-    /* Now we are ready to respond. Write back an HTTP/1.1 header
-       to the web browser then run the CGI program. */
-    char *message = "HTTP/1.1 200 OK" CRLF "Connection: close" CRLF
-    "Content-Type: text/html; charset=UTF-8" CRLF CRLF;
-    write(connection, message, strlen(message));
+    const char *hdr =
+        "HTTP/1.1 200 OK" CRLF
+        "Connection: close" CRLF
+        "Content-Type: text/html; charset=UTF-8" CRLF CRLF;
+
+    int cgi_pipe[2];
+    if ((file_write_and_flush(out, hdr, strlen(hdr)) < 0) || (pipe(cgi_pipe) != 0))
+    {
+        fclose(req_dump);
+        fclose(in);
+        fclose(out);
+        return 1;
+    }
 
     pid_t child_pid = fork();
-    if(child_pid < 0)
+    if (child_pid == 0) // child
     {
-        shutdown(connection, SHUT_RDWR);
-        close(connection);
-        return 0;
+        dup2(cgi_pipe[1], STDOUT_FILENO); // stdout -> pipe
+        close(cgi_pipe[0]);
+        close(cgi_pipe[1]);
+
+        if (qmark != NULL)
+            setenv("QUERY_STRING", qmark, 1);
+
+        execlp(cgi_file, cgi_file, NULL);
+        if (errno == ENOENT)
+            _exit(EXIT_COMMAND_NOT_FOUND);
+        _exit(EXIT_CANNOT_EXECUTE);
+    }
+    else if (child_pid < 0) // error
+    {
+        close(cgi_pipe[0]);
+        close(cgi_pipe[1]);
+        fclose(req_dump);
+        fclose(in);
+        fclose(out);
+        return 1;
+    }
+    else // parent
+    {
+        close(cgi_pipe[1]);
     }
 
-    if(child_pid == 0)
+    /* read CGI output as FILE* (buffered), write to client FILE* (buffered) */
+    FILE *cgi_out = fdopen(cgi_pipe[0], "r");
+    if (!cgi_out)
     {
-        /* If query string passed, set the environment variable */
-        if(question != NULL)
-            setenv("QUERY_STRING", question, 1);
-
-        /* Redirect the child process's STDOUT to write into the
-           socket and execute the CGI program */
-        dup2(connection, STDOUT_FILENO);
-        execlp(cgi_file, cgi_file, NULL);
+        close(cgi_pipe[0]);
+        wait(NULL);
+        fclose(req_dump);
+        fclose(in);
+        fclose(out);
         return 1;
     }
 
-    /* The parent waits until the child process runs(writing to the
-       client over the socket), then closes the socket and continues
-       with the next request */
+    char cgibuf[STREAM_BUF_SIZE];
+    setvbuf(cgi_out, cgibuf, _IOFBF, STREAM_BUF_SIZE);
+
+    char xfer[STREAM_BUF_SIZE / 2];
+    size_t nread = 0;
+    while ((nread = fread(xfer, 1, STREAM_BUF_SIZE / 2, cgi_out)) > 0)
+        fwrite(xfer, 1, nread, out);
+
+    fflush(out);
+    fclose(cgi_out);
     wait(NULL);
-    shutdown(connection, SHUT_RDWR);
-    close(connection);
+
+    fclose(req_dump);
+    fclose(in);
+    fclose(out);
+
     return 1;
 }
