@@ -3,10 +3,10 @@
 /*                                                        :::      ::::::::   */
 /*   Parser.hpp                                         :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By: margo <margo@student.42.fr>                +#+  +:+       +#+        */
+/*   By: mganchev <mganchev@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/01/21 16:11:56 by margo             #+#    #+#             */
-/*   Updated: 2026/01/27 18:23:29 by margo            ###   ########.fr       */
+/*   Updated: 2026/01/29 09:52:48 by mganchev         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -145,6 +145,14 @@ class   Parser
         void    handleBlockIn(std::vector<t_token> line);
         void    handleBlockOut();
 
+        // error checks
+        bool    validateCgiParam(std::string cgi_param);
+        bool    validateMethod(std::string method);
+        bool    validateErrorPage(std::string error_page);
+        bool    validateBool(std::string boolean);
+        bool    validateCgiScriptExt(std::string ext, std::string script);
+        bool    validateLocationRedirect(std::string path, std::string root);
+        
         // exceptions
         class   Error: public std::exception
         {
@@ -152,9 +160,9 @@ class   Parser
                 std::string _msg;
             
             public:
-                Error(std::string msg) { _msg = msg; };
-                ~Error() throw() {};
-                const char* what() const throw() { return _msg.c_str(); };
+                Error(std::string msg);
+                ~Error() throw();
+                const char* what() const throw();
         } ;
     } ;
 

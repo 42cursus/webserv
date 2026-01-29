@@ -3,10 +3,10 @@
 /*                                                        :::      ::::::::   */
 /*   DirectiveHandlers.cpp                              :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By: margo <margo@student.42.fr>                +#+  +:+       +#+        */
+/*   By: mganchev <mganchev@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/01/27 17:16:32 by margo             #+#    #+#             */
-/*   Updated: 2026/01/27 18:55:11 by margo            ###   ########.fr       */
+/*   Updated: 2026/01/29 09:39:08 by mganchev         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -15,9 +15,11 @@
 
 void    Parser::handleWorkers(const std::vector<t_token> line)
 {
-    if (line.size() < 4 || _current_block->getBlockType() != HTTP_)
-       throw Error("Error: invalid directive: worker_processes");
-
+    if (line.size() < 4)
+        throw Error("Error: invalid directive: worker_processes");
+    if (_current_block->getBlockType() != HTTP_)
+        throw Error("Error: directive worker_processes not in HTTP block");
+    
     std::vector<t_token>::const_iterator split = getTokenFromVector(line, EQUAL);
     _config.setWorkers((++split)->literal);
 }
@@ -60,8 +62,12 @@ void    Parser::handleRoot(const std::vector<t_token> line)
         throw Error("Error: invalid directive: root");
 
     std::vector<t_token>::const_iterator split = getTokenFromVector(line, EQUAL);
+    
     if ((++split)->type != REGEX)
         throw Error("Error: syntax error: root");
+    if (!validateLocationRedirect(getLastLocation()._path, split->literal))
+        throw Error("Error: syntax error: root doesn't match path");
+    
     getLastLocation()._root = split->literal;
 }
 
@@ -78,10 +84,14 @@ void    Parser::handleIndex(const std::vector<t_token> line)
 void    Parser::handleAutoIndex(const std::vector<t_token> line)
 {
     if (line.size() < 4 || _current_block->getBlockType() != LOCATION_)
-        throw Error("Error: invalid directive: autoindex");
-
+        throw Error("Error: invalid directive: autoindex");        
+        
     std::vector<t_token>::const_iterator split = getTokenFromVector(line, EQUAL);
-    getLastLocation()._autoindex = ((++split)->literal == "true" ? true : false);
+    
+    if (!validateBool((++split)->literal))
+        throw Error("Error: invalid boolean: autoindex");
+    
+    getLastLocation()._autoindex = (split->literal == "true" ? true : false);
 }
 
 void    Parser::handleMethods(const std::vector<t_token> line)
@@ -91,7 +101,12 @@ void    Parser::handleMethods(const std::vector<t_token> line)
 
     std::vector<t_token>::const_iterator split = getTokenFromVector(line, EQUAL);
     for (++split; split->type != SEMICOLON; ++split)
+    {
+        if (!validateMethod(split->literal))
+            throw Error("Error: invalid method");
+        
         getLastLocation()._methods.push_back(split->literal);
+    }
 }
 
 void    Parser::handleMaxBodySize(const std::vector<t_token> line)
@@ -129,6 +144,10 @@ void    Parser::handleCgiParam(const std::vector<t_token> line)
     std::vector<t_token>::const_iterator split = getTokenFromVector(line, EQUAL);
     std::string key = (++split)->literal;
     std::string value = (++split)->literal;
+    
+    if (!validateCgiParam(value))
+        throw Error("Error: invalid cgi_param value");
+    
     getLastCGI()._cgi_param[key] = value;
 }
 
@@ -140,6 +159,10 @@ void    Parser::handleErrorPage(const std::vector<t_token> line) // check if las
     std::vector<t_token>::const_iterator split = getTokenFromVector(line, EQUAL);
     std::vector<t_token>::const_iterator html = getTokenFromVector(line,  SEMICOLON);
     --html;
+    
+    if (!validateErrorPage(html->literal))
+        throw Error("Error: invalid error page html file");
+    
     for (++split; split != html; ++split)
         getLastServer().addErrorPage(split->literal, html->literal);
 }
