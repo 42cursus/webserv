@@ -86,21 +86,22 @@ static std::string timespec_to_str(struct timespec& ts)
 
 void HttpResponse::buildAutoindexBody(void)
 {
-	std::vector<std::string>	filenames = _get_directory_members(location->_root);
+	std::string directory = location->_path + this->filename;
+	std::vector<std::string>	filenames = _get_directory_members(location->_root + this->filename);
 	std::vector<std::string>::iterator	it = filenames.begin();
 	struct stat	statbuf;
 
-	this->body += "<html>\n<head><title>Index of " + location->_path + "</title></head>\n";
-	this->body += "<body>\n<h1>Index of " + location->_path + "</h1><hr><pre>";
+	this->body += "<html>\n<head><title>Index of " + directory + "</title></head>\n";
+	this->body += "<body>\n<h1>Index of " + directory + "</h1><hr><pre>";
 	
 	for (; it != filenames.end(); it++)
 	{
-		std::string path = location->_root + *it;
+		std::string path = location->_root + this->filename + *it;
 		std::string line;
 		std::string size;
 
 		stat(path.c_str(), &statbuf);
-		if (statbuf.st_mode & S_IFDIR)
+		if (S_ISDIR(statbuf.st_mode))
 		{
 			*it += '/';
 			size = "-";
