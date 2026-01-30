@@ -31,7 +31,6 @@ private:
 	static const unsigned int DEFAULT_PORT = 8080;
 	int _socket_fd;
     static Config DEFAULT_CONFIG;
-    TCPServer();
 
 protected:
 	const Config &cfg;

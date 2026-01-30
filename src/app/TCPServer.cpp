@@ -11,7 +11,6 @@
 /* ************************************************************************** */
 
 #include "TCPServer.hpp"
-#include "ConfigParser.hpp"
 #include "ConnWorker.hpp"
 #include "HttpRequest.hpp"
 #include "Prefix_suffix.hpp"
@@ -26,18 +25,12 @@
 ** -------------------------------- STATIC VARS -------------------------------
 */
 
-Config TCPServer::DEFAULT_CONFIG = Parser::make_default_config();
 /*
 ** ------------------------------- CONSTRUCTORS -------------------------------
 */
 
 
 TCPServer::TCPServer(const Config& conf) : cfg(conf)
-{
-
-}
-
-TCPServer::TCPServer() : cfg(DEFAULT_CONFIG)
 {
 
 }
@@ -167,80 +160,6 @@ void	TCPServer::acceptAllPendingConns(WorkerPool& wrkrPool, int epoll_fd)
         epoll_ctl(epoll_fd, EPOLL_CTL_ADD, conn_fd, &ev);
     }
 };
-
-int TCPServer::serve(TCPServer &srv)
-{
-	extern sig_atomic_t				g_var;
-	WorkerPool						wrkrPool(srv.WRKR_POOL_SIZE);
-	int								epoll_fd = epoll_create(1);
-	std::vector<struct epoll_event>	evs;
-	int								nfds;
-	int								sockfd = srv.getSocketFd();
-    ConnWorker *							wrkr;
-
-	evs.resize(1024);
-	evs[0].events = EPOLLIN;
-	evs[0].data.fd = sockfd;
-	epoll_ctl(epoll_fd, EPOLL_CTL_ADD, sockfd, &evs[0]);
-
-	while(g_var != SIGINT)
-	{
-		nfds = epoll_wait(epoll_fd, evs.data(), 1024, -1);
-		for (int i = 0; i < nfds; i++)
-		{
-			wrkr = reinterpret_cast<ConnWorker *>(evs[i].data.ptr);
-			// if (evs[i].data.fd == sockfd)
-			// 	std::cout << "event on fd: " << sockfd << std::endl;
-			// else
-			// 	std::cout << "event on fd: " << wrkr->getConnFd() << std::endl;
-			if (evs[i].events & (EPOLLERR | EPOLLHUP))
-			{
-				std::cout << "error occured on fd: " << wrkr->getConnFd() << std::endl;
-				epoll_ctl(epoll_fd, EPOLL_CTL_DEL, wrkr->getConnFd(), NULL);
-                wrkr->resetForReuse();
-				wrkrPool.free(wrkr);
-			}
-			else if (evs[i].events & EPOLLOUT && wrkr->getStatus() == Connection::READY_TO_WRITE)
-			{
-				// std::cout << "Write ready on fd: " << wrkr->getConnFd() << std::endl;
-				int retval = wrkr->sendResponse();
-				if (retval == 0)
-				{
-					struct epoll_event ev;
-					ev.data.ptr = wrkr;
-					ev.events = EPOLLIN;
-					epoll_ctl(epoll_fd, EPOLL_CTL_MOD, wrkr->getConnFd(), &ev);
-				}
-			}
-			else if (evs[i].events & EPOLLIN)
-			{
-				// std::cout << "Read ready on fd " << std::endl;
-				if (evs[i].data.fd == sockfd)
-                    acceptAllPendingConns(wrkrPool, epoll_fd); // <==
-				else
-				{
-					int retval = wrkr->handleRequest();
-					if (wrkr->getStatus() == Connection::READY_TO_WRITE)
-					{
-						struct epoll_event ev;
-						ev.data.ptr = wrkr;
-						ev.events = EPOLLOUT;
-						epoll_ctl(epoll_fd, EPOLL_CTL_MOD, wrkr->getConnFd(), &ev);
-					}
-					if (retval == 2)
-					{
-						std::cout << "Connection closed on fd: " << wrkr->getConnFd() << std::endl;
-						epoll_ctl(epoll_fd, EPOLL_CTL_DEL, wrkr->getConnFd(), NULL);
-                        wrkr->resetForReuse();
-						wrkrPool.free(wrkr);
-					}
-				}
-			}
-		}
-	}
-	close(epoll_fd);
-	return 0;
-}
 
 const char *TCPServer::GenericException::what() const throw()
 {
