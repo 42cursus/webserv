@@ -21,6 +21,8 @@
 #include "IHandler.hpp"
 #include "Location.hpp"
 
+class ConnWorker;
+
 class CgiHandler : public IHandler {
 public:
     enum State {
@@ -38,8 +40,11 @@ public:
 
     HttpResponse &res() const;
     HttpRequest &req() const;
+	ConnWorker		*wrkr;
 
-    int handle(HttpRequest &req, HttpResponse &res);
+	StatusCode handle(HttpRequest &req, HttpResponse &res);
+	void		register_read_pipe(int epoll_fd);
+	void		register_write_pipe(int epoll_fd);
 
 private:
     State _state;

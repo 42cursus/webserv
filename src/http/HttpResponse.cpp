@@ -10,11 +10,15 @@
 /*                                                                            */
 /* ************************************************************************** */
 
+#include <ctime>
 #include <sstream>
 #include <fstream>
 #include <iostream>
 #include "HttpResponse.hpp"
 #include "webserv.hpp"
+#include <dirent.h>
+#include <sys/stat.h>
+#include <vector>
 #include "Location.hpp"
 
 std::string itoa(int value)
@@ -24,21 +28,21 @@ std::string itoa(int value)
 	return oss.str();
 }
 
-std::string HttpResponse::readHtmlFile(const std::string &filename)
+StatusCode HttpResponse::readHtmlFile(const std::string &filename)
 {
-
+	StatusCode status = SC_200;
 	std::ifstream file(filename.c_str(), std::ios_base::in);
 
 	if (!file) {
 		std::cerr << "File not found." << std::endl;
-		set_response_code(SC_404);
-		throw GenericException();
+		throw Exception404();
 	}
 
 	std::stringstream buffer;
 	buffer << file.rdbuf();
 
-	return buffer.str();
+	this->body = buffer.str();
+	return status;
 }
 
 void HttpResponse::buildHttpResponse(void)
@@ -55,6 +59,67 @@ void HttpResponse::buildHttpResponse(void)
 	response = buffer.str();
 }
 
+static std::vector<std::string> _get_directory_members(std::string path)
+{
+	std::vector<std::string>	filenames;
+	struct dirent				*dirent;
+	DIR							*dir;
+
+	dir = opendir(path.c_str());
+	dirent = readdir(dir);
+	for (dirent = readdir(dir); dirent != NULL; dirent = readdir(dir))
+		filenames.push_back(dirent->d_name);
+
+	closedir(dir);
+	return (filenames);
+}
+
+static std::string timespec_to_str(struct timespec& ts)
+{
+	char	buf[64];
+	std::tm* time = std::localtime(&ts.tv_sec);
+
+	std::strftime(buf, 64, "%Y-%b-%d %H:%M", time);
+
+	return buf;
+}
+
+void HttpResponse::buildAutoindexBody(void)
+{
+	std::vector<std::string>	filenames = _get_directory_members(location->_root);
+	std::vector<std::string>::iterator	it = filenames.begin();
+	struct stat	statbuf;
+
+	this->body += "<html>\n<head><title>Index of " + location->_path + "</title></head>\n";
+	this->body += "<body>\n<h1>Index of " + location->_path + "</h1><hr><pre>";
+	
+	for (; it != filenames.end(); it++)
+	{
+		std::string path = location->_root + *it;
+		std::string line;
+		std::string size;
+
+		stat(path.c_str(), &statbuf);
+		if (statbuf.st_mode & S_IFDIR)
+		{
+			*it += '/';
+			size = "-";
+		}
+		else
+		{
+			size = ::itoa(statbuf.st_size);
+		}
+		line += "<a href=\"" + *it + "\">" + *it + "</a>";
+		for (size_t n = 100; n > line.length(); n--)
+			line += ' ';
+		line += timespec_to_str(statbuf.st_mtim);
+		line += "    " + size;
+		line += '\n';
+		this->body += line;
+	}
+	this->body += "</pre><hr></body>\n</html>\n";
+}
+
 HttpResponse::HttpResponse() : start(0)
 {
 
@@ -65,7 +130,12 @@ const char *HttpResponse::GenericException::what() const throw()
 	return "Client exception happened";
 }
 
-void HttpResponse::set_response_code(e_statuscodes code)
+const char *HttpResponse::Exception404::what() const throw()
+{
+	return "File Not Found";
+}
+
+void HttpResponse::set_response_code(StatusCode code)
 {
 	this->statuscode = status_codes[code][0];
 	this->statusmsg = status_codes[code][1];

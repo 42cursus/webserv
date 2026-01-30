@@ -13,7 +13,6 @@
 #ifndef CONNECTION_HPP
 #define CONNECTION_HPP
 
-#include "CgiHandler.hpp"
 #include "HttpRequest.hpp"
 #include "HttpResponse.hpp"
 #include "HttpTransaction.hpp"
@@ -30,6 +29,7 @@
 #endif
 
 class TCPServer;
+class ConnWorker;
 
 class Connection {
 public:
@@ -43,8 +43,11 @@ public:
     enum e_status {
         READING_HEADERS = 0,
         READING_BODY,
+        HANDLING_CGI,
         READY_TO_WRITE
     };
+
+	ConnWorker *parent; // FIXME: make private "and all this fluff" -Andrei Belov
 
     Connection();
     explicit Connection(int fd, TCPServer* srv);
@@ -94,6 +97,7 @@ private:
     size_t      _in_off;
 
     bool        _peerClosedInput; // read() returned 0 at least once
+	
 
     // output queue
     struct PendingResponse {
@@ -106,7 +110,7 @@ private:
 
     void            _parseRange(HttpResponse& res) const;
 
-    HttpResponse*   _prepareResponse() const;
+    HttpResponse*   _prepareResponse();
 	void 			_prepareResponse_get(HttpResponse *res) const;
 	void 			_prepareResponse_put(HttpResponse *res) const;
 	void 			_prepareResponse_delete(HttpResponse *res) const;

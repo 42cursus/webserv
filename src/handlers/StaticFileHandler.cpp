@@ -11,6 +11,8 @@
 /* ************************************************************************** */
 
 #include "StaticFileHandler.hpp"
+#include "HttpResponse.hpp"
+#include "webserv.hpp"
 
 /*
 ** -------------------------------- STATIC VARS -------------------------------
@@ -35,15 +37,15 @@ StaticFileHandler::StaticFileHandler(const Location &loc) : _loc(loc) {}
 ** -------------------------------- OVERLOADS ---------------------------------
 */
 
-int StaticFileHandler::handle(HttpRequest &req, HttpResponse &res)
+StatusCode StaticFileHandler::handle(HttpRequest &req, HttpResponse &res)
 {
-	res.body = req.getHtmlResponse(res, const_cast<Location *>(&_loc));
+	StatusCode status = req.getHtmlResponse(res, const_cast<Location *>(&_loc));
 
 	if (res.headers.find("content-type") == res.headers.end() || res.headers["content-type"].empty())
 		res.headers["content-type"] = "application/octet-stream";
 
 	res.headers["content-length"] = ::itoa(static_cast<int>(res.body.size()));
-	return std::atoi(res.statuscode.c_str());
+	return status;
 }
 
 /*

@@ -11,6 +11,7 @@
 /* ************************************************************************** */
 
 #pragma once
+#include "CgiHandler.hpp"
 #ifndef WORKER_HPP
 #define WORKER_HPP
 
@@ -52,6 +53,7 @@ public:
 
     ConnWorker& operator=(const ConnWorker&);
     const Connection &getConn() const;
+	CgiHandler		*cgiSession;
 
 private:
     Connection _conn;

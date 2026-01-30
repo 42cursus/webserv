@@ -13,6 +13,7 @@
 #include <cstring>
 #include <sys/epoll.h>
 #include <sys/socket.h>
+#include "CgiHandler.hpp"
 #include "ConnWorker.hpp"
 #include "WorkerPool.hpp"
 #include "serve.hpp"
@@ -21,6 +22,7 @@
 #define DETAG_MASK 0x00FFFFFFFFFFFFFF
 #define TAG_A 0xA000000000000000
 #define TAG_B 0xB000000000000000
+#define TAG_C 0xC000000000000000
 
 void	*tag_ptr(void *ptr, epoll_ptr_type tag)
 {
@@ -36,6 +38,9 @@ void	*tag_ptr(void *ptr, epoll_ptr_type tag)
 			break;
 		case (EP_WRKR):
 			tagged |= TAG_B;
+			break;
+		case (EP_CGIS):
+			tagged |= TAG_C;
 			break;
 		case (EP_NONE):
 			break;
@@ -55,6 +60,9 @@ epoll_ptr_type	get_tag(void *ptr)
 		case (0xB):
 			// std::cout << "ptr tagged as worker" << std::endl;
 			return EP_WRKR;
+		case (0xC):
+			// std::cout << "ptr tagged as server" << std::endl;
+			return EP_CGIS;
 		default:
 			return EP_NONE;
 	}
@@ -94,6 +102,7 @@ void serve_handle_worker(ConnWorker *wrkr, int epoll_fd, WorkerPool &wrkrPool, s
         return;
     }
 
+	// Checks if a READ can be performed without blocking
     if (ev.events & EPOLLIN)
     {
 		// std::cout << "Read ready on fd " << std::endl;
@@ -106,6 +115,16 @@ void serve_handle_worker(ConnWorker *wrkr, int epoll_fd, WorkerPool &wrkrPool, s
             wrkrPool.free(wrkr);
             return;
         }
+
+		if (wrkr->getStatus() == Connection::HANDLING_CGI)
+		{
+			wrkr->cgiSession->register_write_pipe(epoll_fd);
+			wrkr->cgiSession->register_read_pipe(epoll_fd);
+			epoll_del(epoll_fd, wrkr->getConnFd());
+			//  FIXME: do stuff: too tired to figure out how to handle this rn
+			return;
+		}
+
         if (retval == Connection::WANT_WRITE || wrkr->getStatus() == Connection::READY_TO_WRITE)
             epoll_mod(epoll_fd, wrkr->getConnFd(), tag_ptr(wrkr, EP_WRKR), EPOLLOUT);
 
@@ -119,6 +138,7 @@ void serve_handle_worker(ConnWorker *wrkr, int epoll_fd, WorkerPool &wrkrPool, s
             return;
         }
     }
+	// Checks if a WRITE can be performed without blocking
     else if (ev.events & EPOLLOUT && wrkr->getStatus() == Connection::READY_TO_WRITE)
     {
 		// std::cout << "Write ready on fd: " << wrkr->getConnFd() << std::endl;
@@ -155,6 +175,7 @@ int serve(std::vector<TCPServer *> srvs)
 	int								epoll_fd = epoll_create(1);
 	std::vector<struct epoll_event>	evs;
     ConnWorker* 					wrkr;
+	CgiHandler*						cgiSession;
 
 	evs.resize(EVS_SIZE);
 	for (uint64_t i = 0; i < srvs.size(); i++)
@@ -182,6 +203,11 @@ int serve(std::vector<TCPServer *> srvs)
 				case (EP_WRKR): {
                     wrkr = reinterpret_cast<ConnWorker *>(detag_ptr(ptr));
                     serve_handle_worker(wrkr, epoll_fd, wrkrPool, evs[i]);
+					break;
+				}
+				case (EP_CGIS): {
+                    cgiSession = reinterpret_cast<CgiHandler *>(detag_ptr(ptr));
+					// handle cgi IO
 					break;
 				}
 				default:

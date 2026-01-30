@@ -14,10 +14,13 @@
 #include "HttpRequest.hpp"
 #include "HttpResponse.hpp"
 #include "Prefix_suffix.hpp"
+#include "serve.hpp"
+#include "webserv.hpp"
 
 #include <cerrno>
 #include <cstdlib>
 #include <cstring>
+#include <sys/epoll.h>
 #include <sstream>
 
 #include <cstdio>
@@ -164,24 +167,22 @@ namespace {
 ** -------------------------------- OVERLOADS ---------------------------------
 */
 
-int CgiHandler::handle(HttpRequest &req, HttpResponse &res) {
-    int in_pipe[2];
-    int out_pipe[2];
-
-    pipe(in_pipe);
-    pipe(out_pipe);
+StatusCode CgiHandler::handle(HttpRequest &req, HttpResponse &res)
+{
+    pipe(_stdin_pipe);
+    pipe(_stdout_pipe);
 
 
-    pid_t child_pid = fork();
-    if (child_pid == 0) // child
+    this->_pid = fork();
+    if (_pid == 0) // child
     {
-        dup2(out_pipe[1], STDOUT_FILENO); // stdout -> pipe
-        close(out_pipe[0]);
-        close(out_pipe[1]);
+        dup2(_stdout_pipe[1], STDOUT_FILENO); // stdout -> pipe
+        close(_stdout_pipe[0]);
+        close(_stdout_pipe[1]);
 
-        dup2(in_pipe[0], STDIN_FILENO); // pipe -> stdin
-        close(in_pipe[1]);
-        close(in_pipe[0]);
+        dup2(_stdin_pipe[0], STDIN_FILENO); // pipe -> stdin
+        close(_stdin_pipe[1]);
+        close(_stdin_pipe[0]);
 
         // build ENVP
 
@@ -201,29 +202,49 @@ int CgiHandler::handle(HttpRequest &req, HttpResponse &res) {
         };
         execve(argv[0], (char *const *)argv, (char *const *)envp);
     }
-    else if (child_pid < 0)
+    else if (_pid < 0)
     {
-        return (1);
+        return (SC_500);
     }
 
-    close(out_pipe[1]);
-    close(in_pipe[0]);
+    close(_stdout_pipe[1]);
+    close(_stdin_pipe[0]);
 
-    write(in_pipe[1], "", 0);
-    close(in_pipe[1]);
+    // write(_stdin_pipe[1], "", 0);
+    // close(_stdin_pipe[1]);
 
-    FILE*	fp = fdopen(out_pipe[0], "r");
-    char	*line = NULL;
-    size_t	n = 0;
-    ssize_t	nread = 0;
-    while ((nread = getline(&line, &n, fp)) != -1)
-    {
-        res.body.append(line);
-    }
-    fclose(fp);
-    free(line);
-    wait(NULL);
-    return 0;
+    // FILE*	fp = fdopen(_stdout_pipe[0], "r");
+    // char	*line = NULL;
+    // size_t	n = 0;
+    // ssize_t	nread = 0;
+    // while ((nread = getline(&line, &n, fp)) != -1)
+    // {
+    //     res.body.append(line);
+    // }
+    // fclose(fp);
+    // free(line);
+    // wait(NULL);
+	
+	
+    return SC_200;
+}
+
+void	CgiHandler::register_read_pipe(int epoll_fd)
+{
+	struct epoll_event ev;
+	std::memset(&ev, 0, sizeof(ev));
+	ev.data.ptr = tag_ptr(this, EP_CGIS);
+	ev.events = EPOLLIN;
+	epoll_ctl(epoll_fd, EPOLL_CTL_ADD, this->_stdout_pipe[0], &ev);
+}
+
+void	CgiHandler::register_write_pipe(int epoll_fd)
+{
+	struct epoll_event ev;
+	std::memset(&ev, 0, sizeof(ev));
+	ev.data.ptr = tag_ptr(this, EP_CGIS);
+	ev.events = EPOLLOUT;
+	epoll_ctl(epoll_fd, EPOLL_CTL_ADD, this->_stdin_pipe[1], &ev);
 }
 
 /*

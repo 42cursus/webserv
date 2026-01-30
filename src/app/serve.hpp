@@ -20,6 +20,7 @@
 enum epoll_ptr_type {
 	EP_SRV,
 	EP_WRKR,
+	EP_CGIS,
 	EP_NONE,
 };
 

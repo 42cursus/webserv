@@ -19,6 +19,7 @@
 #include <cstring>
 #include <sys/epoll.h>
 #include <sys/socket.h>
+#include <stdio.h>
 #include <vector>
 
 /*
@@ -133,8 +134,15 @@ void	TCPServer::acceptAllPendingConns(WorkerPool& wrkrPool, int epoll_fd)
         socklen_t				_addr_size = sizeof(_addr);
         struct sockaddr         *addr = reinterpret_cast<struct sockaddr*>(&_addr); // NOLINT(*-pro-type-reinterpret-cast)
 
-        int conn_fd = /* global namespace */ ::accept(_socket_fd, addr, &_addr_size);
+		// char buf[1024] = {0};
+		// read(_socket_fd, buf, 1023);
+		// std::cout << "-----------------------------------------------" << std::endl;
+		// std::cout << buf << std::endl;
+		// printf("%m\n");
+		// exit(0);
+        int conn_fd = ::accept(_socket_fd, addr, &_addr_size);
         if (conn_fd < 0) {
+			// Something fundamentally wrong happened
             if (errno == EINTR)
                 continue;
             if (errno == EAGAIN || errno == EWOULDBLOCK)

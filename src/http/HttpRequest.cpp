@@ -16,6 +16,7 @@
 #include <fstream>
 #include <sstream>
 #include <string>
+#include <unistd.h>
 #include <vector>
 #include "HttpRequest.hpp"
 #include "HttpResponse.hpp"
@@ -101,12 +102,12 @@ void HttpRequest::parseRequest(const std::string &rawRequest)
 }
 
 
-static bool ends_with(const std::string &s, const std::string &suffix) {
-	if (suffix.size() > s.size())
-		return false;
-	const size_t offset = s.size() - suffix.size();
-	return s.compare(offset, suffix.size(), suffix) == 0;
-}
+// static bool ends_with(const std::string &s, const std::string &suffix) {
+// 	if (suffix.size() > s.size())
+// 		return false;
+// 	const size_t offset = s.size() - suffix.size();
+// 	return s.compare(offset, suffix.size(), suffix) == 0;
+// }
 
 bool		HttpRequest::is_method_permitted(Location *location) const
 {
@@ -117,43 +118,49 @@ bool		HttpRequest::is_method_permitted(Location *location) const
 	) != location->_methods.end();
 }
 
-std::string
-HttpRequest::getHtmlResponse(HttpResponse& res, Location *location)
+StatusCode HttpRequest::getHtmlResponse(HttpResponse& res, Location *location)
 {
-	std::string output;
+	StatusCode	status = SC_200;
 
 	// std::cout << FT_BOLD << FT_RED << path << FT_RESET << std::endl;
 
-	if (res.filename.empty())
+	if (res.filename.empty() || *res.filename.rbegin() == '/')
 	{
 		if (!res.location->_autoindex)
-			res.filename = res.location->_index[0];
+		{
+			std::string							path;
+			std::vector<std::string>::iterator	it = res.location->_index.begin();
+			for (; it != res.location->_index.end(); it++)
+			{
+				path = res.location->_root + res.filename + *it;
+				std::cout << path << std::endl;
+				if (access(path.c_str(), F_OK) == 0)
+					break ;
+			}
+			if (it == res.location->_index.end())
+				return SC_403;
+			res.filename = res.filename + *it;
+		}
 		else
 		{
-			; // DO AUTOINDEX FUNCTION
+			res.buildAutoindexBody(); // DO AUTOINDEX FUNCTION
+			res.headers["content-type"] = "text/html";
+			return SC_200;
 		}
 	}
 
-	// LocationConfig lc(*location);
-	if (ends_with(res.filename, ".bla"))
+	if (res.filename == "teapot")
 	{
-	// 	// CgiHandler handler(*this, lc, filename, res);
-	// 	res.statuscode = itoa(handler.do_run());
-	// 	output = handler.raw_output();
-		;
-	}
-	else if (res.filename == "teapot")
-	{
-		res.set_response_code(HttpResponse::SC_418);
-		output = "{\"msg\": \"I'm a Teapot\"}";
+		status = SC_418;
+		res.body = "{\"msg\": \"I'm a Teapot\"}";
 		res.headers["content-type"] = "application/json";
 	}
 	else
 	{
 		res.headers["content-type"] = getMimeType(res.filename);
-		output = res.readHtmlFile(res.location->_root + res.filename);
+		status = res.readHtmlFile(res.location->_root + res.filename);
 	}
-	return output;
+	return status;
     (void)location;
 }
 

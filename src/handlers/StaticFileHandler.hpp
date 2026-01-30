@@ -13,13 +13,14 @@
 #ifndef STATICFILEHANDLER_HPP
 #define STATICFILEHANDLER_HPP
 
+#include "HttpResponse.hpp"
 #include "IHandler.hpp"
 #include "Location.hpp"
 
 class StaticFileHandler  : public IHandler {
 public:
     explicit StaticFileHandler(const Location& loc);
-    int handle(HttpRequest& req, HttpResponse& res);
+	StatusCode handle(HttpRequest& req, HttpResponse& res);
 private:
     const Location& _loc;
 };

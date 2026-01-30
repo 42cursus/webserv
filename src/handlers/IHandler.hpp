@@ -15,12 +15,12 @@
 
 #include "HttpRequest.hpp"
 #include "HttpResponse.hpp"
-#include "Location.hpp"
+#include "webserv.hpp"
 
 class IHandler {
 public:
     virtual ~IHandler() {}
-    virtual int handle(HttpRequest& req, HttpResponse& res) = 0;
+    virtual StatusCode handle(HttpRequest& req, HttpResponse& res) = 0;
 };
 
 #endif //IHANDLER_HPP

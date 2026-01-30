@@ -54,7 +54,7 @@ public:
 
 	void parseRequest(const std::string& rawRequest);
 
-	std::string	getHtmlResponse(HttpResponse& res, Location *location);
+	StatusCode	getHtmlResponse(HttpResponse& res, Location *location);
 	std::string getMimeType(const std::string &path) const;
 	bool		is_method_permitted(Location *location) const;
 	void		printBody() const;

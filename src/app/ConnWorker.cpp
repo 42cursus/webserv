@@ -26,6 +26,7 @@
 ConnWorker::ConnWorker()
     : _conn()
 {
+	_conn.parent = this;
 }
 
 ConnWorker::ConnWorker(const ConnWorker &other) : _conn(other._conn){
