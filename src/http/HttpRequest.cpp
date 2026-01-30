@@ -118,7 +118,7 @@ bool		HttpRequest::is_method_permitted(Location *location) const
 }
 
 std::string
-HttpRequest::getHtmlResponse(HttpResponse& res)
+HttpRequest::getHtmlResponse(HttpResponse& res, Location *location)
 {
 	std::string output;
 
@@ -154,6 +154,7 @@ HttpRequest::getHtmlResponse(HttpResponse& res)
 		output = res.readHtmlFile(res.location->_root + res.filename);
 	}
 	return output;
+    (void)location;
 }
 
 std::string HttpRequest::getMimeType(const std::string &path) const {

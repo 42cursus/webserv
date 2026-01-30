@@ -60,6 +60,7 @@ public:
 
 
     bool        hasPendingResponses() const;
+    void        handleErrorResponse(HttpResponse* res) const;
     void        closeSocketFd();
     e_status    getStatus() const;
     void        reset();
@@ -104,7 +105,7 @@ private:
     char            _req_buffer[REQUEST_BUF_SIZE + 1];
 
     void            _parseRange(HttpResponse& res) const;
-    void            _handleErrorResponse(HttpResponse* res) const;
+
     HttpResponse*   _prepareResponse() const;
 	void 			_prepareResponse_get(HttpResponse *res) const;
 	void 			_prepareResponse_put(HttpResponse *res) const;

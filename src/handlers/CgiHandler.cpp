@@ -11,18 +11,19 @@
 /* ************************************************************************** */
 
 #include "CgiHandler.hpp"
-#include "HttpResponse.hpp"
 #include "HttpRequest.hpp"
+#include "HttpResponse.hpp"
+#include "Prefix_suffix.hpp"
 
 #include <cerrno>
 #include <cstdlib>
 #include <cstring>
 #include <sstream>
 
+#include <cstdio>
 #include <sys/types.h>
 #include <sys/wait.h>
 #include <unistd.h>
-
 
 
 CgiHandler::CgiHandler(HttpRequest& req, const Location& loc, const std::string& script_path, HttpResponse& res) :
@@ -64,6 +65,7 @@ std::string	CgiHandler::raw_output(void) const
     return (_raw_output);
 }
 
+/*
 void CgiHandler::_parse_output_into_response()
 {
     // Split headers/body at first empty line. Accept \r\n\r\n or \n\n.
@@ -133,7 +135,7 @@ void CgiHandler::_parse_output_into_response()
     }
 }
 
-
+*/
 
 
 /*
@@ -141,8 +143,8 @@ void CgiHandler::_parse_output_into_response()
 */
 
 namespace {
-    std::string trim(const std::string &s);
-    bool starts_with(const std::string &s, const std::string &prefix);
+//    std::string trim(const std::string &s);
+//    bool starts_with(const std::string &s, const std::string &prefix);
 }
 
 /*
@@ -163,99 +165,65 @@ namespace {
 */
 
 int CgiHandler::handle(HttpRequest &req, HttpResponse &res) {
-    // Create pipes: stdin_pipe (parent writes -> child reads), stdout_pipe (child writes -> parent reads)
-    if (pipe(_stdin_pipe) != 0)
-        return 500;
-    if (pipe(_stdout_pipe) != 0)
-        return 500;
+    int in_pipe[2];
+    int out_pipe[2];
 
-    _pid = fork();
-    if (_pid < 0)
-        return 500;
+    pipe(in_pipe);
+    pipe(out_pipe);
 
-    if (_pid == 0)
+
+    pid_t child_pid = fork();
+    if (child_pid == 0) // child
     {
-        // child
-        dup2(_stdin_pipe[0], STDIN_FILENO);
-        dup2(_stdout_pipe[1], STDOUT_FILENO);
+        dup2(out_pipe[1], STDOUT_FILENO); // stdout -> pipe
+        close(out_pipe[0]);
+        close(out_pipe[1]);
 
-        close(_stdin_pipe[0]);
-        close(_stdin_pipe[1]);
-        close(_stdout_pipe[0]);
-        close(_stdout_pipe[1]);
+        dup2(in_pipe[0], STDIN_FILENO); // pipe -> stdin
+        close(in_pipe[1]);
+        close(in_pipe[0]);
 
-        std::vector<std::string> env;
-        _build_env(env);
+        // build ENVP
 
-        std::vector<char*> envp;
-        envp.reserve(env.size() + 1);
-        for (size_t i = 0; i < env.size(); i++)
-            envp.push_back(const_cast<char*>(env[i].c_str()));
-        envp.push_back(NULL);
+        std::string script = apply_location(req.path, res.location);
+        // build ARGV
 
-        // argv[0] is script path
-        // NOTE: script_path is stored in caller; we pass it as argv[0] here.
-        // execve requires a writable char* array; const_cast is ok for argv/envp.
-        // The kernel won't modify your strings.
-        // ...
-        // The actual script path is passed via SCRIPT_NAME / PATH_INFO etc.
-        // ...
-        // IMPORTANT: the script must be executable (chmod +x).
-        // ...
-        // If execve fails, exit non-zero.
-        char *argv[2];
-        argv[0] = const_cast<char*>(_script_path.c_str());
-        argv[1] = NULL;
 
-        execve(argv[0], argv, &envp[0]);
-        _exit(127);
+        const char *argv[3] = {
+            "/usr/bin/python3",
+            script.c_str(),
+            NULL,
+        };
+        const char *envp[3] = {
+            "FUCK=me",
+            "TWAT=you",
+            NULL,
+        };
+        execve(argv[0], (char *const *)argv, (char *const *)envp);
+    }
+    else if (child_pid < 0)
+    {
+        return (1);
     }
 
-    // parent
-    close(_stdin_pipe[0]);
-    close(_stdout_pipe[1]);
+    close(out_pipe[1]);
+    close(in_pipe[0]);
 
-    // Write request body to CGI stdin (for POST); for GET this is empty.
-    if (!_req.body.empty())
+    write(in_pipe[1], "", 0);
+    close(in_pipe[1]);
+
+    FILE*	fp = fdopen(out_pipe[0], "r");
+    char	*line = NULL;
+    size_t	n = 0;
+    ssize_t	nread = 0;
+    while ((nread = getline(&line, &n, fp)) != -1)
     {
-        size_t off = 0;
-        while (off < _req.body.size())
-        {
-            ssize_t w = write(_stdin_pipe[1], &_req.body[off], _req.body.size() - off);
-            if (w <= 0)
-                break;
-            off += static_cast<size_t>(w);
-        }
+        res.body.append(line);
     }
-    close(_stdin_pipe[1]); // EOF for CGI stdin
-
-    // Read all CGI stdout
-    _raw_output.clear();
-    char buf[4096];
-    while (true)
-    {
-        ssize_t r = read(_stdout_pipe[0], buf, sizeof(buf));
-        if (r <= 0)
-            break;
-        _raw_output.append(buf, static_cast<size_t>(r));
-    }
-    close(_stdout_pipe[0]);
-
-    int status = 0;
-    waitpid(_pid, &status, 0);
-
-    // Default response if CGI didn't set anything
-    if (_res.statuscode.empty())
-    {
-        _res.statuscode = "200";
-        _res.statusmsg = "OK";
-    }
-
-    _parse_output_into_response();
-
-    // Ensure content-length matches the body we extracted (even if script didn't set it)
-    _res.headers["content-length"] = ::itoa(static_cast<int>(_res.body.size()));
-    return std::atoi(_res.statuscode.c_str());
+    fclose(fp);
+    free(line);
+    wait(NULL);
+    return 0;
 }
 
 /*
@@ -286,6 +254,7 @@ std::string CgiHandler::body_buffer() const {
 ** -------------------------------- MISCELLANEOUS --------------------------------
 */
 
+/*
 namespace {
     bool starts_with(const std::string &s, const std::string &prefix) {
         return s.size() >= prefix.size() && s.compare(0, prefix.size(), prefix) == 0;
@@ -303,3 +272,4 @@ namespace {
     }
 }
 
+*/

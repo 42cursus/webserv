@@ -26,6 +26,9 @@
 #include "TCPServer.hpp"
 #include "webserv.hpp"
 
+#include "StaticFileHandler.hpp"
+#include "CgiHandler.hpp"
+
 /*
 ** -------------------------------- STATIC VARS -------------------------------
 */
@@ -365,74 +368,17 @@ Connection::e_result Connection::onWritable()
     return _sendToClient();
 }
 
-int	cgi_handle(HttpRequest& req, HttpResponse& res, CGI *cgi)
-{
-	int in_pipe[2];
-	int out_pipe[2];
-
-	pipe(in_pipe);
-	pipe(out_pipe);
-
-
-    pid_t child_pid = fork();
-    if (child_pid == 0) // child
-	{
-        dup2(out_pipe[1], STDOUT_FILENO); // stdout -> pipe
-		close(out_pipe[0]);
-		close(out_pipe[1]);
-
-        dup2(in_pipe[0], STDIN_FILENO); // pipe -> stdin
-		close(in_pipe[1]);
-		close(in_pipe[0]);
-
-		// build ENVP
-		
-		std::string script = apply_location(req.path, res.location);
-		// build ARGV
-		
-
-		const char *argv[3] = {
-			"/usr/bin/python3",
-			script.c_str(),
-			NULL,
-		};
-		const char *envp[3] = {
-			"FUCK=me",
-			"TWAT=you",
-			NULL,
-		};
-		execve(argv[0], (char *const *)argv, (char *const *)envp);
-	}
-	else if (child_pid < 0)
-	{
-		return (1);
-	}
-
-	close(out_pipe[1]);
-	close(in_pipe[0]);
-
-	write(in_pipe[1], "", 0);
-	close(in_pipe[1]);
-
-	FILE*	fp = fdopen(out_pipe[0], "r");
-	char	*line = NULL;
-	size_t	n = 0;
-	ssize_t	nread = 0;
-	while ((nread = getline(&line, &n, fp)) != -1)
-	{
-		res.body.append(line);
-	}
-	fclose(fp);
-	free(line);
-	wait(NULL);
-	return 0;
-	(void)cgi;
-}
-
 HttpResponse* Connection::_prepareResponse() const
 {
 	HttpResponse*	res = new HttpResponse();
 	res->location = loc_trie_search(_srv->getCfg().http.server.loc_trie, _req->path);
+	if (!res->location)
+	{
+		res->set_response_code(HttpResponse::SC_404);
+        handleErrorResponse(res);
+		return res;
+	}
+
 	res->filename = _req->path.substr(res->location->_path.length(), _req->path.length());
 	std::string		mimetype;
 
@@ -442,30 +388,33 @@ HttpResponse* Connection::_prepareResponse() const
 	if (!_req->is_method_permitted(res->location))
 	{
 		res->set_response_code(HttpResponse::SC_405);
-		_handleErrorResponse(res);
+        handleErrorResponse(res);
 		return res;
 	}
 
-	CGI	*cgi = cgi_trie_search(res->location->cgi_trie, _req->path);
-	if (cgi != NULL)
-	{
-		if (cgi_handle(*_req, *res, cgi))
-		{
-			res->set_response_code(HttpResponse::SC_500);
-			_handleErrorResponse(res);
-			return res;
-		}
-		// res->body = "{\"return\": \"OK\"}";
-		res->headers["content-type"] = "text/plain";
-		res->headers["content-length"] = ::itoa(res->body.length());
-		return res;
-	}
+	CGI* cgi = cgi_trie_search(res->location->cgi_trie, _req->path);
 
 	try {
+		if (cgi != NULL)
+		{
+			CgiHandler handler(*_req, *res->location, cgi->_script, *res);
+            res->statuscode = ::itoa(handler.handle(*_req, *res));
+			if (res->statusmsg.empty())
+				res->statusmsg = "OK";
+			if (res->headers.find("content-length") == res->headers.end())
+				res->headers["content-length"] = ::itoa(static_cast<int>(res->body.size()));
+			return res;
+		}
+
 		switch (_req->get_method()) {
-			case (HttpRequest::GET):
-				_prepareResponse_get(res);
-				break;
+			case (HttpRequest::GET): {
+				StaticFileHandler handler(*res->location);
+				int code = handler.handle(*_req, *res);
+				res->statuscode = ::itoa(code);
+				if (res->statusmsg.empty())
+					res->statusmsg = "OK";
+				return res;
+			}
 			case (HttpRequest::PUT):
 				_prepareResponse_put(res);
 				break;
@@ -475,85 +424,89 @@ HttpResponse* Connection::_prepareResponse() const
 			case (HttpRequest::DELETE):
 				_prepareResponse_delete(res);
 				break;
+			default:
+				res->set_response_code(HttpResponse::SC_501);
+                handleErrorResponse(res);
+            return res;
 		}
-	} catch (std::exception &e)
-	{
-		_handleErrorResponse(res);
+	} catch (std::exception&) {
+		res->set_response_code(HttpResponse::SC_500);
+        handleErrorResponse(res);
+		return res;
 	}
-
-	return (res);
+    return res;
 }
 
 void Connection::_prepareResponse_get(HttpResponse *res) const
 {
-	res->body = _req->getHtmlResponse(*res);
+    res->body = _req->getHtmlResponse(*res, res->location);
 
-	if (_req->headers["range"].empty())
-		res->headers["accept-ranges"] = "bytes";
-	else if (_req->headers["range"].find("bytes") == 0)
-	{
-		_parseRange(*res);
-		res->set_response_code(HttpResponse::SC_206);
-	}
-	res->headers["content-length"] = ::itoa(res->body.length());
+    if (_req->headers["range"].empty())
+        res->headers["accept-ranges"] = "bytes";
+    else if (_req->headers["range"].find("bytes") == 0)
+    {
+        _parseRange(*res);
+        res->set_response_code(HttpResponse::SC_206);
+    }
+    res->headers["content-length"] = ::itoa(res->body.length());
 
 }
 
 void Connection::_prepareResponse_put(HttpResponse *res) const
 {
-	std::string	rel_path = _req->path.substr(res->location->_path.length(), _req->path.length());
-	if (rel_path.empty())
-		rel_path = "default";
-	std::string	path = res->location->_root + rel_path;
+    std::string	rel_path = _req->path.substr(res->location->_path.length(), _req->path.length());
+    if (rel_path.empty())
+        rel_path = "default";
+    std::string	path = res->location->_root + rel_path;
 
-	if (access(path.c_str(), F_OK) == 0)
-		res->set_response_code(HttpResponse::SC_204);
-	else
-		res->set_response_code(HttpResponse::SC_201);
+    if (access(path.c_str(), F_OK) == 0)
+        res->set_response_code(HttpResponse::SC_204);
+    else
+        res->set_response_code(HttpResponse::SC_201);
 
-	res->headers["content-length"] = "0";
-	int	fd = open(path.c_str(), O_WRONLY | O_TRUNC | O_CREAT, S_IRWXU | S_IROTH | S_IRGRP);
-	write(fd, _req->body.data(), _req->body.size());
-	close(fd);
+    res->headers["content-length"] = "0";
+    int	fd = open(path.c_str(), O_WRONLY | O_TRUNC | O_CREAT, S_IRWXU | S_IROTH | S_IRGRP);
+    write(fd, _req->body.data(), _req->body.size());
+    close(fd);
 
 }
 
 void Connection::_prepareResponse_post(HttpResponse *res) const
 {
-	(void)res;
+    (void)res;
 }
 
 void Connection::_prepareResponse_delete(HttpResponse *res) const
 {
-	std::string path = res->location->_root + res->filename;
+    std::string path = res->location->_root + res->filename;
 
-	if (access(path.c_str(), F_OK) != 0)
-	{
-		res->set_response_code(HttpResponse::SC_404);
-		_handleErrorResponse(res);
-		return ;
-	}
+    if (access(path.c_str(), F_OK) != 0)
+    {
+        res->set_response_code(HttpResponse::SC_404);
+        handleErrorResponse(res);
+        return ;
+    }
 
-	if (access(path.c_str(), W_OK) != 0)
-	{
-		res->set_response_code(HttpResponse::SC_403);
-		_handleErrorResponse(res);
-		return ;
-	}
+    if (access(path.c_str(), W_OK) != 0)
+    {
+        res->set_response_code(HttpResponse::SC_403);
+        handleErrorResponse(res);
+        return ;
+    }
 
-	int retval = std::remove(path.c_str());
-	if (retval == 0)
-	{
-		res->set_response_code(HttpResponse::SC_204);
-		res->headers["content-length"] = "0";
-	}
-	else {
-		; // handle_error
-	}
+    int retval = std::remove(path.c_str());
+    if (retval == 0)
+    {
+        res->set_response_code(HttpResponse::SC_204);
+        res->headers["content-length"] = "0";
+    }
+    else {
+        ; // handle_error
+    }
 }
 
 
-void Connection::_handleErrorResponse(HttpResponse* res) const
+void Connection::handleErrorResponse(HttpResponse* res) const
 {
     std::string path = _srv->getCfg().http.server.error_pages.at(res->statuscode);
     if (!path.empty() && path[0] != '.')
