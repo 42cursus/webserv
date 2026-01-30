@@ -20,6 +20,7 @@
 #include "Router.hpp"
 #include "State.hpp"
 #include "StaticFileHandler.hpp"
+
 #include <deque>
 
 #define REQUEST_BUF_SIZE 4096
@@ -67,11 +68,10 @@ private:
 
     e_result _recvFromClient();
     e_result _sendToClient();
-
-    // incremental parsing helpers
     e_result _processInput();
+
     bool    _tryExtractOneRequest();
-    void    _consume(size_t nbytes);
+    void    _consumeInputBytes(size_t nbytes);
     void    _resetCurrentRequest();
 
     bool    _shouldKeepAlive(const HttpRequest& req) const;
@@ -82,27 +82,22 @@ private:
 
     // HTTP state
     e_status    _status;
-    std::string _raw;
-    size_t      _header_end;
 
     HttpRequest*    _req;
-    HttpResponse*   _res;
-    size_t          _write_off;
+//    HttpResponse*   _res;
 
     // input buffering
     std::string _in;
     size_t      _in_off;
-    size_t      _expected_body;
-    bool        _keep_alive_for_current;
 
     // output queue
-    std::deque<HttpResponse*> _outq;
+    struct PendingResponse {
+        HttpResponse* res;
+        bool          closeAfter; // close connection after this response is fully sent
+    };
+    std::deque<PendingResponse> _pendingResponses;
 
-    char        _req_buffer[REQUEST_BUF_SIZE + 1];
-
-    e_result    _readIntoBuffer();
-    e_result    _tryParseRequest();
-    void        _resetForNextRequest();
+    char            _req_buffer[REQUEST_BUF_SIZE + 1];
 
     void            _parseRange(HttpResponse& res) const;
     void            _handleErrorResponse(HttpResponse* res) const;

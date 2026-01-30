@@ -39,10 +39,9 @@ Connection::Connection()
       _srv(NULL),
       _status(READING_HEADERS),
       _req(NULL),
-      _res(NULL),
+      _in(),
       _in_off(0),
-      _expected_body(0),
-      _keep_alive_for_current(true),
+      _pendingResponses(),
       _req_buffer()
 {
 }
@@ -52,16 +51,18 @@ Connection::Connection(const Connection &other)
       _srv(other._srv),
       _status(other._status),
       _req(other._req),
-      _res(other._res) {}
+      _pendingResponses(other._pendingResponses)
+{}
 
 Connection::Connection(int fd, TCPServer* srv)
     : _fd(fd),
       _srv(srv),
       _status(READING_HEADERS),
-      _header_end(std::string::npos),
-      _req(),
-      _res(),
-      _write_off(0)
+      _req(NULL),
+      _in(),
+      _in_off(0),
+      _pendingResponses(),
+      _req_buffer()
 {
     int flags = fcntl(_fd, F_GETFL, 0);
     if (flags >= 0)
@@ -130,13 +131,14 @@ void logServingFile(const std::string& path, const std::string& mimetype) {
 
 Connection::e_result Connection::_sendToClient()
 {
-    if (_outq.empty())
+    if (_pendingResponses.empty())
         return OK;
 
-    HttpResponse* cur = _outq.front();
-    if (!cur)
+    PendingResponse& item = _pendingResponses.front();
+    if (!item.res)
         return ERROR;
 
+    HttpResponse* cur = item.res;
     std::string& response = cur->response;
     if (cur->start >= response.size())
         return OK;
@@ -163,23 +165,24 @@ Connection::e_result Connection::_sendToClient()
         {
             _srv->requests_handled++;
 
-            bool keep = _keep_alive_for_current;
+            const bool close_after = item.closeAfter;
+
             delete cur;
-            _outq.pop_front();
+            _pendingResponses.pop_front();
 
-            if (_outq.empty())
-            {
-                if (!keep)
-                    return CLOSED;
+            // If the request said "Connection: close", close *after* we sent its response.
+            if (close_after)
+                return CLOSED;
 
-                _status = READING_HEADERS;
+            if (!_pendingResponses.empty())
+                return WANT_WRITE;
 
-                Connection::e_result pr = _processInput(); // try to parse / enqueue immediately so we don't wait for another EPOLLIN.
-                if (pr == WANT_WRITE)
-                    return WANT_WRITE;
-                return OK;
-            }
-            return WANT_WRITE;
+            _status = READING_HEADERS;
+
+            Connection::e_result pr = _processInput(); // try to parse / enqueue immediately so we don't wait for another EPOLLIN.
+            if (pr == WANT_WRITE)
+                return WANT_WRITE;
+            return OK;
         }
         return WANT_WRITE;
     }
@@ -190,10 +193,13 @@ Connection::e_result Connection::_sendToClient()
     if (errno == EINTR || errno == EAGAIN || errno == EWOULDBLOCK)
         return WANT_WRITE;
 
+    if (errno == EPIPE || errno == ECONNRESET)
+        return CLOSED;
+
     return ERROR;
 }
 
-void Connection::_consume(size_t nbytes)
+void Connection::_consumeInputBytes(size_t nbytes)
 {
     _in_off += nbytes;
 
@@ -208,8 +214,6 @@ void Connection::_resetCurrentRequest()
 {
     delete _req;
     _req = NULL;
-    _expected_body = 0;
-    _keep_alive_for_current = true;
     _status = READING_HEADERS;
 }
 
@@ -224,8 +228,7 @@ bool Connection::_shouldKeepAlive(const HttpRequest& req) const
     std::string proto = req.protocol;
     std::string conn = req.headers.count("connection") ? req.headers.find("connection")->second : "";
 
-    // normalize to lowercase
-    for (size_t i = 0; i < conn.size(); i++)
+    for (size_t i = 0; i < conn.size(); i++)  // normalize to lowercase
         conn[i] = static_cast<char>(std::tolower(conn[i]));
 
     if (proto.find("HTTP/1.1") == 0)
@@ -233,14 +236,19 @@ bool Connection::_shouldKeepAlive(const HttpRequest& req) const
     return conn == "keep-alive";
 }
 
+/**
+ * if we have headers (and body if needed),
+ * consume bytes and enqueue a response”.
+ * @return
+ */
 bool Connection::_tryExtractOneRequest()
 {
     size_t hdr_end = _in.find(CRLF CRLF, _in_off);
     if (hdr_end == std::string::npos)
         return false;
 
-    const size_t body_start = (hdr_end - _in_off) + 4;
-    const std::string header_block = _in.substr(_in_off, body_start);
+    const size_t header_bytes = (hdr_end - _in_off) + 4;
+    const std::string header_block = _in.substr(_in_off, header_bytes);
 
     std::cout << FT_MAGENTA << "Request ready on fd: " << _fd << std::endl;
     std::cout << FT_GREEN << header_block << FT_RESET << std::endl;
@@ -250,7 +258,7 @@ bool Connection::_tryExtractOneRequest()
 		req->parseRequest(header_block);
 	} catch (HttpRequest::GenericException&) {
         _srv->requests_failed++;
-        _raw.erase();
+        _in.erase();
         delete _req;
         _req = NULL;
         return false; // err
@@ -261,7 +269,7 @@ bool Connection::_tryExtractOneRequest()
         content_length = static_cast<size_t>(std::atoi(req->headers["content-length"].c_str()));
     req->content_length = content_length;
 
-	const size_t need_total = body_start + content_length;
+	const size_t need_total = header_bytes + content_length;
 	if (_in.size() - _in_off < need_total)
 	{
 		delete req;
@@ -272,45 +280,53 @@ bool Connection::_tryExtractOneRequest()
 	if (req->content_length > 0)
 	{
 		req->body.resize(content_length);
-		std::memcpy(req->body.data(), _in.data() + _in_off + body_start, content_length);
+		std::memcpy(req->body.data(), _in.data() + _in_off + header_bytes, content_length);
 	}
 
-    _consume(need_total);
+    _consumeInputBytes(need_total);
 
     delete _req;
     _req = req;
 
-    _req->printBody();
-    _keep_alive_for_current = _shouldKeepAlive(*_req); // FIXME
-
     HttpResponse* res = _prepareResponse();
     res->buildHttpResponse();
-    _outq.push_back(res);
+    _req->printBody();
+
+    const PendingResponse &presp = (PendingResponse) {
+        .res = res,
+        .closeAfter = !_shouldKeepAlive(*_req)};
+    _pendingResponses.push_back(presp);
 
     _status = READY_TO_WRITE;
     return true;
 }
 
+/**
+ * Repeatedly try to parse as many complete requests as are already
+ * buffered and append responses to the queue.
+ * @see HTTP/1.1 pipelining.
+ * @return
+ */
 Connection::e_result Connection::_processInput()
 {
     // If we're currently writing, we still can parse and enqueue more
     // pipelined requests, but we should not drop back to EPOLLIN-only
     // if there's data to send.
-    bool enqueued_any = false;
+    bool queued_any = false;
 
     while (true)
     {
-        const size_t before = _outq.size();
+        const size_t before = _pendingResponses.size();
         if (!_tryExtractOneRequest())
             break;
-        if (_outq.size() > before)
-            enqueued_any = true;
+        if (_pendingResponses.size() > before)
+            queued_any = true;
     }
 
-    if (!_outq.empty())
+    if (!_pendingResponses.empty()) // switchong to EPOLLOUT
         return WANT_WRITE;
 
-    return enqueued_any ? WANT_WRITE : OK;
+    return queued_any ? WANT_WRITE : OK;
 }
 
 Connection::e_result Connection::onReadable()
@@ -573,21 +589,17 @@ void Connection::closeSocketFd()
 void Connection::reset()
 {
     // drain queued responses
-    while (!_outq.empty())
+    while (!_pendingResponses.empty())
     {
-        delete _outq.front();
-        _outq.pop_front();
+        delete _pendingResponses.front().res;
+        _pendingResponses.pop_front();
     }
 
-    delete _res;
     delete _req;
-    _res = NULL;
     _req = NULL;
 
     _in.clear();
     _in_off = 0;
-    _expected_body = 0;
-    _keep_alive_for_current = true;
 
     _status = READING_HEADERS;
 }
