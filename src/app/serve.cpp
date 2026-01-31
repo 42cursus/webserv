@@ -207,7 +207,7 @@ int serve(std::vector<TCPServer *> srvs)
 				}
 				case (EP_CGIS): {
                     cgiSession = reinterpret_cast<CgiHandler *>(detag_ptr(ptr));
-					// handle cgi IO
+                    (void)cgiSession; // handle cgi IO
 					break;
 				}
 				default:

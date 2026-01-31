@@ -47,8 +47,6 @@ public:
         READY_TO_WRITE
     };
 
-	ConnWorker *parent; // FIXME: make private "and all this fluff" -Andrei Belov
-
     Connection();
     explicit Connection(int fd, TCPServer* srv);
     Connection(const Connection &other);
@@ -57,6 +55,9 @@ public:
     void        setSrv(TCPServer* srv);
     void        setFd(int fd);
     int         getFd() const;
+    ConnWorker* getParent() const;
+    void        setParent(ConnWorker *parent);
+    e_status    getStatus() const;
 
     e_result    onReadable();
     e_result    onWritable();
@@ -65,7 +66,6 @@ public:
     bool        hasPendingResponses() const;
     void        handleErrorResponse(HttpResponse* res) const;
     void        closeSocketFd();
-    e_status    getStatus() const;
     void        reset();
     void        clearRequest();
 
@@ -105,7 +105,7 @@ private:
         bool          closeAfter; // close connection after this response is fully sent
     };
     std::deque<PendingResponse> _pendingResponses;
-
+    ConnWorker      *_parent;
     char            _req_buffer[REQUEST_BUF_SIZE + 1];
 
     void            _parseRange(HttpResponse& res) const;

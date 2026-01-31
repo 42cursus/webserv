@@ -39,15 +39,13 @@
 */
 
 Connection::Connection() :
-	parent(NULL),
 	_fd(-1),
 	_srv(NULL),
 	_status(READING_HEADERS),
 	_req(NULL),
-	_in(),
 	_in_off(0),
 	_peerClosedInput(false),
-	_pendingResponses(),
+    _parent(NULL),
 	_req_buffer()
 {
 }
@@ -403,8 +401,8 @@ HttpResponse* Connection::_prepareResponse()
 	try {
 		if (cgi != NULL)
 		{
-			parent->cgiSession = new CgiHandler(*_req, *res->location, cgi->_script, *res);
-			StatusCode code = parent->cgiSession->handle(*_req, *res);
+			_parent->cgiSession = new CgiHandler(*_req, *res->location, cgi->_script, *res);
+			StatusCode code = _parent->cgiSession->handle(*_req, *res);
 			res->set_response_code(code);
 			if (res->headers.find("content-length") == res->headers.end())
 				res->headers["content-length"] = ::itoa(static_cast<int>(res->body.size()));
@@ -598,6 +596,13 @@ void Connection::setFd(int fd)
 
 int Connection::getFd() const { return _fd; }
 Connection::e_status Connection::getStatus() const { return _status; }
+
+ConnWorker *Connection::getParent() const {
+    return _parent;
+}
+void Connection::setParent(ConnWorker *parent) {
+    _parent = parent;
+}
 
 /*
 ** -------------------------------- EXCEPTIONS --------------------------------
