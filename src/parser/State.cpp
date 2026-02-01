@@ -12,7 +12,10 @@
 
 #include "State.hpp"
 #include "webserv.hpp"
-#include "Prefix.hpp"
+#include "Prefix_suffix.hpp"
+#include "Location.hpp"
+
+#include <vector>
 
 IBlock::IBlock(e_block_type type): _in_block(false), _type(type), _line_start(0), _line_end(0) {}
 
@@ -63,6 +66,9 @@ void    IBlock::setEndLine(unsigned int line_end) { _line_end = line_end; }
 
 void    IBlock::setParent(IBlock* parent) { _parent_block = parent; }
 
+IBlock::IBlock() : _in_block(false) {
+}
+
 CGI::CGI(): IBlock(CGI_)
 {
 	setInBlock(false);
@@ -80,31 +86,31 @@ CGI& CGI::operator=(const CGI& copy)
     return *this;
 }
 
-Location::Location(): IBlock(LOCATION_)
+template <typename K, typename V>
+std::ostream& operator<<(std::ostream& os, const std::map<K, V>& m)
 {
-	setInBlock(false);
+    os << "{";
+
+    typename std::map<K, V>::const_iterator it = m.begin();
+    while (it != m.end()) {
+        os << it->first << ": " << it->second;
+
+        typename std::map<K, V>::const_iterator next = it;
+        ++next;
+        if (next != m.end()) {
+            os << ", ";
+        }
+
+        it = next;
+    }
+
+    os << "}";
+    return os;
 }
 
-Location&   Location::operator=(const Location& copy)
-{
-    if (this != &copy)
-    {
-        IBlock::operator=(copy);
-        _root = copy._root;
-        _path = copy._path;
-        _index.clear();
-        for (size_t i = 0; i < copy._index.size(); i++)
-            _index.push_back(copy._index[i]);
-        _methods.clear();
-        for (size_t i = 0; i < copy._methods.size(); i++)
-            _methods.push_back(copy._methods[i]);
-        _max_body_size = copy._max_body_size;
-        _autoindex = copy._autoindex;
-        _cgi.clear();
-        for (size_t i = 0; i < copy._cgi.size(); i++)
-            _cgi.push_back(copy._cgi[i]);
-    }
-    return *this;
+std::ostream &operator<<(std::ostream &os, const CGI &cgi) {
+    os << " _ext: " << cgi._ext << " _script: " << cgi._script << " _cgi_param: " << cgi._cgi_param;
+    return os;
 }
 
 Server::Server(): IBlock(SERVER_), _port(-1)
@@ -148,29 +154,65 @@ const std::vector<Location>& Server::getLocations() const { return _locations; }
 
 const std::map<std::string, std::string>& Server::getErrorPages() const { return _error_pages; }
 
+static void setup_default_error_pages(struct Config& cfg)
+{
+	cfg.http.server.error_pages["404"] = "./resources/default_error_pages/404.html";
+	cfg.http.server.error_pages["405"] = "./resources/default_error_pages/405.html";
+	cfg.http.server.error_pages["500"] = "./resources/default_error_pages/50x.html";
+	cfg.http.server.error_pages["501"] = "./resources/default_error_pages/50x.html";
+	cfg.http.server.error_pages["502"] = "./resources/default_error_pages/50x.html";
+	cfg.http.server.error_pages["503"] = "./resources/default_error_pages/50x.html";
+	cfg.http.server.error_pages["504"] = "./resources/default_error_pages/50x.html";
+}
+
+static void overwrite_error_pages(struct Config& cfg, std::map<std::string, std::string>& error_pages)
+{
+	std::map<std::string, std::string>::iterator it;
+
+	for (it = error_pages.begin(); it != error_pages.end(); it++)
+	{
+		cfg.http.server.error_pages[it->first] = it->second;
+	}
+}
+
+static TrieNode	*build_cgi_trie(std::vector<CGI>& cgis)
+{
+	TrieNode	*head = new TrieNode();
+
+	for (uint64_t i = 0; i < cgis.size(); i++)
+	{
+		cgi_trie_insert(head, &cgis[i]);
+	}
+	return head;
+}
+
 void Server::get_config(struct Config& cfg)
 {
-	for (uint64_t i = 0; i < _locations.size(); i++)
-	{
-		cfg.http.server.locations.push_back(&this->_locations[i]);
-	}
+	// for (uint64_t i = 0; i < _locations.size(); i++)
+	// {
+	// 	cfg.http.server.locations.push_back(&this->_locations[i]);
+	// }
+	cfg.http.server.locations = this->_locations;
 	cfg.http.server.server_name = this->_hostname;
 	cfg.http.server.ipv4_listen.sin_family = AF_INET;
 	cfg.http.server.ipv4_listen.sin_addr.s_addr = htonl(INADDR_ANY);
 	std::memset(cfg.http.server.ipv4_listen.sin_zero, 0, 8);
 	cfg.http.server.ipv4_listen.sin_port = htons(this->_port);
 	cfg.http.server.loc_trie = new TrieNode();
-	for (uint64_t i = 0; i < this->_locations.size(); i++)
+	setup_default_error_pages(cfg);
+	overwrite_error_pages(cfg, this->_error_pages);
+	for (uint64_t i = 0; i < cfg.http.server.locations.size(); i++)
 	{
-		loc_trie_insert(cfg.http.server.loc_trie, &_locations[i]);
+		loc_trie_insert(cfg.http.server.loc_trie, &cfg.http.server.locations[i]);
+		cfg.http.server.locations[i].cgi_trie = build_cgi_trie(cfg.http.server.locations[i]._cgi);
 	}
 }
 
 void    Server::setPort(unsigned int port) { _port = port; }
 
-void    Server::setHost(std::string hostname) { _hostname = hostname; }
+void    Server::setHost(const std::string& hostname) { _hostname = hostname; }
 
-void    Server::addLocation(Location new_location) { _locations.push_back(new_location); }
+void    Server::addLocation(const Location& new_location) { _locations.push_back(new_location); }
 
 void    Server::addErrorPage(std::string code, std::string html) { _error_pages[code] = html; }
 

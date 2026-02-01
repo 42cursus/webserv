@@ -12,33 +12,32 @@
 
 #pragma once
 #ifndef WORKERPOOL_HPP
-# define WORKERPOOL_HPP
+#define WORKERPOOL_HPP
 
-#include <vector>
-#include <list>
-#include "Worker.hpp"
+#include "ConnWorker.hpp"
 #include "TCPServer.hpp"
+#include <list>
+#include <vector>
 
-class WorkerPool
-{
+class WorkerPool {
 
 private:
-	std::list<std::vector<Worker> >	_pool;
-	std::list<Worker *>				_freeList;
-	size_t							_allocp;
-	size_t							_size;
-	size_t							_nodesize;
-	size_t							_num_alloced;
+	std::list<std::vector<ConnWorker> > _pool;
+	std::list<ConnWorker *>				_freeList;
+	size_t								_allocp;
+	size_t								_size;
+	size_t								_nodesize;
+	size_t								_num_alloced;
 
-	Worker*		_getWorker(size_t index);
+	ConnWorker *_getWorker(size_t index);
 
 public:
-	WorkerPool(size_t size = 1024);
+	WorkerPool(size_t size);
 	~WorkerPool();
 
-	Worker*	alloc(TCPServer *srv);
-	void	free(Worker *wrkr);
-	size_t	getNumAlloced(void) const;
+	ConnWorker *alloc(TCPServer *srv);
+	void		free(ConnWorker *wrkr);
+	size_t		getNumAlloced(void) const;
 };
 
 #endif

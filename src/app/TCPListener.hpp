@@ -1,27 +1,30 @@
 /* ************************************************************************** */
 /*                                                                            */
 /*                                                        :::      ::::::::   */
-/*   LocationConfig.hpp                                 :+:      :+:    :+:   */
+/*   TCPListener.hpp                                    :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
 /*   By: abelov <abelov@student.42london.com>       +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
-/*   Created: 2025/11/26 02:32:33 by abelov            #+#    #+#             */
-/*   Updated: 2025/11/26 02:32:33 by abelov           ###   ########.fr       */
+/*   Created: 2025/12/04 15:57:09 by abelov            #+#    #+#             */
+/*   Updated: 2025/12/04 15:57:09 by abelov           ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
-#ifndef WEBSERV_LOCATIONCONFIG_HPP
-#define WEBSERV_LOCATIONCONFIG_HPP
+#pragma once
+#ifndef TCPLISTENER_HPP
+#define TCPLISTENER_HPP
 
-#include "webserv.hpp"
+#include <string>
+#include <vector>
+#include <stdint-gcc.h>
 
-class LocationConfig
-{
-public:
-    LocationConfig(Config::Http::Server::Location &loc);
-private:
-    Config::Http::Server::Location::Conf _conf;
+class TCPListener {
+    int                 fd;
+    std::string         ip;
+    uint16_t            port;
+
+    std::vector<class VirtualHost *> vhosts;
 };
 
 
-#endif //WEBSERV_LOCATIONCONFIG_HPP
+#endif //TCPLISTENER_HPP

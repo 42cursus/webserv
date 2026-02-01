@@ -30,16 +30,16 @@ class TCPServer
 private:
 	static const unsigned int DEFAULT_PORT = 8080;
 	int _socket_fd;
+    static Config DEFAULT_CONFIG;
 
 protected:
-	const Config cfg;
+	const Config &cfg;
+
 public:
 	const Config &getCfg() const;
 
-public:
-	// static Config default_config;
-	explicit TCPServer(Config conf);
-	// TCPServer();
+	explicit TCPServer(const Config& conf);
+
 	~TCPServer();
 
 	class GenericException : public  std::exception
@@ -49,7 +49,7 @@ public:
 	};
 	int getSocketFd() const;
 	int start();
-	void assignWorker(WorkerPool& wrkrPool, int epoll_fd);
+	void acceptAllPendingConns(WorkerPool& wrkrPool, int epoll_fd);
 	void stop();
 	unsigned long	requests_handled;
 	unsigned long	requests_failed;

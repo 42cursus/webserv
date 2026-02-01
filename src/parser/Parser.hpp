@@ -3,7 +3,7 @@
 /*                                                        :::      ::::::::   */
 /*   Parser.hpp                                         :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By: mganchev <mganchev@student.42.fr>          +#+  +:+       +#+        */
+/*   By: margo <margo@student.42.fr>                +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/01/21 16:11:56 by margo             #+#    #+#             */
 /*   Updated: 2026/01/29 09:52:48 by mganchev         ###   ########.fr       */
@@ -27,6 +27,7 @@
 #include <fstream>
 #include <algorithm>
 #include "../../include/webserv.hpp"
+#include "Location.hpp"
 #include "State.hpp"
 
 class  IBlock;

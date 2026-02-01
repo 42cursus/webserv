@@ -1,29 +1,24 @@
 /* ************************************************************************** */
 /*                                                                            */
 /*                                                        :::      ::::::::   */
-/*   serve.hpp                                          :+:      :+:    :+:   */
+/*   HttpConfig.hpp                                     :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By: fsmyth <fsmyth@student.42london.com>       +#+  +:+       +#+        */
+/*   By: abelov <abelov@student.42london.com>       +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
-/*   Created: 2026/01/22 14:50:26 by fsmyth            #+#    #+#             */
-/*   Updated: 2026/01/22 15:08:39 by fsmyth           ###   ########.fr       */
+/*   Created: 2025/12/04 15:46:54 by abelov            #+#    #+#             */
+/*   Updated: 2025/12/04 15:46:54 by abelov           ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
-#ifndef SERVE_HPP
-# define SERVE_HPP
+
+#ifndef HTTPCONFIG_HPP
+#define HTTPCONFIG_HPP
 
 #include <vector>
-#include "TCPServer.hpp"
 
-enum epoll_ptr_type {
-	EP_SRV,
-	EP_WRKR,
-	EP_NONE,
+class HttpConfig {
+
 };
 
-void			*tag_ptr(void *ptr, epoll_ptr_type tag);
-epoll_ptr_type 	get_tag(void *ptr);
-int 			serve(std::vector<TCPServer *> srvs);
 
-#endif
+#endif //HTTPCONFIG_HPP

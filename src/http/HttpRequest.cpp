@@ -16,13 +16,15 @@
 #include <fstream>
 #include <sstream>
 #include <string>
+#include <unistd.h>
 #include <vector>
 #include "HttpRequest.hpp"
 #include "HttpResponse.hpp"
-#include "Prefix.hpp"
+#include "Prefix_suffix.hpp"
+#include "State.hpp"
 #include "webserv.hpp"
-// #include "src/cgi/CgiHandler.hpp"
-// #include "LocationConfig.hpp"
+#include "src/handlers/CgiHandler.hpp"
+#include "Location.hpp"
 
 HttpRequest::HttpRequest(const std::string &path) : path(path)
 {}
@@ -100,81 +102,69 @@ void HttpRequest::parseRequest(const std::string &rawRequest)
 }
 
 
-static bool ends_with(const std::string &s, const std::string &suffix) {
-	if (suffix.size() > s.size())
-		return false;
-	const size_t offset = s.size() - suffix.size();
-	return s.compare(offset, suffix.size(), suffix) == 0;
+// static bool ends_with(const std::string &s, const std::string &suffix) {
+// 	if (suffix.size() > s.size())
+// 		return false;
+// 	const size_t offset = s.size() - suffix.size();
+// 	return s.compare(offset, suffix.size(), suffix) == 0;
+// }
+
+bool		HttpRequest::is_method_permitted(Location *location) const
+{
+	return std::find(
+		location->_methods.begin(),
+		location->_methods.end(),
+		this->method
+	) != location->_methods.end();
 }
 
-std::string
-HttpRequest::getHtmlResponse(const Config &conf, HttpResponse& res)
+StatusCode HttpRequest::getHtmlResponse(HttpResponse& res, Location *location)
 {
-	Location *location = loc_trie_search(conf.http.server.loc_trie, path);
-	if (location == NULL)
-	{
-		std::cout << "LOCATION NULL" << std::endl;
-		exit(1);
-	}
-	std::basic_string<char> filename = path.substr(location->_path.length(), path.length());
+	StatusCode	status = SC_200;
+
 	// std::cout << FT_BOLD << FT_RED << path << FT_RESET << std::endl;
 
-	if (filename.empty())
+	if (res.filename.empty() || *res.filename.rbegin() == '/')
 	{
-		if (!location->_autoindex)
-			filename = location->_index[0];
+		if (!res.location->_autoindex)
+		{
+			std::string							path;
+			std::vector<std::string>::iterator	it = res.location->_index.begin();
+			for (; it != res.location->_index.end(); it++)
+			{
+				path = res.location->_root + res.filename + *it;
+				std::cout << path << std::endl;
+				if (access(path.c_str(), F_OK) == 0)
+					break ;
+			}
+			if (it == res.location->_index.end())
+				return SC_403;
+			res.filename = res.filename + *it;
+		}
 		else
 		{
-			; // DO AUTOINDEX FUNCTION
+			res.buildAutoindexBody(); // DO AUTOINDEX FUNCTION
+			res.headers["content-type"] = "text/html";
+			return SC_200;
 		}
 	}
 
-	// LocationConfig lc(*location);
-	res.filename = filename;
-	std::string output;
-	if (ends_with(filename, ".bla"))
+	if (res.filename == "teapot")
 	{
-	// 	// CgiHandler handler(*this, lc, filename, res);
-	// 	res.statuscode = itoa(handler.do_run());
-	// 	output = handler.raw_output();
-		;
-	}
-	else if (filename == "teapot")
-	{
-		res.statuscode = "418";
-		res.statusmsg = "I'm a Teapot";
-		output = "{\"msg\" = \"I'm a Teapot\"}";
+		status = SC_418;
+		res.body = "{\"msg\": \"I'm a Teapot\"}";
 		res.headers["content-type"] = "application/json";
 	}
 	else
 	{
-		res.headers["content-type"] = getMimeType(filename);
-		output = readHtmlFile(filename, location);
+		res.headers["content-type"] = getMimeType(res.filename);
+		status = res.readHtmlFile(res.location->_root + res.filename);
 	}
-	return output;
+	return status;
+    (void)location;
 }
 
-std::string
-HttpRequest::readHtmlFile(const std::string &filename, const Location *location)
-{
-	const std::string &root_folder = location->_root;
-
-	std::string filePath = root_folder + filename;
-	std::ifstream file(filePath.c_str(), std::ios_base::in);
-
-	if (!file) {
-		std::cerr << "File not found." << std::endl;
-		return "";
-	}
-
-	std::stringstream buffer;
-	buffer << file.rdbuf();
-
-	return buffer.str();
-}
-
-std::string HttpRequest::getMimeType(const std::string &path)
-{
+std::string HttpRequest::getMimeType(const std::string &path) const {
 	std::map<std::string, std::string> mimeTypes;
 
 	mimeTypes.insert(std::make_pair("html", "text/html"));
@@ -189,6 +179,19 @@ std::string HttpRequest::getMimeType(const std::string &path)
 	std::string fileExtension = path.substr(path.find_last_of(".") + 1);
 
 	return mimeTypes[fileExtension];
+}
+
+HttpRequest::e_method	HttpRequest::get_method() const
+{
+	if (this->method == "GET")
+		return GET;
+	if (this->method == "POST")
+		return POST;
+	if (this->method == "PUT")
+		return PUT;
+	if (this->method == "DELETE")
+		return DELETE;
+	throw GenericException();
 }
 
 

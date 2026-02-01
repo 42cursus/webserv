@@ -15,8 +15,21 @@
 
 #include <string>
 #include <map>
+#include "webserv.hpp"
+#include "State.hpp"
 
 class HttpResponse {
+
+private:
+
+    static const int	HTTP_RESPONSE_STATUS_CODES = 600;
+    static const char	*_status_codes[HTTP_RESPONSE_STATUS_CODES][2];
+    struct StatusCodeInitializer {
+        StatusCodeInitializer();
+        static void _set_status(int code, const char *num, const char *msg);
+    };
+
+    static StatusCodeInitializer status_code_initializer;
 
 public:
 	std::string statuscode;
@@ -26,9 +39,28 @@ public:
 	std::string filename;
 	std::string	response;
 	size_t		start;
+	Location	*location;
 
-	void buildHttpResponse(void);
+	void		buildAutoindexBody(void);
+	void		buildHttpResponse(void);
+	StatusCode	readHtmlFile(const std::string &filename);
 	HttpResponse();
+
+	class GenericException : public  std::exception
+	{
+	public:
+		const char* what() const throw();
+	};
+
+	class Exception404 : public  std::exception
+	{
+	public:
+		const char* what() const throw();
+	};
+
+	
+	void		set_response_code(StatusCode code);
+
 };
 
 

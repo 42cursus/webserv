@@ -11,6 +11,8 @@
 # **************************************************************************** #
 
 resources/web/img/meet_the_spy.mp4
+doodle/doodle
+doodle/cgi-bin/hello.cgi
 
 build/
 .build/
@@ -186,3 +188,4 @@ tags
 [._]*.un~
 /webserv
 /src/utils/parse
+test*

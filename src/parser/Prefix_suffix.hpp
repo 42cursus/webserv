@@ -14,20 +14,26 @@
 # define PREFIX_HPP
 
 #include "webserv.hpp"
+#include "Location.hpp"
 
 struct TrieNode
 {
-	Location	*location;
-	TrieNode	*children[128];
+    static const int CHILDREN_SIZE = 128;
+	void		*data;
+	TrieNode	*children[CHILDREN_SIZE];
 
-	TrieNode(void);
+	TrieNode();
 };
 
+void		loc_trie_insert(TrieNode *head, Location *location);
+Location	*loc_trie_search(TrieNode *head, std::string const& path);
+void		cgi_trie_insert(TrieNode *head, CGI *cgi);
+CGI			*cgi_trie_search(TrieNode *head, std::string const& suffix);
 
-void	loc_trie_insert(TrieNode *head, Location *location);
-Location	*loc_trie_search(TrieNode *head, std::string& path);
-void	test_trie_match(TrieNode *head, std::string path);
-void 	test_trie(void);
-void	free_loc_trie(TrieNode *node);
+std::string	apply_location(std::string& path, Location const *location);
+
+void		test_trie_match(TrieNode *head, std::string path);
+void		test_trie(void);
+void		free_trie(TrieNode *node);
 
 #endif

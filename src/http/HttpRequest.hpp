@@ -23,6 +23,7 @@
 #define MAX_BODY_SIZE 1000
 #define DECIMAL_BASE 10
 
+
 class HttpRequest {
 
 private:
@@ -33,6 +34,14 @@ private:
 public:
 
 	HttpRequest();
+
+	enum e_method
+	{
+		GET,
+		PUT,
+		POST,
+		DELETE,
+	};
 
 	std::string			method;
 	std::string			path;
@@ -45,10 +54,11 @@ public:
 
 	void parseRequest(const std::string& rawRequest);
 
-	std::string readHtmlFile(const std::string &, const Location *conf);
-	std::string getHtmlResponse(const Config &conf, HttpResponse& res);
-	std::string getMimeType(const std::string &path);
+	StatusCode	getHtmlResponse(HttpResponse& res, Location *location);
+	std::string getMimeType(const std::string &path) const;
+	bool		is_method_permitted(Location *location) const;
 	void		printBody() const;
+	e_method	get_method() const;
 
 	class GenericException : public  std::exception
 	{

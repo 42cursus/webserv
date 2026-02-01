@@ -1,3 +1,6 @@
+"In this project bugs usually come from lifetime and ownership confusion,
+and storing references inside polymorphic objects is a great way to manufacture that confusion." (c)
+
 ```bash
 
 chmod +x ubuntu_cgi_tester
@@ -32,3 +35,49 @@ echo 12346 | dd bs=1 count=3 status=none
 ```bash
 sudo apt install docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin
 ```
+
+#
+
+[RFC 7230 (HTTP/1.1 Message Syntax and Routing) 6.3.2.  Pipelining](https://datatracker.ietf.org/doc/html/rfc7230#section-6.3.2)
+
+[RFC 9112 (HTTP/1.1) 9.3.2. Pipelining ](https://datatracker.ietf.org/doc/html/rfc9112#section-9.3.2)
+
+```bash
+printf 'HEAD / HTTP/1.1\r\nHost: www.google.com\r\nConnection: keep-alive\r\n\r\nHEAD /teapot HTTP/1.1\r\nHost: www.google.com\r\nConnection: close\r\n\r\n' \
+  | nc -N google.com 80
+
+printf '%s' \
+  $'HEAD / HTTP/1.1\r\n'\
+  $'Host: www.google.com\r\n'\
+  $'Connection: keep-alive\r\n'\
+  $'\r\n'\
+  $'HEAD /teapot HTTP/1.1\r\n'\
+  $'Host: www.google.com\r\n'\
+  $'Connection: close\r\n'\
+  $'\r\n' \
+  | nc -N google.com 80
+
+cat <<'EOF' | nc -N google.com 80
+HEAD / HTTP/1.1
+Host: www.google.com
+Connection: keep-alive
+
+HEAD /teapot HTTP/1.1
+Host: www.google.com
+Connection: close
+
+EOF
+
+printf 'GET / HTTP/1.1\r\nHost: localhost\r\nConnection: keep-alive\r\n\r\nGET /teapot HTTP/1.1\r\nHost: localhost\r\nConnection: close\r\n\r\n' \
+  | nc -N 127.1 8080
+
+curl --http1.1 -v http://127.0.0.1:8080/ http://127.0.0.1:8080/teapot
+```
+
+### Links:
+- [Apache HTTP Server](https://github.com/apache/httpd)
+- [NGINX Web Server](https://github.com/nginx/nginx)
+- [Muduo C++ network library](https://github.com/chenshuo/muduo)
+- [POCO (Portable Components)](https://github.com/pocoproject/poco)
+- [TinyWebServer](https://github.com/qinguoyi/TinyWebServer)
+- [markparticle's WebServer](https://github.com/markparticle/WebServer)
