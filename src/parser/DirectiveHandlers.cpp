@@ -6,7 +6,7 @@
 /*   By: margo <margo@student.42.fr>                +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/01/27 17:16:32 by margo             #+#    #+#             */
-/*   Updated: 2026/02/01 17:53:42 by margo            ###   ########.fr       */
+/*   Updated: 2026/02/01 18:33:25 by margo            ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -63,7 +63,7 @@ void    Parser::handleRedirect(const std::vector<t_token> line)
 
     std::vector<t_token>::const_iterator split = getTokenFromVector(line, EQUAL);
     
-    if ((++split)->type != REGEX || (++split)->type != REGEX)
+    if ((++split)->type != REGEX || split->literal[0] != '/' || (++split)->type != REGEX || split->literal[0] != '/')
         throw Error("Error: invalid directive: redirect: invalid path/redirect");
     if (!validateErrorCode((++split)->literal))
         throw Error("Error: invalid directive: redirect: invalid page code");
