@@ -45,7 +45,9 @@ struct Config
 			sockaddr_in				ipv4_listen;
 			std::string				server_name;
 			std::vector<Location>	locations;
+			std::vector<Redirect>	redirects;
 			TrieNode				*loc_trie;
+			TrieNode				*redirect_trie;
 			std::map<std::string, std::string>	error_pages; // map<error code, path to html>
 		}	server;
 	}	http;

@@ -25,10 +25,10 @@ struct TrieNode
 	TrieNode();
 };
 
-void		loc_trie_insert(TrieNode *head, Location *location);
-Location	*loc_trie_search(TrieNode *head, std::string const& path);
-void		cgi_trie_insert(TrieNode *head, CGI *cgi);
-CGI			*cgi_trie_search(TrieNode *head, std::string const& suffix);
+void		prefix_trie_insert(TrieNode *head, std::string const& path, void *data);
+void		*prefix_trie_search(TrieNode *head, std::string const& path);
+void		suffix_trie_insert(TrieNode *head, CGI *cgi);
+CGI			*suffix_trie_search(TrieNode *head, std::string const& suffix);
 
 std::string	apply_location(std::string& path, Location const *location);
 

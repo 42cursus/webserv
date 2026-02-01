@@ -65,6 +65,7 @@ public:
 
 	bool hasPendingResponses() const;
 	void handleErrorResponse(HttpResponse *res) const;
+	void handleRedirectResponse(HttpResponse *res, Redirect *redir) const;
 	void closeSocketFd();
 	void reset();
 	void clearRequest();

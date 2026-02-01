@@ -113,6 +113,7 @@ void TCPServer::stop()
 {
 	close(_socket_fd);
 	free_trie(this->getCfg().http.server.loc_trie);
+	free_trie(this->getCfg().http.server.redirect_trie);
 }
 
 int TCPServer::getSocketFd() const

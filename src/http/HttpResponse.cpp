@@ -10,6 +10,7 @@
 /*                                                                            */
 /* ************************************************************************** */
 
+#include <cstdio>
 #include <ctime>
 #include <sstream>
 #include <fstream>
@@ -104,7 +105,6 @@ HttpResponse::StatusCodeInitializer::StatusCodeInitializer() {
     _set_status(SC_507, "507", "Insufficient Storage" );
     _set_status(SC_508, "508", "Loop Detected" );
     _set_status(SC_510, "510", "Not Extended" );
-    _set_status(SC_511, "511", "Network Authentication Required" );
     _set_status(SC_511, "511", "Network Authentication Required" );
 
     // Special non-standard

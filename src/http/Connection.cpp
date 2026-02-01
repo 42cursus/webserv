@@ -380,7 +380,17 @@ Connection::e_result Connection::onWritable()
 HttpResponse* Connection::_prepareResponse()
 {
 	HttpResponse*	res = new HttpResponse();
-	res->location = loc_trie_search(_srv->getCfg().http.server.loc_trie, _req->path);
+
+	res->headers["Server"] = "Webserv/0.69";
+
+	Redirect *redirect = reinterpret_cast<Redirect*>(prefix_trie_search(_srv->getCfg().http.server.redirect_trie, _req->path));
+	if (redirect != NULL && _req->path == redirect->_path)
+	{
+		handleRedirectResponse(res, redirect);
+		return res;
+	}
+
+	res->location = reinterpret_cast<Location*>(prefix_trie_search(_srv->getCfg().http.server.loc_trie, _req->path));
 	if (!res->location)
 	{
 		res->set_response_code(SC_404);
@@ -392,7 +402,6 @@ HttpResponse* Connection::_prepareResponse()
 	std::string		mimetype;
 
 	res->set_response_code(SC_200);
-	res->headers["Server"] = "Webserv/0.69";
 
 	if (!_req->is_method_permitted(res->location))
 	{
@@ -401,7 +410,7 @@ HttpResponse* Connection::_prepareResponse()
 		return res;
 	}
 
-	CGI* cgi = cgi_trie_search(res->location->cgi_trie, _req->path);
+	CGI* cgi = suffix_trie_search(res->location->cgi_trie, _req->path);
 
 	try {
 		if (cgi != NULL)
@@ -519,19 +528,26 @@ void Connection::_prepareResponse_delete(HttpResponse *res) const
     }
 }
 
-
 void Connection::handleErrorResponse(HttpResponse* res) const
 {
     std::string path = _srv->getCfg().http.server.error_pages.at(res->statuscode);
 	std::cout << path << std::endl;
     if (!path.empty() && path[0] != '.')
     {
-        Location* location = loc_trie_search(_srv->getCfg().http.server.loc_trie, path);
+        Location* location = reinterpret_cast<Location*>(prefix_trie_search(_srv->getCfg().http.server.loc_trie, path));
         path = apply_location(path, location);
     }
     res->headers["content-type"] = _req->getMimeType(path);
     res->readHtmlFile(path);
     res->headers["content-length"] = ::itoa(res->body.length());
+}
+
+void Connection::handleRedirectResponse(HttpResponse *res, Redirect *redir) const
+{
+	res->set_response_code(redir->_code);
+	res->headers["Location"] = redir->_redirect;
+	res->body = "";
+	res->headers["content-length"] = "0";
 }
 
 void Connection::_parseRange(HttpResponse& res) const

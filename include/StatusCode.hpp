@@ -34,7 +34,7 @@ enum StatusCode
 	SC_302,
 	SC_303,
 	SC_304,
-	SC_307,
+	SC_307 = 307,
 	SC_308,
 	SC_400 = 400,
 	SC_401,

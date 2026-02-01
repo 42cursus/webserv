@@ -206,7 +206,7 @@ static TrieNode	*build_cgi_trie(std::vector<CGI>& cgis)
 
 	for (uint64_t i = 0; i < cgis.size(); i++)
 	{
-		cgi_trie_insert(head, &cgis[i]);
+		suffix_trie_insert(head, &cgis[i]);
 	}
 	return head;
 }
@@ -218,18 +218,24 @@ void Server::get_config(struct Config& cfg)
 	// 	cfg.http.server.locations.push_back(&this->_locations[i]);
 	// }
 	cfg.http.server.locations = this->_locations;
+	cfg.http.server.redirects = this->_redirects;
 	cfg.http.server.server_name = this->_hostname;
 	cfg.http.server.ipv4_listen.sin_family = AF_INET;
 	cfg.http.server.ipv4_listen.sin_addr.s_addr = htonl(INADDR_ANY);
 	std::memset(cfg.http.server.ipv4_listen.sin_zero, 0, 8);
 	cfg.http.server.ipv4_listen.sin_port = htons(this->_port);
 	cfg.http.server.loc_trie = new TrieNode();
+	cfg.http.server.redirect_trie = new TrieNode();
 	setup_default_error_pages(cfg);
 	overwrite_error_pages(cfg, this->_error_pages);
 	for (uint64_t i = 0; i < cfg.http.server.locations.size(); i++)
 	{
-		loc_trie_insert(cfg.http.server.loc_trie, &cfg.http.server.locations[i]);
+		prefix_trie_insert(cfg.http.server.loc_trie, cfg.http.server.locations[i]._path, &cfg.http.server.locations[i]);
 		cfg.http.server.locations[i].cgi_trie = build_cgi_trie(cfg.http.server.locations[i]._cgi);
+	}
+	for (uint64_t i = 0; i < cfg.http.server.redirects.size(); i++)
+	{
+		prefix_trie_insert(cfg.http.server.redirect_trie, cfg.http.server.redirects[i]._path, &cfg.http.server.redirects[i]);
 	}
 }
 
