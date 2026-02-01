@@ -43,9 +43,9 @@ WorkerPool::~WorkerPool()
 	}
 }
 
-ConnWorker *	WorkerPool::alloc(TCPServer *srv)
+ConnWorker*	WorkerPool::alloc(TCPServer *srv)
 {
-    ConnWorker * out;
+    ConnWorker *out;
 
 	if (_freeList.empty())
 	{

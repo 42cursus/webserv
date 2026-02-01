@@ -39,8 +39,8 @@ AutoindexHandler::AutoindexHandler(const Location &loc) : _loc(loc) {}
 ** --------------------------------- METHODS ----------------------------------
 */
 
-int AutoindexHandler::handle(HttpRequest &req, HttpResponse &res) {
-    return 200;
+StatusCode AutoindexHandler::handle(HttpRequest &req, HttpResponse &res) {
+    return SC_200;
 }
 
 /*

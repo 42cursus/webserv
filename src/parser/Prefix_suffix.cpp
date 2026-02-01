@@ -93,12 +93,9 @@ void	free_trie(TrieNode *node)
 	if (node == NULL)
 		return ;
 
-	for (uint64_t i = 0; i < 128; i++)
-	{
-		free_trie(node->children[i]);
-	}
-
-	delete node;
+    for (uint64_t i = 0; i < TrieNode::CHILDREN_SIZE; i++)
+        free_trie(node->children[i]);
+    delete node;
 }
 
 void	test_trie_match(TrieNode *head, std::string path)

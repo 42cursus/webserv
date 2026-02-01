@@ -29,7 +29,8 @@ ConnWorker::ConnWorker()
 	_conn.setParent(this);
 }
 
-ConnWorker::ConnWorker(const ConnWorker &other) : _conn(other._conn){
+ConnWorker::ConnWorker(const ConnWorker &other) : _conn(other._conn) {
+	_conn.setParent(this);
 }
 
 /*
@@ -42,7 +43,6 @@ ConnWorker::~ConnWorker()
     closeSocketFd();
     resetForReuse();
 }
-
 
 /*
 ** -------------------------------- OPERATORS ---------------------------------
@@ -60,30 +60,6 @@ ConnWorker &ConnWorker::operator=(const ConnWorker &other) {
 /*
 ** --------------------------------- METHODS ----------------------------------
 */
-
-/*
-** -------------------------------- ACCESSORS ---------------------------------
-*/
-
-void ConnWorker::setSrv(TCPServer* srv)
-{
-    _conn.setSrv(srv);
-}
-
-void ConnWorker::setConnFd(int connFd)
-{
-    _conn.setFd(connFd);
-}
-
-int ConnWorker::getConnFd() const
-{
-    return _conn.getFd();
-}
-
-ConnWorker::e_status ConnWorker::getStatus() const
-{
-    return _conn.getStatus();
-}
 
 Connection::e_result ConnWorker::handleRequest()
 {
@@ -116,6 +92,34 @@ void ConnWorker::clearRequest()
 void ConnWorker::closeSocketFd()
 {
     _conn.closeSocketFd();
+}
+
+/*
+** -------------------------------- ACCESSORS ---------------------------------
+*/
+
+void ConnWorker::setSrv(TCPServer* srv)
+{
+    _conn.setSrv(srv);
+}
+
+void ConnWorker::setConnFd(int connFd)
+{
+    _conn.setFd(connFd);
+}
+
+int ConnWorker::getConnFd() const
+{
+    return _conn.getFd();
+}
+
+ConnWorker::e_status ConnWorker::getStatus() const
+{
+    return _conn.getStatus();
+}
+
+const Connection &ConnWorker::getConn() const {
+    return _conn;
 }
 
 /*

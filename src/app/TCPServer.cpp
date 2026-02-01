@@ -14,12 +14,12 @@
 #include "ConnWorker.hpp"
 #include "HttpRequest.hpp"
 #include "Prefix_suffix.hpp"
+#include "WebServer.hpp"
 #include "WorkerPool.hpp"
-#include "serve.hpp"
 #include <cstring>
+#include <stdio.h>
 #include <sys/epoll.h>
 #include <sys/socket.h>
-#include <stdio.h>
 #include <vector>
 
 /*
@@ -63,8 +63,11 @@ int TCPServer::start()
 {
 	requests_handled = 0;
 	requests_failed = 0;
+
 	sockaddr_in in = cfg.http.server.ipv4_listen;
+
 	_socket_fd = socket(in.sin_family, SOCK_STREAM, 0);
+
 	if (_socket_fd < 0) {
 		std::cerr << "Failed to create server socket." << std::endl;
 		throw TCPServer::GenericException();
@@ -75,6 +78,7 @@ int TCPServer::start()
         std::cerr << "Failed to set O_NONBLOCK on listen socket: " << strerror(errno) << std::endl;
         throw TCPServer::GenericException();
     }
+
 	int reuse = 1;
 	int result = setsockopt(_socket_fd, SOL_SOCKET, SO_REUSEADDR, (void *)&reuse, sizeof(reuse));
 	if (result < 0)
@@ -100,13 +104,10 @@ int TCPServer::start()
 
 	std::cout << "Listen socket_fd: " << _socket_fd << std::endl;
 	std::cout << "Server started on: "
-			  << "http://" << inet_ntoa(inin.sin_addr)
-			  << ":" << ntohs(in.sin_port) << "/\n"
+			  << "http://" << inet_ntoa(inin.sin_addr) << ":" << ntohs(in.sin_port) << "/\n"
 			  << std::endl;
 	return _socket_fd;
 }
-
-
 
 void TCPServer::stop()
 {
@@ -163,7 +164,7 @@ void	TCPServer::acceptAllPendingConns(WorkerPool& wrkrPool, int epoll_fd)
 
         struct epoll_event ev;
         std::memset(&ev, 0, sizeof(ev));
-        ev.data.ptr = tag_ptr(wrkr, EP_WRKR);
+        ev.data.ptr = tag_ptr(wrkr, WebServer::EP_WRKR);
         ev.events = EPOLLIN;
         epoll_ctl(epoll_fd, EPOLL_CTL_ADD, conn_fd, &ev);
     }

@@ -14,14 +14,14 @@
 #include "HttpRequest.hpp"
 #include "HttpResponse.hpp"
 #include "Prefix_suffix.hpp"
-#include "serve.hpp"
+#include "WebServer.hpp"
 #include "webserv.hpp"
 
 #include <cerrno>
 #include <cstdlib>
 #include <cstring>
-#include <sys/epoll.h>
 #include <sstream>
+#include <sys/epoll.h>
 
 #include <cstdio>
 #include <sys/types.h>
@@ -189,12 +189,12 @@ StatusCode CgiHandler::handle(HttpRequest &req, HttpResponse &res)
         std::string script = apply_location(req.path, res.location);
         // build ARGV
 
-
         const char *argv[3] = {
             "/usr/bin/python3",
             script.c_str(),
             NULL,
         };
+
         const char *envp[3] = {
             "FUCK=me",
             "TWAT=you",
@@ -203,9 +203,7 @@ StatusCode CgiHandler::handle(HttpRequest &req, HttpResponse &res)
         execve(argv[0], (char *const *)argv, (char *const *)envp);
     }
     else if (_pid < 0)
-    {
         return (SC_500);
-    }
 
     close(_stdout_pipe[1]);
     close(_stdin_pipe[0]);
@@ -233,7 +231,7 @@ void	CgiHandler::register_read_pipe(int epoll_fd)
 {
 	struct epoll_event ev;
 	std::memset(&ev, 0, sizeof(ev));
-	ev.data.ptr = tag_ptr(this, EP_CGIS);
+	ev.data.ptr = tag_ptr(this, WebServer::EP_CGIS);
 	ev.events = EPOLLIN;
 	epoll_ctl(epoll_fd, EPOLL_CTL_ADD, this->_stdout_pipe[0], &ev);
 }
@@ -242,7 +240,7 @@ void	CgiHandler::register_write_pipe(int epoll_fd)
 {
 	struct epoll_event ev;
 	std::memset(&ev, 0, sizeof(ev));
-	ev.data.ptr = tag_ptr(this, EP_CGIS);
+	ev.data.ptr = tag_ptr(this, WebServer::EP_CGIS);
 	ev.events = EPOLLOUT;
 	epoll_ctl(epoll_fd, EPOLL_CTL_ADD, this->_stdin_pipe[1], &ev);
 }

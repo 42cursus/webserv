@@ -33,88 +33,88 @@ class ConnWorker;
 
 class Connection {
 public:
-    enum e_result {
-        OK = 0,
-        WANT_WRITE = 1,
-        CLOSED = 2,
-        ERROR = 3
-    };
+	enum e_result {
+		OK		   = 0,
+		WANT_WRITE = 1,
+		CLOSED	   = 2,
+		ERROR	   = 3
+	};
 
-    enum e_status {
-        READING_HEADERS = 0,
-        READING_BODY,
-        HANDLING_CGI,
-        READY_TO_WRITE
-    };
+	enum e_status {
+		READING_HEADERS = 0,
+		READING_BODY,
+		HANDLING_CGI,
+		READY_TO_WRITE
+	};
 
-    Connection();
-    explicit Connection(int fd, TCPServer* srv);
-    Connection(const Connection &other);
-    ~Connection();
+	Connection();
+	explicit Connection(int fd, TCPServer *srv);
+	Connection(const Connection &other);
+	~Connection();
 
-    void        setSrv(TCPServer* srv);
-    void        setFd(int fd);
-    int         getFd() const;
-    ConnWorker* getParent() const;
-    void        setParent(ConnWorker *parent);
-    e_status    getStatus() const;
+	void		setSrv(TCPServer *srv);
+	void		setFd(int fd);
+	int			getFd() const;
+	ConnWorker *getParent() const;
+	void		setParent(ConnWorker *parent);
+	e_status	getStatus() const;
 
-    e_result    onReadable();
-    e_result    onWritable();
+	e_result onReadable();
+	e_result onWritable();
 
 
-    bool        hasPendingResponses() const;
-    void        handleErrorResponse(HttpResponse* res) const;
-    void        closeSocketFd();
-    void        reset();
-    void        clearRequest();
+	bool hasPendingResponses() const;
+	void handleErrorResponse(HttpResponse *res) const;
+	void closeSocketFd();
+	void reset();
+	void clearRequest();
 
 private:
-    Connection& operator=(const Connection&);
+	Connection &operator=(const Connection &);
 
-    e_result _recvFromClient();
-    e_result _sendToClient();
-    e_result _processInput();
+	e_result _recvFromClient();
+	e_result _sendToClient();
+	e_result _processInput();
 
-    bool    _tryExtractOneRequest();
-    void    _consumeInputBytes(size_t nbytes);
-    void    _resetCurrentRequest();
+	bool _tryExtractOneRequest();
+	void _consumeInputBytes(size_t nbytes);
+	void _resetCurrentRequest();
 
-    bool    _shouldKeepAlive(const HttpRequest& req) const;
+	bool _shouldKeepAlive(const HttpRequest &req) const;
 
-    // transport
-    int         _fd;
-    TCPServer*  _srv;
+	// transport
+	int		   _fd;
+	TCPServer *_srv;
 
-    // HTTP state
-    e_status    _status;
+	// HTTP state
+	e_status _status;
 
-    HttpRequest*    _req;
-//    HttpResponse*   _res;
+	HttpRequest *_req;
+	//    HttpResponse*   _res;
 
-    // input buffering
-    std::string _in;
-    size_t      _in_off;
+	// input buffering
+	std::string _in;
+	size_t		_in_off;
 
-    bool        _peerClosedInput; // read() returned 0 at least once
-	
+	bool _peerClosedInput;// read() returned 0 at least once
 
-    // output queue
-    struct PendingResponse {
-        HttpResponse* res;
-        bool          closeAfter; // close connection after this response is fully sent
-    };
-    std::deque<PendingResponse> _pendingResponses;
-    ConnWorker      *_parent;
-    char            _req_buffer[REQUEST_BUF_SIZE + 1];
+	struct PendingResponse {
+		HttpResponse *res;
+		bool		  closeAfter;// close connection after this response is fully sent
+	};
 
-    void            _parseRange(HttpResponse& res) const;
+	// output queue
+	std::deque<PendingResponse> _pendingResponses;
+	ConnWorker				   *_parent;
+	char						_req_buffer[REQUEST_BUF_SIZE + 1];
 
-    HttpResponse*   _prepareResponse();
-	void 			_prepareResponse_get(HttpResponse *res) const;
-	void 			_prepareResponse_put(HttpResponse *res) const;
-	void 			_prepareResponse_delete(HttpResponse *res) const;
-	void 			_prepareResponse_post(HttpResponse *res) const;
+	void _parseRange(HttpResponse &res) const;
+
+	HttpResponse *_prepareResponse();
+	void		  _prepareResponse_get(HttpResponse *res) const;
+	void		  _prepareResponse_put(HttpResponse *res) const;
+	void		  _prepareResponse_delete(HttpResponse *res) const;
+	void		  _prepareResponse_post(HttpResponse *res) const;
 };
 
-#endif //CONNECTION_HPP
+#endif//CONNECTION_HPP

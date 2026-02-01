@@ -34,8 +34,8 @@ private:
 
 protected:
 	const Config &cfg;
+
 public:
-    static const unsigned int WRKR_POOL_SIZE = 1024;
 	const Config &getCfg() const;
 
 	explicit TCPServer(const Config& conf);
@@ -53,8 +53,6 @@ public:
 	void stop();
 	unsigned long	requests_handled;
 	unsigned long	requests_failed;
-
-	int serve(TCPServer &srv);
 };
 
 

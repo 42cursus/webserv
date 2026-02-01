@@ -17,7 +17,7 @@
 
 class AutoindexHandler : public IHandler {
     explicit AutoindexHandler(const Location& loc);
-    int handle(HttpRequest& req, HttpResponse& res);
+    StatusCode handle(HttpRequest& req, HttpResponse& res);
 
 private:
     const Location& _loc;

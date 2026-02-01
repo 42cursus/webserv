@@ -39,8 +39,9 @@ private:
     unsigned int    _line_end;
     IBlock* _parent_block; // if NULL we're in main server block
 
+protected:
     IBlock();
-        
+
 public:
     IBlock(e_block_type type);
     IBlock(const IBlock& copy);
@@ -106,6 +107,7 @@ struct CGI : public IBlock {
     CGI();
     CGI &operator=(const CGI &copy);
 };
+std::ostream& operator<<(std::ostream& os, const CGI& cgi);
 
 
 class Server : public IBlock {
@@ -128,8 +130,8 @@ public:
     const std::map<std::string, std::string> &getErrorPages() const;
 
     void setPort(unsigned int port);
-    void setHost(std::string hostname);
-    void addLocation(Location new_location);
+    void setHost(const std::string& hostname);
+    void addLocation(const Location& new_location);
     void addErrorPage(std::string code, std::string html);
     void get_config(struct Config &cfg);
 };

@@ -18,12 +18,12 @@
 
 struct TrieNode
 {
+    static const int CHILDREN_SIZE = 128;
 	void		*data;
-	TrieNode	*children[128];
+	TrieNode	*children[CHILDREN_SIZE];
 
-	TrieNode(void);
+	TrieNode();
 };
-
 
 void		loc_trie_insert(TrieNode *head, Location *location);
 Location	*loc_trie_search(TrieNode *head, std::string const& path);

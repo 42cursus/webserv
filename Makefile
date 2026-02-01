@@ -15,7 +15,8 @@ NAME 			= webserv
 BUILD_DIR		= build
 INC_DIR			= ./include
 
-CFLAGS 			:= -Wall -Wextra -Werror -std=c++98 -gdwarf-3 -O0 -g3 #-fsanitize=address -fsanitize=undefined
+CFLAGS 			:= -Wall -Wextra -Werror \
+					-std=c++98 -O0 -g3 -fsanitize=address,undefined
 CPP 			= c++
 
 INCLUDE_FLAGS	:= -I. \
@@ -28,13 +29,14 @@ INCLUDE_FLAGS	:= -I. \
 					-I/usr/include
 
 SRCS			= src/main.cpp \
-				  src/app/serve.cpp \
+				  src/app/WebServer.cpp \
 				  src/app/ConnWorker.cpp \
 				  src/app/WorkerPool.cpp \
 				  src/app/TCPServer.cpp \
 				  src/http/Connection.cpp \
 				  src/http/HttpRequest.cpp \
 				  src/http/HttpResponse.cpp \
+				  src/parser/Location.cpp \
 				  src/parser/Prefix_suffix.cpp \
 				  src/parser/DirectiveHandlers.cpp \
 				  src/parser/State.cpp \

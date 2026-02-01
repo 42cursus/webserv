@@ -55,13 +55,18 @@ bool Connection::hasPendingResponses() const
     return !_pendingResponses.empty();
 }
 
-Connection::Connection(const Connection &other)
-    : _fd(other._fd),
-      _srv(other._srv),
-      _status(other._status),
-      _req(other._req),
-      _pendingResponses(other._pendingResponses)
-{}
+Connection::Connection(const Connection &other) :
+    _fd(other._fd),
+    _srv(other._srv),
+    _status(other._status),
+    _req(other._req),
+	_in_off(other._in_off),
+	_peerClosedInput(other._peerClosedInput),
+    _pendingResponses(other._pendingResponses),
+    _parent(other._parent)
+{
+
+}
 
 Connection::Connection(int fd, TCPServer* srv)
     : _fd(fd),
@@ -401,7 +406,10 @@ HttpResponse* Connection::_prepareResponse()
 	try {
 		if (cgi != NULL)
 		{
-			_parent->cgiSession = new CgiHandler(*_req, *res->location, cgi->_script, *res);
+            if (_parent == NULL) {
+                throw new TCPServer::GenericException();
+            }
+            _parent->cgiSession = new CgiHandler(*_req, *res->location, cgi->_script, *res);
 			StatusCode code = _parent->cgiSession->handle(*_req, *res);
 			res->set_response_code(code);
 			if (res->headers.find("content-length") == res->headers.end())
