@@ -3,10 +3,10 @@
 /*                                                        :::      ::::::::   */
 /*   DirectiveHandlers.cpp                              :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By: mganchev <mganchev@student.42.fr>          +#+  +:+       +#+        */
+/*   By: margo <margo@student.42.fr>                +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/01/27 17:16:32 by margo             #+#    #+#             */
-/*   Updated: 2026/01/29 09:39:08 by mganchev         ###   ########.fr       */
+/*   Updated: 2026/02/01 17:53:42 by margo            ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -54,6 +54,27 @@ void    Parser::handleName(const std::vector<t_token> line)
 
     std::vector<t_token>::const_iterator split = getTokenFromVector(line, EQUAL);
     getLastServer().setHost((++split)->literal);
+}
+
+void    Parser::handleRedirect(const std::vector<t_token> line)
+{
+    if (line.size() < 5 || _current_block->getBlockType() != SERVER_)
+        throw Error("Error: invalid directive: redirect");
+
+    std::vector<t_token>::const_iterator split = getTokenFromVector(line, EQUAL);
+    
+    if ((++split)->type != REGEX || (++split)->type != REGEX)
+        throw Error("Error: invalid directive: redirect: invalid path/redirect");
+    if (!validateErrorCode((++split)->literal))
+        throw Error("Error: invalid directive: redirect: invalid page code");
+    if (split->literal[0] != '3')
+        throw Error("Error: invalid directive: redirect: invalid page code");
+
+    split = getTokenFromVector(line, EQUAL);
+    std::string path = (++split)->literal;
+    std::string redirect = (++split)->literal;
+    StatusCode  code = static_cast<StatusCode>(atoi((++split)->literal.c_str()));
+    getLastServer().addRedirect(path, redirect, code);
 }
 
 void    Parser::handleRoot(const std::vector<t_token> line)
@@ -164,5 +185,9 @@ void    Parser::handleErrorPage(const std::vector<t_token> line) // check if las
         throw Error("Error: invalid error page html file");
     
     for (++split; split != html; ++split)
+    {
+        if (!validateErrorCode(split->literal))
+            throw Error("Error: invalid error page code");
         getLastServer().addErrorPage(split->literal, html->literal);
+    }
 }

@@ -108,7 +108,7 @@ HttpResponse::StatusCodeInitializer::StatusCodeInitializer() {
     _set_status(SC_511, "511", "Network Authentication Required" );
 
     // Special non-standard
-    _set_status(SC_MAX, "599", "Fintan is fuming with anger" );
+    _set_status(SC_MAX, "599", "Fintan is fuming with anger" ); // FIXME: >:( - Fin
 }
 
 /*
@@ -129,7 +129,7 @@ HttpResponse::StatusCodeInitializer::StatusCodeInitializer() {
 */
 
 void HttpResponse::StatusCodeInitializer::_set_status(int code, const char *num, const char *msg) {
-    if (code < 0 || code >= 512)
+    if (code < 0 || code >= 600)
         return;
     _status_codes[code][0] = num;
     _status_codes[code][1] = msg;

@@ -3,10 +3,10 @@
 /*                                                        :::      ::::::::   */
 /*   Location.hpp                                       :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By: abelov <abelov@student.42london.com>       +#+  +:+       +#+        */
+/*   By: margo <margo@student.42.fr>                +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/01/28 00:07:28 by abelov            #+#    #+#             */
-/*   Updated: 2026/02/01 01:46:23 by abelov           ###   ########.fr       */
+/*   Updated: 2026/02/01 17:23:04 by margo            ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -33,9 +33,8 @@ struct Location : public IBlock {
     Location(const Location& copy);
     ~Location();
     Location &operator=(const Location &copy);
-    friend std::ostream &operator<<(std::ostream &os, const Location &location);
 };
 
-
+std::ostream &operator<<(std::ostream &os, const Location &location);
 
 #endif//LOCATION_HPP

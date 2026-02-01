@@ -3,10 +3,10 @@
 /*                                                        :::      ::::::::   */
 /*   Error.cpp                                          :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By: mganchev <mganchev@student.42.fr>          +#+  +:+       +#+        */
+/*   By: margo <margo@student.42.fr>                +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/01/29 08:56:33 by mganchev          #+#    #+#             */
-/*   Updated: 2026/01/29 09:57:18 by mganchev         ###   ########.fr       */
+/*   Updated: 2026/02/01 17:57:56 by margo            ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -30,6 +30,20 @@ bool    Parser::validateCgiParam(std::string   cgi_param)
 bool    Parser::validateMethod(std::string  method)
 {
     return method == "PUT" || method == "GET" || method == "DELETE" || method == "POST";
+}
+
+bool    Parser::validateErrorCode(std::string   error_code)
+{
+    if (error_code.size() > 10 || std::atol(error_code.c_str()) > INT_MAX || std::atol(error_code.c_str()) < 0)
+        throw Error("Error: syntax error: invalid error_code");
+    
+    for (int i = 0; error_code[i]; i++)
+    {
+        if (!isdigit(error_code[i]))
+            throw Error("Error: syntax error: invalid error_code");
+    }
+    
+    return (std::atol(error_code.c_str()) >= 100 && std::atol(error_code.c_str()) <= 599);
 }
 
 bool    Parser::validateErrorPage(std::string   error_page)

@@ -6,7 +6,7 @@
 /*   By: margo <margo@student.42.fr>                +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/01/27 17:22:22 by margo             #+#    #+#             */
-/*   Updated: 2026/01/27 18:54:14 by margo            ###   ########.fr       */
+/*   Updated: 2026/02/01 17:54:47 by margo            ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -105,6 +105,9 @@ void    HTTP::printConfig()
         std::map<std::string, std::string>::const_iterator it;
         for (it = _servers[i].getErrorPages().begin(); it != _servers[i].getErrorPages().end(); ++it)
             std::cout << "page code " << it->first << " uses html script " << it->second << std::endl;
+        std::vector<Redirect>::const_iterator it_redirect;
+        for (it_redirect = _servers[i].getRedirects().begin(); it_redirect != _servers[i].getRedirects().end(); ++it_redirect)
+            std::cout << "redirect: " << *it_redirect << std::endl;
         for (size_t j = 0; j < _servers[i].getLocations().size(); j++)
         {
             Location current = _servers[i].getLocations()[j];

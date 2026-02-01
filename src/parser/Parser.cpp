@@ -3,10 +3,10 @@
 /*                                                        :::      ::::::::   */
 /*   Parser.cpp                                         :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By: mganchev <mganchev@student.42.fr>          +#+  +:+       +#+        */
+/*   By: margo <margo@student.42.fr>                +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/01/21 21:52:43 by margo             #+#    #+#             */
-/*   Updated: 2026/01/29 10:12:35 by mganchev         ###   ########.fr       */
+/*   Updated: 2026/02/01 16:28:40 by margo            ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -92,6 +92,7 @@ void    Parser::init_directive_handlers()
     _directive_handlers["log_format"] = &Parser::handleLogFormat;
     _directive_handlers["listen"] = &Parser::handleListen;
     _directive_handlers["name"] = &Parser::handleName;
+    _directive_handlers["redirect"] = &Parser::handleRedirect;
     _directive_handlers["root"] = &Parser::handleRoot;
     _directive_handlers["index"] = &Parser::handleIndex;
     _directive_handlers["autoindex"] = &Parser::handleAutoIndex;

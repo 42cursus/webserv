@@ -6,15 +6,14 @@
 /*   By: margo <margo@student.42.fr>                +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/01/25 15:43:47 by margo             #+#    #+#             */
-/*   Updated: 2026/01/27 18:14:27 by margo            ###   ########.fr       */
+/*   Updated: 2026/02/01 17:53:15 by margo            ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
-#include "State.hpp"
 #include "webserv.hpp"
-#include "Prefix_suffix.hpp"
 #include "Location.hpp"
-
+#include "State.hpp"
+#include "Prefix_suffix.hpp"
 #include <vector>
 
 IBlock::IBlock(e_block_type type): _in_block(false), _type(type), _line_start(0), _line_end(0) {}
@@ -67,6 +66,23 @@ void    IBlock::setEndLine(unsigned int line_end) { _line_end = line_end; }
 void    IBlock::setParent(IBlock* parent) { _parent_block = parent; }
 
 IBlock::IBlock() : _in_block(false) {
+}
+
+Redirect&   Redirect::operator=(const Redirect& copy)
+{
+    if (this != &copy)
+    {
+        _path = copy._path;
+        _redirect = copy._redirect;
+        _code = copy._code;
+    }
+    return *this;
+}
+
+std::ostream &operator<<(std::ostream &os, const Redirect &redirect)
+{
+    os << "_path: " << redirect._path << "_redirect: " << redirect._redirect << "_code: " << redirect._code;
+    return os;
 }
 
 CGI::CGI(): IBlock(CGI_)
@@ -124,6 +140,8 @@ Server::Server(const Server& copy): IBlock(copy)
     _hostname = copy._hostname;
     for (size_t i = 0; i < copy._locations.size(); i++)
         _locations.push_back(copy._locations[i]);
+    for (size_t i = 0; i < copy._redirects.size(); i++)
+        _redirects.push_back(copy._redirects[i]);
     _error_pages = std::map<std::string, std::string>(copy._error_pages);
 }
 
@@ -137,6 +155,9 @@ Server& Server::operator=(const Server& copy)
         _locations.clear();
         for (size_t i = 0; i < copy._locations.size(); i++)
             _locations.push_back(copy._locations[i]);
+        _redirects.clear();
+        for (size_t i = 0; i < copy._redirects.size(); i++)
+            _redirects.push_back(copy._redirects[i]);
         _error_pages = std::map<std::string, std::string>(copy._error_pages);
     }
     return *this;
@@ -151,6 +172,10 @@ std::string Server::getHost() const { return _hostname; }
 std::vector<Location>& Server::getLocations() { return _locations; }
 
 const std::vector<Location>& Server::getLocations() const { return _locations; }
+
+std::vector<Redirect>&  Server::getRedirects() { return _redirects; }
+
+const std::vector<Redirect>& Server::getRedirects() const { return _redirects; }
 
 const std::map<std::string, std::string>& Server::getErrorPages() const { return _error_pages; }
 
@@ -213,6 +238,16 @@ void    Server::setPort(unsigned int port) { _port = port; }
 void    Server::setHost(const std::string& hostname) { _hostname = hostname; }
 
 void    Server::addLocation(const Location& new_location) { _locations.push_back(new_location); }
+
+void    Server::addRedirect(std::string path, std::string redirect, StatusCode code)
+{ 
+    Redirect new_redirect;
+
+    new_redirect._path = path;
+    new_redirect._redirect = redirect;
+    new_redirect._code = code;
+    _redirects.push_back(new_redirect); 
+}
 
 void    Server::addErrorPage(std::string code, std::string html) { _error_pages[code] = html; }
 
