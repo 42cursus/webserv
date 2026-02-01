@@ -177,7 +177,7 @@ int WebServer::serve()
 
     while(g_var != SIGINT)
     {
-        int nfds = epoll_wait(_epoll_fd, _events.data(), EVS_SIZE, -1);
+        int nfds = epoll_wait(_epoll_fd, _events.data(), EVS_SIZE, -1); // event demultiplexer
         for (int i = 0; i < nfds; i++)
         {
             void *ptr = _events[i].data.ptr;

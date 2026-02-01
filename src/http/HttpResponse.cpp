@@ -171,7 +171,7 @@ StatusCode HttpResponse::readHtmlFile(const std::string &filename)
 	return status;
 }
 
-void HttpResponse::buildHttpResponse(void)
+void HttpResponse::buildHttpResponse()
 {
 	std::ostringstream buffer;
 
@@ -210,7 +210,7 @@ static std::string timespec_to_str(struct timespec& ts)
 	return buf;
 }
 
-void HttpResponse::buildAutoindexBody(void)
+void HttpResponse::buildAutoindexBody()
 {
 	std::string directory = location->_path + this->filename;
 	std::vector<std::string>	filenames = _get_directory_members(location->_root + this->filename);

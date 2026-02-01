@@ -77,7 +77,10 @@ curl --http1.1 -v http://127.0.0.1:8080/ http://127.0.0.1:8080/teapot
 ### Links:
 - [Apache HTTP Server](https://github.com/apache/httpd)
 - [NGINX Web Server](https://github.com/nginx/nginx)
+- [CivetWeb](https://github.com/civetweb/civetweb)
 - [Muduo C++ network library](https://github.com/chenshuo/muduo)
 - [POCO (Portable Components)](https://github.com/pocoproject/poco)
 - [TinyWebServer](https://github.com/qinguoyi/TinyWebServer)
 - [markparticle's WebServer](https://github.com/markparticle/WebServer)
+- [Libevent’s evbuffer functionality](https://libevent.org/libevent-book/Ref7_evbuffer.html)
+- [HTTP built on Boost.Asio](https://github.com/boostorg/beast/blob/develop/example/http/server/async/http_server_async.cpp)

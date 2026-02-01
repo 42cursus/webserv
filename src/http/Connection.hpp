@@ -34,10 +34,10 @@ class ConnWorker;
 class Connection {
 public:
 	enum e_result {
-		OK		   = 0,
-		WANT_WRITE = 1,
-		CLOSED	   = 2,
-		ERROR	   = 3
+		OK = 0,
+		WANT_WRITE,
+		CLOSED,
+		ERROR
 	};
 
 	enum e_status {
@@ -96,7 +96,7 @@ private:
 	std::string _in;
 	size_t		_in_off;
 
-	bool _peerClosedInput;// read() returned 0 at least once
+	bool _peerClosedInput;
 
 	struct PendingResponse {
 		HttpResponse *res;
@@ -115,6 +115,9 @@ private:
 	void		  _prepareResponse_put(HttpResponse *res) const;
 	void		  _prepareResponse_delete(HttpResponse *res) const;
 	void		  _prepareResponse_post(HttpResponse *res) const;
+	bool		  _wantWrite() const;
+	e_result	  _handleReadable();
+	e_result	  _handleWritable();
 };
 
 #endif//CONNECTION_HPP
