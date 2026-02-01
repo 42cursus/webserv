@@ -6,7 +6,7 @@
 /*   By: margo <margo@student.42.fr>                +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/07/17 22:51:57 by margo             #+#    #+#             */
-/*   Updated: 2026/02/01 16:25:27 by margo            ###   ########.fr       */
+/*   Updated: 2026/02/01 17:42:39 by margo            ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -48,10 +48,10 @@ int main(int argc, char **argv) {
 	try {
 		newParser.init_parser();
 		newParser.tokenise();
-		//printTokens(newParser.getTokens());
+		printTokens(newParser.getTokens());
 		std::cout << std::endl;
 		newParser.parse();
-		// newParser.getConfig().printConfig();
+		newParser.getConfig().printConfig();
 		// exit(1);
 	} catch (std::exception &e) {
 		std::cerr << e.what() << std::endl;

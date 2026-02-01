@@ -6,7 +6,7 @@
 /*   By: margo <margo@student.42.fr>                +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/01/21 16:11:56 by margo             #+#    #+#             */
-/*   Updated: 2026/01/29 09:52:48 by mganchev         ###   ########.fr       */
+/*   Updated: 2026/02/01 17:44:45 by margo            ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -26,7 +26,8 @@
 #include <sstream>
 #include <fstream>
 #include <algorithm>
-#include "../../include/webserv.hpp"
+#include <limits.h>
+#include "webserv.hpp"
 #include "Location.hpp"
 #include "State.hpp"
 
@@ -119,6 +120,7 @@ class   Parser
         void    handleLogFormat(const std::vector<t_token> line);
         void    handleListen(const std::vector<t_token> line);
         void    handleName(const std::vector<t_token> line);
+        void    handleRedirect(const std::vector<t_token> line);
         void    handleRoot(const std::vector<t_token> line);
         void    handleIndex(const std::vector<t_token> line);
         void    handleAutoIndex(const std::vector<t_token> line);
@@ -150,6 +152,7 @@ class   Parser
         bool    validateCgiParam(std::string cgi_param);
         bool    validateMethod(std::string method);
         bool    validateErrorPage(std::string error_page);
+        bool    validateErrorCode(std::string error_code);
         bool    validateBool(std::string boolean);
         bool    validateCgiScriptExt(std::string ext, std::string script);
         bool    validateLocationRedirect(std::string path, std::string root);
