@@ -19,6 +19,7 @@
 #include "webserv.hpp"
 #include <dirent.h>
 #include <sys/stat.h>
+#include <unistd.h>
 #include <vector>
 #include "Location.hpp"
 
@@ -154,14 +155,29 @@ std::string itoa(int value)
 	return oss.str();
 }
 
+static bool is_dir(std::string const& path)
+{
+	struct stat statbuf;
+
+	stat(path.c_str(), &statbuf);
+	return S_ISDIR(statbuf.st_mode);
+}
+
 StatusCode HttpResponse::readHtmlFile(const std::string &filename)
 {
 	StatusCode status = SC_200;
 	std::ifstream file(filename.c_str(), std::ios_base::in);
 
 	if (!file) {
+		std::string dir = filename + '/';
 		std::cerr << "File not found." << std::endl;
 		throw Exception404();
+	}
+
+	if (is_dir(filename))
+	{
+		set_response_code(SC_301);
+		throw Exception30x();
 	}
 
 	std::stringstream buffer;
@@ -273,6 +289,11 @@ const char *HttpResponse::Exception404::what() const throw()
 }
 
 const char *HttpResponse::Exception403::what() const throw()
+{
+	return "Forbidden";
+}
+
+const char *HttpResponse::Exception30x::what() const throw()
 {
 	return "Forbidden";
 }

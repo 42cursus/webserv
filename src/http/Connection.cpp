@@ -24,6 +24,7 @@
 #include "HttpResponse.hpp"
 #include "Location.hpp"
 #include "Prefix_suffix.hpp"
+#include "State.hpp"
 #include "TCPServer.hpp"
 #include "webserv.hpp"
 
@@ -457,6 +458,9 @@ HttpResponse* Connection::_prepareResponse()
 		res->set_response_code(SC_403);
         handleErrorResponse(res);
 		return res;
+	} catch (HttpResponse::Exception30x&) {
+		handleDirectoryRedirect(res);
+		return res;
 	} catch (std::exception&) {
 		res->set_response_code(SC_500);
         handleErrorResponse(res);
@@ -552,6 +556,7 @@ void Connection::handleErrorResponse(HttpResponse* res) const
 			res->readHtmlFile(path);
 		} catch (HttpResponse::Exception404 &e)
 		{
+			res->set_response_code(SC_404);
 			break ;
 		}
 		res->headers["content-length"] = ::itoa(res->body.length());
@@ -566,6 +571,13 @@ void Connection::handleRedirectResponse(HttpResponse *res, Redirect *redir) cons
 {
 	res->set_response_code(redir->_code);
 	res->headers["Location"] = redir->_redirect;
+	handleErrorResponse(res);
+}
+
+void Connection::handleDirectoryRedirect(HttpResponse *res) const
+{
+	std::string path = res->location->_path + res->filename + '/';
+	res->headers["Location"] = path;
 	handleErrorResponse(res);
 }
 

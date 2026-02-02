@@ -9,6 +9,7 @@ services:
       - ./resources/nginx.conf:/etc/nginx/nginx.conf:ro
       - ./resources/default.conf:/etc/nginx/conf.d/default.conf:ro
       - ./resources/web:/usr/share/nginx/html:rw
+      - ./resources/web2:/usr/share/nginx/html2:rw
       - ./resources/cgi-bin:/var/www/cgi-bin:ro
       - ./resources/put_test:/var/www/uploads:rw
     tmpfs:

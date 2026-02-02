@@ -135,27 +135,25 @@ StatusCode HttpRequest::getHtmlResponse(HttpResponse& res, Location *location)
 	{
 		if (!directory_exists(res))
 			throw HttpResponse::Exception404();
-		if (!res.location->_autoindex)
+
+		std::string							path;
+		std::vector<std::string>::iterator	it = res.location->_index.begin();
+		for (; it != res.location->_index.end(); it++)
 		{
-			std::string							path;
-			std::vector<std::string>::iterator	it = res.location->_index.begin();
-			for (; it != res.location->_index.end(); it++)
-			{
-				path = res.location->_root + res.filename + *it;
-				std::cout << path << std::endl;
-				if (access(path.c_str(), F_OK) == 0)
-					break ;
-			}
-			if (it == res.location->_index.end())
-				throw HttpResponse::Exception403();
-			res.filename = res.filename + *it;
+			path = res.location->_root + res.filename + *it;
+			std::cout << path << std::endl;
+			if (access(path.c_str(), F_OK) == 0)
+				break ;
 		}
-		else
+		if (it == res.location->_index.end())
 		{
+			if (!res.location->_autoindex)
+				throw HttpResponse::Exception403();
 			res.buildAutoindexBody(); // DO AUTOINDEX FUNCTION
 			res.headers["content-type"] = "text/html";
 			return SC_200;
 		}
+		res.filename = res.filename + *it;
 	}
 
 	if (res.filename == "teapot")
