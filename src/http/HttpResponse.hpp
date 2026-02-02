@@ -42,6 +42,7 @@ public:
 	Location	*location;
 
 	void		buildAutoindexBody(void);
+	void		buildDefaultErrorPage(void);
 	void		buildHttpResponse(void);
 	StatusCode	readHtmlFile(const std::string &filename);
 	HttpResponse();
@@ -58,6 +59,11 @@ public:
 		const char* what() const throw();
 	};
 
+	class Exception403 : public  std::exception
+	{
+	public:
+		const char* what() const throw();
+	};
 	
 	void		set_response_code(StatusCode code);
 

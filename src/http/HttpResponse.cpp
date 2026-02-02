@@ -247,6 +247,16 @@ void HttpResponse::buildAutoindexBody(void)
 	this->body += "</pre><hr></body>\n</html>\n";
 }
 
+void HttpResponse::buildDefaultErrorPage(void)
+{
+	this->body = "<!DOCTYPE html>\n<html>\n<head>\n";
+	this->body += "<title>Error " + this->statuscode + "</title>\n";
+	this->body += "<style>\nhtml { color-scheme: light dark; }\nbody { width: 35em; margin: 0 auto;\nfont-family: Tahoma, Verdana, Arial, sans-serif; }\n</style>";
+	this->body += "</head>\n<body>\n<h1>" + this->statuscode + "</h1>\n";
+	this->body += "<p>" + this->statusmsg + "</p>\n";
+	this->body += "<p><em>Faithfully yours, Fintan.</em></p>\n</body>\n</html>\n";
+}
+
 HttpResponse::HttpResponse() : start(0)
 {
 
@@ -260,6 +270,11 @@ const char *HttpResponse::GenericException::what() const throw()
 const char *HttpResponse::Exception404::what() const throw()
 {
 	return "File Not Found";
+}
+
+const char *HttpResponse::Exception403::what() const throw()
+{
+	return "Forbidden";
 }
 
 void HttpResponse::set_response_code(StatusCode code)

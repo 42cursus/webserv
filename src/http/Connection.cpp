@@ -380,10 +380,11 @@ Connection::e_result Connection::onWritable()
 HttpResponse* Connection::_prepareResponse()
 {
 	HttpResponse*	res = new HttpResponse();
+	Redirect *redirect;
 
 	res->headers["Server"] = "Webserv/0.69";
+	 redirect = reinterpret_cast<Redirect*>(prefix_trie_search(_srv->getCfg().http.server.redirect_trie, _req->path));
 
-	Redirect *redirect = reinterpret_cast<Redirect*>(prefix_trie_search(_srv->getCfg().http.server.redirect_trie, _req->path));
 	if (redirect != NULL && _req->path == redirect->_path)
 	{
 		handleRedirectResponse(res, redirect);
@@ -450,6 +451,10 @@ HttpResponse* Connection::_prepareResponse()
 		}
 	} catch (HttpResponse::Exception404&) {
 		res->set_response_code(SC_404);
+        handleErrorResponse(res);
+		return res;
+	} catch (HttpResponse::Exception403&) {
+		res->set_response_code(SC_403);
         handleErrorResponse(res);
 		return res;
 	} catch (std::exception&) {
@@ -530,24 +535,38 @@ void Connection::_prepareResponse_delete(HttpResponse *res) const
 
 void Connection::handleErrorResponse(HttpResponse* res) const
 {
-    std::string path = _srv->getCfg().http.server.error_pages.at(res->statuscode);
-	std::cout << path << std::endl;
-    if (!path.empty() && path[0] != '.')
-    {
-        Location* location = reinterpret_cast<Location*>(prefix_trie_search(_srv->getCfg().http.server.loc_trie, path));
-        path = apply_location(path, location);
-    }
-    res->headers["content-type"] = _req->getMimeType(path);
-    res->readHtmlFile(path);
-    res->headers["content-length"] = ::itoa(res->body.length());
+	std::map<std::string, std::string>::const_iterator path_it;
+
+	path_it = _srv->getCfg().http.server.error_pages.find(res->statuscode);
+	while (path_it != _srv->getCfg().http.server.error_pages.end())
+	{
+		std::string	path = path_it->second;
+		Location	*location = reinterpret_cast<Location*>(prefix_trie_search(_srv->getCfg().http.server.loc_trie, path));
+
+		if (location == NULL)
+			break;
+		path = apply_location(path, location);
+		std::cout << path << std::endl;
+		res->headers["content-type"] = _req->getMimeType(path);
+		try {
+			res->readHtmlFile(path);
+		} catch (HttpResponse::Exception404 &e)
+		{
+			break ;
+		}
+		res->headers["content-length"] = ::itoa(res->body.length());
+		return ;
+	}
+	res->headers["content-type"] = "text/html";
+	res->buildDefaultErrorPage();
+	res->headers["content-length"] = ::itoa(res->body.length());
 }
 
 void Connection::handleRedirectResponse(HttpResponse *res, Redirect *redir) const
 {
 	res->set_response_code(redir->_code);
 	res->headers["Location"] = redir->_redirect;
-	res->body = "";
-	res->headers["content-length"] = "0";
+	handleErrorResponse(res);
 }
 
 void Connection::_parseRange(HttpResponse& res) const

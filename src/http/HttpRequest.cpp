@@ -118,6 +118,13 @@ bool		HttpRequest::is_method_permitted(Location *location) const
 	) != location->_methods.end();
 }
 
+static bool directory_exists(HttpResponse& res)
+{
+	std::string path = res.location->_root + res.filename;
+
+	return !access(path.c_str(), F_OK);
+}
+
 StatusCode HttpRequest::getHtmlResponse(HttpResponse& res, Location *location)
 {
 	StatusCode	status = SC_200;
@@ -126,6 +133,8 @@ StatusCode HttpRequest::getHtmlResponse(HttpResponse& res, Location *location)
 
 	if (res.filename.empty() || *res.filename.rbegin() == '/')
 	{
+		if (!directory_exists(res))
+			throw HttpResponse::Exception404();
 		if (!res.location->_autoindex)
 		{
 			std::string							path;
@@ -138,7 +147,7 @@ StatusCode HttpRequest::getHtmlResponse(HttpResponse& res, Location *location)
 					break ;
 			}
 			if (it == res.location->_index.end())
-				return SC_403;
+				throw HttpResponse::Exception403();
 			res.filename = res.filename + *it;
 		}
 		else
