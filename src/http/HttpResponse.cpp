@@ -25,14 +25,14 @@
 ** -------------------------------- STATIC VARS -------------------------------
 */
 HttpResponse::StatusCodeInitializer HttpResponse::status_code_initializer;
-const char						   *HttpResponse::_status_codes[HTTP_RESPONSE_STATUS_CODES][2] = {
-	{"", ""}};
+const char						   *HttpResponse::_status_codes[HTTP_RESPONSE_STATUS_CODES][2] = {{"", ""}};
 
 /*
 ** ------------------------------- CONSTRUCTORS -------------------------------
 */
 
-HttpResponse::StatusCodeInitializer::StatusCodeInitializer() {
+HttpResponse::StatusCodeInitializer::StatusCodeInitializer()
+{
 
 	// Informational
 	_set_status(SC_100, "100", "Continue");
@@ -127,9 +127,9 @@ HttpResponse::StatusCodeInitializer::StatusCodeInitializer() {
 ** --------------------------------- METHODS ----------------------------------
 */
 
-void HttpResponse::StatusCodeInitializer::_set_status(int code, const char *num, const char *msg) {
-	if (code < 0 || code >= 600)
-		return;
+void HttpResponse::StatusCodeInitializer::_set_status(int code, const char *num, const char *msg)
+{
+	if (code < 0 || code >= 600) return;
 	_status_codes[code][0] = num;
 	_status_codes[code][1] = msg;
 }
@@ -146,13 +146,15 @@ void HttpResponse::StatusCodeInitializer::_set_status(int code, const char *num,
 ** -------------------------------- MISCELLANEOUS --------------------------------
 */
 
-std::string itoa(int value) {
+std::string itoa(int value)
+{
 	std::ostringstream oss;
 	oss << value;
 	return oss.str();
 }
 
-StatusCode HttpResponse::readHtmlFile(const std::string &filename) {
+StatusCode HttpResponse::readHtmlFile(const std::string &filename)
+{
 	StatusCode	  status = SC_200;
 	std::ifstream file(filename.c_str(), std::ios_base::in);
 
@@ -168,7 +170,8 @@ StatusCode HttpResponse::readHtmlFile(const std::string &filename) {
 	return status;
 }
 
-void HttpResponse::buildHttpResponse() {
+void HttpResponse::buildHttpResponse()
+{
 	std::ostringstream buffer;
 
 	// headers["content-type"] = mimetype;
@@ -177,26 +180,26 @@ void HttpResponse::buildHttpResponse() {
 
 	for (StringMap::const_iterator it = headers.begin(); it != headers.end(); ++it)
 		buffer << it->first << ": " << it->second << "\r\n";
-	buffer << "\r\n"
-		   << body;
+	buffer << "\r\n" << body;
 	response = buffer.str();
 }
 
-static std::vector<std::string> _get_directory_members(std::string path) {
+static std::vector<std::string> _get_directory_members(std::string path)
+{
 	std::vector<std::string> filenames;
 	struct dirent			*dirent;
 	DIR						*dir;
 
 	dir	   = opendir(path.c_str());
 	dirent = readdir(dir);
-	for (dirent = readdir(dir); dirent != NULL; dirent = readdir(dir))
-		filenames.push_back(dirent->d_name);
+	for (dirent = readdir(dir); dirent != NULL; dirent = readdir(dir)) filenames.push_back(dirent->d_name);
 
 	closedir(dir);
 	return (filenames);
 }
 
-static std::string timespec_to_str(struct timespec &ts) {
+static std::string timespec_to_str(struct timespec &ts)
+{
 	char	 buf[64];
 	std::tm *time = std::localtime(&ts.tv_sec);
 
@@ -205,7 +208,8 @@ static std::string timespec_to_str(struct timespec &ts) {
 	return buf;
 }
 
-void HttpResponse::buildAutoindexBody() {
+void HttpResponse::buildAutoindexBody()
+{
 	std::string						   directory = location->_path + this->filename;
 	std::vector<std::string>		   filenames = _get_directory_members(location->_root + this->filename);
 	std::vector<std::string>::iterator it		 = filenames.begin();
@@ -227,8 +231,7 @@ void HttpResponse::buildAutoindexBody() {
 			size = ::itoa(statbuf.st_size);
 		}
 		line += "<a href=\"" + *it + "\">" + *it + "</a>";
-		for (size_t n = 100; n > line.length(); n--)
-			line += ' ';
+		for (size_t n = 100; n > line.length(); n--) line += ' ';
 		line += timespec_to_str(statbuf.st_mtim);
 		line += "    " + size;
 		line += '\n';
@@ -237,18 +240,21 @@ void HttpResponse::buildAutoindexBody() {
 	this->body += "</pre><hr></body>\n</html>\n";
 }
 
-HttpResponse::HttpResponse() : start(0) {
-}
+HttpResponse::HttpResponse() : start(0)
+{}
 
-const char *HttpResponse::GenericException::what() const throw() {
+const char *HttpResponse::GenericException::what() const throw()
+{
 	return "Client exception happened";
 }
 
-const char *HttpResponse::Exception404::what() const throw() {
+const char *HttpResponse::Exception404::what() const throw()
+{
 	return "File Not Found";
 }
 
-void HttpResponse::set_response_code(StatusCode code) {
+void HttpResponse::set_response_code(StatusCode code)
+{
 	this->statuscode = _status_codes[code][0];
 	this->statusmsg	 = _status_codes[code][1];
 }
