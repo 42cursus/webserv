@@ -10,22 +10,23 @@
 /*                                                                            */
 /* ************************************************************************** */
 
-#include <ctime>
-#include <sstream>
-#include <fstream>
-#include <iostream>
 #include "HttpResponse.hpp"
 #include "Location.hpp"
 #include "webserv.hpp"
+#include <ctime>
 #include <dirent.h>
+#include <fstream>
+#include <iostream>
+#include <sstream>
 #include <sys/stat.h>
 #include <vector>
 
 /*
 ** -------------------------------- STATIC VARS -------------------------------
 */
+__attribute__((used))
 HttpResponse::StatusCodeInitializer HttpResponse::status_code_initializer;
-const char						   *HttpResponse::_status_codes[HTTP_RESPONSE_STATUS_CODES][2] = {{"", ""}};
+const char						   *HttpResponse::_status_codes[HTTP_RESPONSE_STATUS_CODES][2];
 
 /*
 ** ------------------------------- CONSTRUCTORS -------------------------------
@@ -33,7 +34,10 @@ const char						   *HttpResponse::_status_codes[HTTP_RESPONSE_STATUS_CODES][2] =
 
 HttpResponse::StatusCodeInitializer::StatusCodeInitializer()
 {
-	// FIXME: add initialisation for other values
+
+	for (std::size_t i(0); i < HTTP_RESPONSE_STATUS_CODES; ++i) // saw this on TikTok along with `int i{0}` for C++11
+		_set_status(i, "", "");
+
 	// Informational
 	_set_status(SC_100, "100", "Continue");
 	_set_status(SC_101, "101", "Switching Protocols");
@@ -92,18 +96,18 @@ HttpResponse::StatusCodeInitializer::StatusCodeInitializer()
 	_set_status(SC_431, "431", "Request Header Fields Too Large");
 	_set_status(SC_451, "451", "Unavailable For Legal Reasons");
 
-    // Server error
-    _set_status(SC_500, "500", "Internal Server Error" );
-    _set_status(SC_501, "501", "Not Implemented" );
-    _set_status(SC_502, "502", "Bad Gateway" );
-    _set_status(SC_503, "503", "Service Unavailable" );
-    _set_status(SC_504, "504", "Gateway Timeout" );
-    _set_status(SC_505, "505", "HTTP Version Not Supported" );
-    _set_status(SC_506, "506", "Variant ALso Negotiates" );
-    _set_status(SC_507, "507", "Insufficient Storage" );
-    _set_status(SC_508, "508", "Loop Detected" );
-    _set_status(SC_510, "510", "Not Extended" );
-    _set_status(SC_511, "511", "Network Authentication Required" );
+	// Server error
+	_set_status(SC_500, "500", "Internal Server Error");
+	_set_status(SC_501, "501", "Not Implemented");
+	_set_status(SC_502, "502", "Bad Gateway");
+	_set_status(SC_503, "503", "Service Unavailable");
+	_set_status(SC_504, "504", "Gateway Timeout");
+	_set_status(SC_505, "505", "HTTP Version Not Supported");
+	_set_status(SC_506, "506", "Variant ALso Negotiates");
+	_set_status(SC_507, "507", "Insufficient Storage");
+	_set_status(SC_508, "508", "Loop Detected");
+	_set_status(SC_510, "510", "Not Extended");
+	_set_status(SC_511, "511", "Network Authentication Required");
 
 	// Special non-standard
 	_set_status(SC_MAX, "599", "Fintan is fuming with anger");// FIXME: >:( - Fin
@@ -152,7 +156,7 @@ std::string itoa(int value)
 	return oss.str();
 }
 
-static bool is_dir(std::string const& path)
+static bool is_dir(std::string const &path)
 {
 	struct stat statbuf;
 
@@ -171,8 +175,7 @@ StatusCode HttpResponse::readHtmlFile(const std::string &filename)
 		throw Exception404();
 	}
 
-	if (is_dir(filename))
-	{
+	if (is_dir(filename)) {
 		set_response_code(SC_301);
 		throw Exception30x();
 	}
@@ -258,7 +261,8 @@ void HttpResponse::buildDefaultErrorPage(void)
 {
 	this->body = "<!DOCTYPE html>\n<html>\n<head>\n";
 	this->body += "<title>Error " + this->statuscode + "</title>\n";
-	this->body += "<style>\nhtml { color-scheme: light dark; }\nbody { width: 35em; margin: 0 auto;\nfont-family: Tahoma, Verdana, Arial, sans-serif; }\n</style>";
+	this->body += "<style>\nhtml { color-scheme: light dark; }\nbody { width: 35em; margin: 0 auto;\nfont-family: "
+				  "Tahoma, Verdana, Arial, sans-serif; }\n</style>";
 	this->body += "</head>\n<body>\n<h1>" + this->statuscode + "</h1>\n";
 	this->body += "<p>" + this->statusmsg + "</p>\n";
 	this->body += "<p><em>Faithfully yours, Fintan.</em></p>\n</body>\n</html>\n";

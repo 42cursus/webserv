@@ -29,7 +29,7 @@ private:
         static void _set_status(int code, const char *num, const char *msg);
     };
 
-    static StatusCodeInitializer status_code_initializer;
+	__attribute__((unused)) static StatusCodeInitializer status_code_initializer;
 
 public:
 	std::string statuscode;
