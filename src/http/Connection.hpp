@@ -6,7 +6,7 @@
 /*   By: abelov <abelov@student.42london.com>       +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/12/04 01:32:53 by abelov            #+#    #+#             */
-/*   Updated: 2025/12/04 01:32:54 by abelov           ###   ########.fr       */
+/*   Updated: 2026/02/03 00:07:41 by fsmyth           ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -53,6 +53,7 @@ public:
 	~Connection();
 
 	void		setSrv(TCPServer *srv);
+	TCPServer const&	getSrv(void) const;
 	void		setFd(int fd);
 	int			getFd() const;
 	ConnWorker *getParent() const;
@@ -65,6 +66,8 @@ public:
 
 	bool hasPendingResponses() const;
 	void handleErrorResponse(HttpResponse *res) const;
+	void handleRedirectResponse(HttpResponse *res, Redirect *redir) const;
+	void handleDirectoryRedirect(HttpResponse *res) const;
 	void closeSocketFd();
 	void reset();
 	void clearRequest();

@@ -6,13 +6,14 @@
 /*   By: abelov <abelov@student.42london.com>       +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/07/18 19:12:40 by abelov            #+#    #+#             */
-/*   Updated: 2026/01/22 15:51:35 by fsmyth           ###   ########.fr       */
+/*   Updated: 2026/02/03 00:26:36 by fsmyth           ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
 #include "TCPServer.hpp"
 #include "ConnWorker.hpp"
 #include "HttpRequest.hpp"
+#include "Logging.hpp"
 #include "Prefix_suffix.hpp"
 #include "WebServer.hpp"
 #include "WorkerPool.hpp"
@@ -113,6 +114,7 @@ void TCPServer::stop()
 {
 	close(_socket_fd);
 	free_trie(this->getCfg().http.server.loc_trie);
+	free_trie(this->getCfg().http.server.redirect_trie);
 }
 
 int TCPServer::getSocketFd() const
@@ -155,7 +157,8 @@ void	TCPServer::acceptAllPendingConns(WorkerPool& wrkrPool, int epoll_fd)
         wrkr = wrkrPool.alloc(this);
         wrkr->setConnFd(conn_fd);
 
-        std::cout << "Accepted connection. fd: " << conn_fd << std::endl;
+        // std::cout << "Accepted connection. fd: " << conn_fd << std::endl;
+		log_connection(*wrkr, CONNECT);
         struct timeval timeout;
         timeout.tv_sec = 0;  // 5 seconds timeout
         timeout.tv_usec = 20;

@@ -6,7 +6,7 @@
 /*   By: margo <margo@student.42.fr>                +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/07/18 21:41:03 by abelov            #+#    #+#             */
-/*   Updated: 2026/01/27 15:51:41 by margo            ###   ########.fr       */
+/*   Updated: 2026/02/03 00:35:06 by fsmyth           ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -118,6 +118,13 @@ bool		HttpRequest::is_method_permitted(Location *location) const
 	) != location->_methods.end();
 }
 
+static bool directory_exists(HttpResponse& res)
+{
+	std::string path = res.location->_root + res.filename;
+
+	return !access(path.c_str(), F_OK);
+}
+
 StatusCode HttpRequest::getHtmlResponse(HttpResponse& res, Location *location)
 {
 	StatusCode	status = SC_200;
@@ -126,27 +133,27 @@ StatusCode HttpRequest::getHtmlResponse(HttpResponse& res, Location *location)
 
 	if (res.filename.empty() || *res.filename.rbegin() == '/')
 	{
-		if (!res.location->_autoindex)
+		if (!directory_exists(res))
+			throw HttpResponse::Exception404();
+
+		std::string							path;
+		std::vector<std::string>::iterator	it = res.location->_index.begin();
+		for (; it != res.location->_index.end(); it++)
 		{
-			std::string							path;
-			std::vector<std::string>::iterator	it = res.location->_index.begin();
-			for (; it != res.location->_index.end(); it++)
-			{
-				path = res.location->_root + res.filename + *it;
-				std::cout << path << std::endl;
-				if (access(path.c_str(), F_OK) == 0)
-					break ;
-			}
-			if (it == res.location->_index.end())
-				return SC_403;
-			res.filename = res.filename + *it;
+			path = res.location->_root + res.filename + *it;
+			// std::cout << path << std::endl;
+			if (access(path.c_str(), F_OK) == 0)
+				break ;
 		}
-		else
+		if (it == res.location->_index.end())
 		{
+			if (!res.location->_autoindex)
+				throw HttpResponse::Exception403();
 			res.buildAutoindexBody(); // DO AUTOINDEX FUNCTION
 			res.headers["content-type"] = "text/html";
 			return SC_200;
 		}
+		res.filename = res.filename + *it;
 	}
 
 	if (res.filename == "teapot")

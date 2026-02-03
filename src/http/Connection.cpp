@@ -6,7 +6,7 @@
 /*   By: abelov <abelov@student.42london.com>       +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/12/04 04:08:12 by abelov            #+#    #+#             */
-/*   Updated: 2026/01/29 06:40:43 by abelov           ###   ########.fr       */
+/*   Updated: 2026/02/03 00:28:34 by fsmyth           ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -24,6 +24,7 @@
 #include "HttpResponse.hpp"
 #include "Location.hpp"
 #include "Prefix_suffix.hpp"
+#include "State.hpp"
 #include "TCPServer.hpp"
 #include "webserv.hpp"
 
@@ -124,7 +125,7 @@ Connection::e_result Connection::_recvFromClient()
 			size_t old_size = _req->body.size();
 			_req->body.resize(old_size + nread);
 			std::memcpy(_req->body.data() + old_size, _req_buffer, nread);
-			_req->printBody();
+			//_req->printBody();
 		}
 
 		if (errno == EINTR) continue;
@@ -149,15 +150,14 @@ Connection::e_result Connection::_sendToClient()
 	HttpResponse *cur	   = item.res;
 	std::string	 &response = cur->response;
 	if (cur->start >= response.size()) return OK;
-	if (cur->start == 0) {
-		std::string &type = cur->headers["content-type"];
-		if (!cur->body.empty()) logServingFile(cur->filename, type);
-		if (!type.empty() && type.substr(0, type.find_first_of("/")) == "text")
-			std::cout << FT_BLUE << response << FT_RESET << std::endl;
-		else
-			std::cout << FT_BLUE << response.substr(0, response.find(CRLF CRLF)) << "\n<Binary file>" << FT_RESET
-					  << std::endl;
-	}
+	//if (cur->start == 0)// {
+		//std::string &type = cur->headers["content-type"];
+		//if (!cur->body.empty())// logServingFile(cur->filename, type);
+		//if (!type.empty() && type.substr(0, type.find_first_of("/")) == "text")
+			//std::cout << FT_BLUE << response << FT_RESET << std::endl;
+		//else
+			//std::cout << FT_BLUE << response.substr(0, response.find(CRLF CRLF)) << "\n<Binary file>" << FT_RESET << std::endl;
+	//}
 	// size_t	msg_size = RESPONSE_MSG_SIZE;
 	size_t remaining = response.length() - cur->start;
 	// resize_socket_buffer(_conn_fd, msg_size);
@@ -246,8 +246,8 @@ bool Connection::_tryExtractOneRequest()
 	const size_t	  header_bytes = (hdr_end - _in_off) + 4;
 	const std::string header_block = _in.substr(_in_off, header_bytes);
 
-	std::cout << FT_MAGENTA << "Request ready on fd: " << _fd << std::endl;
-	std::cout << FT_GREEN << header_block << FT_RESET << std::endl;
+	// std::cout << FT_MAGENTA << "Request ready on fd: " << _fd << std::endl;
+	// std::cout << FT_GREEN << header_block << FT_RESET << std::endl;
 
 	HttpRequest *req = new HttpRequest();
 	try {
@@ -268,7 +268,7 @@ bool Connection::_tryExtractOneRequest()
 	const size_t need_total = header_bytes + content_length;
 	if (_in.size() - _in_off < need_total) {
 		delete req;
-		return false;// not enough body yet
+		return false; // not enough body yet
 	}
 
 	// TODO: reuse extract body function
@@ -285,7 +285,7 @@ bool Connection::_tryExtractOneRequest()
 	HttpResponse *res = _prepareResponse();
 	if (_status == HANDLING_CGI) { return false; }
 	res->buildHttpResponse();
-	_req->printBody();
+	// _req->printBody();
 
 	const PendingResponse &presp = (PendingResponse) {.res = res, .closeAfter = !_shouldKeepAlive(*_req)};
 	_pendingResponses.push_back(presp);
@@ -356,9 +356,21 @@ Connection::e_result Connection::_handleWritable()
 
 HttpResponse *Connection::_prepareResponse()
 {
-	HttpResponse *res = new HttpResponse();
-	res->location	  = loc_trie_search(_srv->getCfg().http.server.loc_trie, _req->path);
-	if (!res->location) {
+	HttpResponse*	res = new HttpResponse();
+	Redirect *redirect;
+
+	res->headers["Server"] = "Webserv/0.69";
+	 redirect = reinterpret_cast<Redirect*>(prefix_trie_search(_srv->getCfg().http.server.redirect_trie, _req->path));
+
+	if (redirect != NULL && _req->path == redirect->_path)
+	{
+		handleRedirectResponse(res, redirect);
+		return res;
+	}
+
+	res->location = reinterpret_cast<Location*>(prefix_trie_search(_srv->getCfg().http.server.loc_trie, _req->path));
+	if (!res->location)
+	{
 		res->set_response_code(SC_404);
 		handleErrorResponse(res);
 		return res;
@@ -368,7 +380,6 @@ HttpResponse *Connection::_prepareResponse()
 	std::string mimetype;
 
 	res->set_response_code(SC_200);
-	res->headers["Server"] = "Webserv/0.69";
 
 	if (!_req->is_method_permitted(res->location)) {
 		res->set_response_code(SC_405);
@@ -376,7 +387,7 @@ HttpResponse *Connection::_prepareResponse()
 		return res;
 	}
 
-	CGI *cgi = cgi_trie_search(res->location->cgi_trie, _req->path);
+	CGI* cgi = suffix_trie_search(res->location->cgi_trie, _req->path);
 
 	try {
 		if (cgi != NULL) {
@@ -413,7 +424,14 @@ HttpResponse *Connection::_prepareResponse()
 		}
 	} catch (HttpResponse::Exception404 &) {
 		res->set_response_code(SC_404);
-		handleErrorResponse(res);
+        handleErrorResponse(res);
+		return res;
+	} catch (HttpResponse::Exception403&) {
+		res->set_response_code(SC_403);
+        handleErrorResponse(res);
+		return res;
+	} catch (HttpResponse::Exception30x&) {
+		handleDirectoryRedirect(res);
 		return res;
 	} catch (std::exception &) {
 		res->set_response_code(SC_500);
@@ -481,21 +499,51 @@ void Connection::_prepareResponse_delete(HttpResponse *res) const
 	}
 }
 
-
-void Connection::handleErrorResponse(HttpResponse *res) const
+void Connection::handleErrorResponse(HttpResponse* res) const
 {
-	std::string path = _srv->getCfg().http.server.error_pages.at(res->statuscode);
-	std::cout << path << std::endl;
-	if (!path.empty() && path[0] != '.') {
-		Location *location = loc_trie_search(_srv->getCfg().http.server.loc_trie, path);
-		path			   = apply_location(path, location);
+	std::map<std::string, std::string>::const_iterator path_it;
+
+	path_it = _srv->getCfg().http.server.error_pages.find(res->statuscode);
+	while (path_it != _srv->getCfg().http.server.error_pages.end())
+	{
+		std::string	path = path_it->second;
+		Location	*location = reinterpret_cast<Location*>(prefix_trie_search(_srv->getCfg().http.server.loc_trie, path));
+
+		if (location == NULL)
+			break;
+		path = apply_location(path, location);
+		// std::cout << path << std::endl;
+		res->headers["content-type"] = _req->getMimeType(path);
+		try {
+			res->readHtmlFile(path);
+		} catch (HttpResponse::Exception404 &e)
+		{
+			res->set_response_code(SC_404);
+			break ;
+		}
+		res->headers["content-length"] = ::itoa(res->body.length());
+		return ;
 	}
-	res->headers["content-type"] = _req->getMimeType(path);
-	res->readHtmlFile(path);
+	res->headers["content-type"] = "text/html";
+	res->buildDefaultErrorPage();
 	res->headers["content-length"] = ::itoa(res->body.length());
 }
 
-void Connection::_parseRange(HttpResponse &res) const
+void Connection::handleRedirectResponse(HttpResponse *res, Redirect *redir) const
+{
+	res->set_response_code(redir->_code);
+	res->headers["Location"] = redir->_redirect;
+	handleErrorResponse(res);
+}
+
+void Connection::handleDirectoryRedirect(HttpResponse *res) const
+{
+	std::string path = res->location->_path + res->filename + '/';
+	res->headers["Location"] = path;
+	handleErrorResponse(res);
+}
+
+void Connection::_parseRange(HttpResponse& res) const
 {
 	std::string rangestr = _req->headers["range"];
 	size_t		i		 = rangestr.find('=');
@@ -551,6 +599,11 @@ void Connection::reset()
 void Connection::setSrv(TCPServer *srv)
 {
 	_srv = srv;
+}
+
+TCPServer const&	Connection::getSrv() const
+{
+	return *_srv;
 }
 
 void Connection::setFd(int fd)

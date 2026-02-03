@@ -48,10 +48,10 @@ int main(int argc, char **argv) {
 	try {
 		newParser.init_parser();
 		newParser.tokenise();
-		printTokens(newParser.getTokens());
+		// printTokens(newParser.getTokens());
 		std::cout << std::endl;
 		newParser.parse();
-		newParser.getConfig().printConfig();
+		// newParser.getConfig().printConfig();
 		// exit(1);
 	} catch (std::exception &e) {
 		std::cerr << e.what() << std::endl;

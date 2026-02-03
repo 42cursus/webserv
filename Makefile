@@ -44,6 +44,7 @@ SRCS			= src/main.cpp \
 				  src/parser/ParserUtils.cpp \
 				  src/parser/Parser.cpp \
 				  src/utils/Utils.cpp \
+				  src/utils/Logging.cpp \
 				  src/handlers/CgiHandler.cpp \
 				  src/handlers/StaticFileHandler.cpp \
 

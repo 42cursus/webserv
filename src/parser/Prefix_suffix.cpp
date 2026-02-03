@@ -17,10 +17,9 @@
 
 TrieNode::TrieNode(void) : data(NULL), children() {}
 
-void	loc_trie_insert(TrieNode *head, Location *location)
+void	prefix_trie_insert(TrieNode *head, std::string const& path, void *location)
 {
 	TrieNode		*current = head;
-	std::string&	path = location->_path;
 
 	for (uint64_t i = 0; i < path.length(); i++)
 	{
@@ -33,7 +32,7 @@ void	loc_trie_insert(TrieNode *head, Location *location)
 	current->data = location;
 }
 
-Location	*loc_trie_search(TrieNode *head, std::string const& path)
+void	*prefix_trie_search(TrieNode *head, std::string const& path)
 {
 	TrieNode						*current = head;
 	Location	*last_loc = NULL;
@@ -51,7 +50,7 @@ Location	*loc_trie_search(TrieNode *head, std::string const& path)
 	return last_loc;
 }
 
-void	cgi_trie_insert(TrieNode *head, CGI *cgi)
+void	suffix_trie_insert(TrieNode *head, CGI *cgi)
 {
 	TrieNode		*current = head;
 	std::string&	suffix = cgi->_ext;
@@ -69,7 +68,7 @@ void	cgi_trie_insert(TrieNode *head, CGI *cgi)
 	current->data = cgi;
 }
 
-CGI	*cgi_trie_search(TrieNode *head, std::string const& path)
+CGI	*suffix_trie_search(TrieNode *head, std::string const& path)
 {
 	TrieNode	*current = head;
 	CGI			*last_match = NULL;
@@ -98,14 +97,14 @@ void	free_trie(TrieNode *node)
     delete node;
 }
 
-void	test_trie_match(TrieNode *head, std::string path)
-{
-	Location	*match;
-
-	std::cout << "Searching for '" << path << "'" << std::endl;
-	match = loc_trie_search(head, path);
-	std::cout << "Matches to: '" << match->_root << "'" << std::endl << std::endl;
-}
+// void	test_trie_match(TrieNode *head, std::string path)
+// {
+// 	Location	*match;
+//
+// 	std::cout << "Searching for '" << path << "'" << std::endl;
+// 	match = prefix_trie_search(head, path);
+// 	std::cout << "Matches to: '" << match->_root << "'" << std::endl << std::endl;
+// }
 
 std::string apply_location(std::string& path, Location const *location)
 {
