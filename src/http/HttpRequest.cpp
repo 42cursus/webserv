@@ -90,6 +90,7 @@ void HttpRequest::parseRequest(const std::string &rawRequest)
 	std::string	line;
 	int			line_end;
 
+	header_len = rawRequest.length();
 	line = &rawRequest[_parseStartLine(rawRequest)];
 	line_end = line.find("\r\n");
 	// std::cout << "line_end: " << line_end << std::endl;

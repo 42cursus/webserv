@@ -23,6 +23,7 @@
 #include "HttpRequest.hpp"
 #include "HttpResponse.hpp"
 #include "Location.hpp"
+#include "Logging.hpp"
 #include "Prefix_suffix.hpp"
 #include "State.hpp"
 #include "TCPServer.hpp"
@@ -162,17 +163,9 @@ Connection::e_result Connection::_sendToClient()
     std::string& response = cur->response;
     if (cur->start >= response.size())
         return OK;
-    // if (cur->start == 0)
-    // {
-    //     std::string& type = cur->headers["content-type"];
-    //     if (!cur->body.empty())
-    //         logServingFile(cur->filename, type);
-    //     if (!type.empty() && type.substr(0, type.find_first_of("/")) == "text")
-    //         std::cout << FT_BLUE << response << FT_RESET << std::endl;
-    //     else
-    //         std::cout << FT_BLUE << response.substr(0, response.find(CRLF CRLF)) << "\n<Binary file>" << FT_RESET << std::endl;
-    // }
-    // size_t	msg_size = RESPONSE_MSG_SIZE;
+    if (cur->start == 0)
+		log_response(*this, *cur);
+
     size_t	remaining = response.length() - cur->start;
     // resize_socket_buffer(_conn_fd, msg_size);
     remaining = std::min(remaining, response.length() - cur->start);
@@ -183,8 +176,6 @@ Connection::e_result Connection::_sendToClient()
         cur->start += static_cast<size_t>(w);
         if (cur->start >= response.size())
         {
-            _srv->requests_handled++;
-
             const bool close_after = item.closeAfter;
 
             delete cur;
@@ -277,7 +268,6 @@ bool Connection::_tryExtractOneRequest()
 	try {
 		req->parseRequest(header_block);
 	} catch (HttpRequest::GenericException&) {
-        _srv->requests_failed++;
         _in.erase();
         delete _req;
         _req = NULL;
@@ -308,6 +298,7 @@ bool Connection::_tryExtractOneRequest()
     delete _req;
     _req = req;
 
+	log_request(*this, *_req);
     HttpResponse* res = _prepareResponse();
 	if (_status == HANDLING_CGI)
 	{
@@ -662,6 +653,16 @@ ConnWorker *Connection::getParent() const {
 }
 void Connection::setParent(ConnWorker *parent) {
     _parent = parent;
+}
+
+void	Connection::setIpStr(std::string ip)
+{
+	_ip = ip;
+}
+
+std::string const&	Connection::getIpStr(void) const
+{
+	return _ip;
 }
 
 /*

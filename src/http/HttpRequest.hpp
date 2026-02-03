@@ -48,6 +48,7 @@ public:
 	std::string			protocol;
 	std::vector<char>	body;
 	size_t				content_length;
+	size_t				header_len;
 	std::map<std::string, std::string> headers;
 
 	explicit HttpRequest(const std::string &path);

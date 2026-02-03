@@ -16,6 +16,7 @@
 class HttpRequest;
 class HttpResponse;
 class ConnWorker;
+class Connection;
 
 enum LogCategory
 {
@@ -23,6 +24,7 @@ enum LogCategory
 	WARNING,
 	NOTICE,
 	CONNECTION,
+	IO,
 };
 
 enum ConnectStatus
@@ -34,5 +36,7 @@ enum ConnectStatus
 };
 
 void	log_connection(ConnWorker const& wrkr, ConnectStatus status);
+void	log_request(Connection const& conn, HttpRequest const& req);
+void	log_response(Connection const& conn, HttpResponse const& res);
 
 #endif
