@@ -29,6 +29,19 @@
 #include <unistd.h>
 
 
+/*
+** -------------------------------- STATIC VARS -------------------------------
+*/
+
+namespace {
+    std::string trim(const std::string &s);
+    bool starts_with(const std::string &s, const std::string &prefix);
+}
+
+/*
+** ------------------------------- CONSTRUCTORS -------------------------------
+*/
+
 CgiHandler::CgiHandler(HttpRequest& req, const Location& loc, const std::string& script_path, HttpResponse& res) :
     _state(), _pid(0),
     _stdin_pipe(), _stdout_pipe(),
@@ -36,6 +49,107 @@ CgiHandler::CgiHandler(HttpRequest& req, const Location& loc, const std::string&
     _script_path(script_path)
 {
     (void)loc;
+}
+
+CgiHandler::CGISession::CGISession(std::size_t bytes_sent, std::size_t bytes_received): bytes_sent(bytes_sent),
+    bytes_received(bytes_received)
+{
+}
+
+
+/*
+** ------------------------------- DESTRUCTORS --------------------------------
+*/
+
+
+/*
+** -------------------------------- OPERATORS ---------------------------------
+*/
+
+/*
+** -------------------------------- OVERLOADS ---------------------------------
+*/
+
+/*
+** --------------------------------- METHODS ----------------------------------
+*/
+
+StatusCode CgiHandler::handle(HttpRequest &req, HttpResponse &res)
+{
+    pipe(_stdin_pipe);
+    pipe(_stdout_pipe);
+
+
+    this->_pid = fork();
+    if (_pid == 0) // child
+    {
+        dup2(_stdout_pipe[1], STDOUT_FILENO); // stdout -> pipe
+        close(_stdout_pipe[0]);
+        close(_stdout_pipe[1]);
+
+        dup2(_stdin_pipe[0], STDIN_FILENO); // pipe -> stdin
+        close(_stdin_pipe[1]);
+        close(_stdin_pipe[0]);
+
+        // build ENVP
+
+        std::string script = apply_location(req.path, res.location);
+        // build ARGV
+
+        const char *argv[3] = {
+            "/usr/bin/python3",
+            script.c_str(),
+            NULL,
+        };
+
+        const char *envp[3] = {
+            "TRY=me",
+            "SEE=you",
+            NULL,
+        };
+        execve(argv[0], (char *const *)argv, (char *const *)envp);
+    }
+    else if (_pid < 0)
+        return (SC_500);
+
+    close(_stdout_pipe[1]);
+    close(_stdin_pipe[0]);
+
+    // write(_stdin_pipe[1], "", 0);
+    // close(_stdin_pipe[1]);
+
+    // FILE*	fp = fdopen(_stdout_pipe[0], "r");
+    // char	*line = NULL;
+    // size_t	n = 0;
+    // ssize_t	nread = 0;
+    // while ((nread = getline(&line, &n, fp)) != -1)
+    // {
+    //     res.body.append(line);
+    // }
+    // fclose(fp);
+    // free(line);
+    // wait(NULL);
+
+
+    return SC_200;
+}
+
+void	CgiHandler::register_read_pipe(int epoll_fd)
+{
+    struct epoll_event ev;
+    std::memset(&ev, 0, sizeof(ev));
+    ev.data.ptr = tag_ptr(this, WebServer::EP_CGI);
+    ev.events = EPOLLIN;
+    epoll_ctl(epoll_fd, EPOLL_CTL_ADD, this->_stdout_pipe[0], &ev);
+}
+
+void	CgiHandler::register_write_pipe(int epoll_fd)
+{
+    struct epoll_event ev;
+    std::memset(&ev, 0, sizeof(ev));
+    ev.data.ptr = tag_ptr(this, WebServer::EP_CGI);
+    ev.events = EPOLLOUT;
+    epoll_ctl(epoll_fd, EPOLL_CTL_ADD, this->_stdin_pipe[1], &ev);
 }
 
 void CgiHandler::_build_env(std::vector<std::string>& env)
@@ -68,7 +182,6 @@ std::string	CgiHandler::raw_output(void) const
     return (_raw_output);
 }
 
-/*
 void CgiHandler::_parse_output_into_response()
 {
     // Split headers/body at first empty line. Accept \r\n\r\n or \n\n.
@@ -138,117 +251,6 @@ void CgiHandler::_parse_output_into_response()
     }
 }
 
-*/
-
-
-/*
-** -------------------------------- STATIC VARS -------------------------------
-*/
-
-namespace {
-//    std::string trim(const std::string &s);
-//    bool starts_with(const std::string &s, const std::string &prefix);
-}
-
-/*
-** ------------------------------- CONSTRUCTORS -------------------------------
-*/
-
-/*
-** ------------------------------- DESTRUCTORS --------------------------------
-*/
-
-
-/*
-** -------------------------------- OPERATORS ---------------------------------
-*/
-
-/*
-** -------------------------------- OVERLOADS ---------------------------------
-*/
-
-StatusCode CgiHandler::handle(HttpRequest &req, HttpResponse &res)
-{
-    pipe(_stdin_pipe);
-    pipe(_stdout_pipe);
-
-
-    this->_pid = fork();
-    if (_pid == 0) // child
-    {
-        dup2(_stdout_pipe[1], STDOUT_FILENO); // stdout -> pipe
-        close(_stdout_pipe[0]);
-        close(_stdout_pipe[1]);
-
-        dup2(_stdin_pipe[0], STDIN_FILENO); // pipe -> stdin
-        close(_stdin_pipe[1]);
-        close(_stdin_pipe[0]);
-
-        // build ENVP
-
-        std::string script = apply_location(req.path, res.location);
-        // build ARGV
-
-        const char *argv[3] = {
-            "/usr/bin/python3",
-            script.c_str(),
-            NULL,
-        };
-
-        const char *envp[3] = {
-            "FUCK=me",
-            "TWAT=you",
-            NULL,
-        };
-        execve(argv[0], (char *const *)argv, (char *const *)envp);
-    }
-    else if (_pid < 0)
-        return (SC_500);
-
-    close(_stdout_pipe[1]);
-    close(_stdin_pipe[0]);
-
-    // write(_stdin_pipe[1], "", 0);
-    // close(_stdin_pipe[1]);
-
-    // FILE*	fp = fdopen(_stdout_pipe[0], "r");
-    // char	*line = NULL;
-    // size_t	n = 0;
-    // ssize_t	nread = 0;
-    // while ((nread = getline(&line, &n, fp)) != -1)
-    // {
-    //     res.body.append(line);
-    // }
-    // fclose(fp);
-    // free(line);
-    // wait(NULL);
-	
-	
-    return SC_200;
-}
-
-void	CgiHandler::register_read_pipe(int epoll_fd)
-{
-	struct epoll_event ev;
-	std::memset(&ev, 0, sizeof(ev));
-	ev.data.ptr = tag_ptr(this, WebServer::EP_CGIS);
-	ev.events = EPOLLIN;
-	epoll_ctl(epoll_fd, EPOLL_CTL_ADD, this->_stdout_pipe[0], &ev);
-}
-
-void	CgiHandler::register_write_pipe(int epoll_fd)
-{
-	struct epoll_event ev;
-	std::memset(&ev, 0, sizeof(ev));
-	ev.data.ptr = tag_ptr(this, WebServer::EP_CGIS);
-	ev.events = EPOLLOUT;
-	epoll_ctl(epoll_fd, EPOLL_CTL_ADD, this->_stdin_pipe[1], &ev);
-}
-
-/*
-** --------------------------------- METHODS ----------------------------------
-*/
-
 /*
 ** -------------------------------- ACCESSORS ---------------------------------
 */
@@ -273,7 +275,6 @@ std::string CgiHandler::body_buffer() const {
 ** -------------------------------- MISCELLANEOUS --------------------------------
 */
 
-/*
 namespace {
     bool starts_with(const std::string &s, const std::string &prefix) {
         return s.size() >= prefix.size() && s.compare(0, prefix.size(), prefix) == 0;
@@ -290,5 +291,3 @@ namespace {
         return s.substr(b, e - b);
     }
 }
-
-*/

@@ -200,7 +200,7 @@ int WebServer::serve()
                     serve_handle_worker(wrkr, _events[i]);
                     break;
                 }
-                case (EP_CGIS): {
+                case (EP_CGI): {
                     cgiSession = reinterpret_cast<CgiHandler *>(detag_ptr(ptr));
                     (void)cgiSession; // handle cgi IO
                     break;
@@ -256,7 +256,7 @@ void	*tag_ptr(void *ptr, WebServer::epoll_ptr_type tag)
         case (WebServer::EP_WRKR):
             tagged |= TAG_B;
             break;
-        case (WebServer::EP_CGIS):
+        case (WebServer::EP_CGI):
             tagged |= TAG_C;
             break;
         case (WebServer::EP_NONE):
@@ -279,7 +279,7 @@ WebServer::epoll_ptr_type	get_tag(void *ptr)
             return WebServer::EP_WRKR;
         case (0xC):
             // std::cout << "ptr tagged as server" << std::endl;
-            return WebServer::EP_CGIS;
+            return WebServer::EP_CGI;
         default:
             return WebServer::EP_NONE;
     }
