@@ -6,7 +6,7 @@
 /*   By: abelov <abelov@student.42london.com>       +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/12/04 04:08:12 by abelov            #+#    #+#             */
-/*   Updated: 2026/01/29 06:40:43 by abelov           ###   ########.fr       */
+/*   Updated: 2026/02/03 00:28:34 by fsmyth           ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -133,7 +133,7 @@ Connection::e_result Connection::_recvFromClient()
             size_t old_size = _req->body.size();
             _req->body.resize(old_size + nread);
             std::memcpy(_req->body.data() + old_size, _req_buffer, nread);
-            _req->printBody();
+            // _req->printBody();
         }
 
         if (errno == EINTR)
@@ -162,16 +162,16 @@ Connection::e_result Connection::_sendToClient()
     std::string& response = cur->response;
     if (cur->start >= response.size())
         return OK;
-    if (cur->start == 0)
-    {
-        std::string& type = cur->headers["content-type"];
-        if (!cur->body.empty())
-            logServingFile(cur->filename, type);
-        if (!type.empty() && type.substr(0, type.find_first_of("/")) == "text")
-            std::cout << FT_BLUE << response << FT_RESET << std::endl;
-        else
-            std::cout << FT_BLUE << response.substr(0, response.find(CRLF CRLF)) << "\n<Binary file>" << FT_RESET << std::endl;
-    }
+    // if (cur->start == 0)
+    // {
+    //     std::string& type = cur->headers["content-type"];
+    //     if (!cur->body.empty())
+    //         logServingFile(cur->filename, type);
+    //     if (!type.empty() && type.substr(0, type.find_first_of("/")) == "text")
+    //         std::cout << FT_BLUE << response << FT_RESET << std::endl;
+    //     else
+    //         std::cout << FT_BLUE << response.substr(0, response.find(CRLF CRLF)) << "\n<Binary file>" << FT_RESET << std::endl;
+    // }
     // size_t	msg_size = RESPONSE_MSG_SIZE;
     size_t	remaining = response.length() - cur->start;
     // resize_socket_buffer(_conn_fd, msg_size);
@@ -270,8 +270,8 @@ bool Connection::_tryExtractOneRequest()
     const size_t header_bytes = (hdr_end - _in_off) + 4;
     const std::string header_block = _in.substr(_in_off, header_bytes);
 
-    std::cout << FT_MAGENTA << "Request ready on fd: " << _fd << std::endl;
-    std::cout << FT_GREEN << header_block << FT_RESET << std::endl;
+    // std::cout << FT_MAGENTA << "Request ready on fd: " << _fd << std::endl;
+    // std::cout << FT_GREEN << header_block << FT_RESET << std::endl;
 
 	HttpRequest* req = new HttpRequest();
 	try {
@@ -314,7 +314,7 @@ bool Connection::_tryExtractOneRequest()
 		return false;
 	}
     res->buildHttpResponse();
-    _req->printBody();
+    // _req->printBody();
 
     const PendingResponse &presp = (PendingResponse) {
         .res = res,
@@ -550,7 +550,7 @@ void Connection::handleErrorResponse(HttpResponse* res) const
 		if (location == NULL)
 			break;
 		path = apply_location(path, location);
-		std::cout << path << std::endl;
+		// std::cout << path << std::endl;
 		res->headers["content-type"] = _req->getMimeType(path);
 		try {
 			res->readHtmlFile(path);
@@ -640,6 +640,11 @@ void Connection::reset()
 */
 
 void Connection::setSrv(TCPServer* srv) { _srv = srv; }
+
+TCPServer const&	Connection::getSrv(void) const
+{
+	return *_srv;
+}
 
 void Connection::setFd(int fd)
 {

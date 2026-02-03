@@ -16,7 +16,7 @@ BUILD_DIR		= build
 INC_DIR			= ./include
 
 CFLAGS 			:= -Wall -Wextra -Werror \
-					-std=c++98 -O0 -g3 -fstandalone-debug -fsanitize=address,undefined
+					-std=c++98 -O0 -g3 -fsanitize=address,undefined
 CPP 			= c++
 
 INCLUDE_FLAGS	:= -I. \
@@ -44,6 +44,7 @@ SRCS			= src/main.cpp \
 				  src/parser/ParserUtils.cpp \
 				  src/parser/Parser.cpp \
 				  src/utils/Utils.cpp \
+				  src/utils/Logging.cpp \
 				  src/handlers/CgiHandler.cpp \
 				  src/handlers/StaticFileHandler.cpp \
 

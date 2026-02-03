@@ -6,11 +6,12 @@
 /*   By: abelov <abelov@student.42london.com>       +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/01/31 21:42:24 by abelov            #+#    #+#             */
-/*   Updated: 2026/01/31 21:42:24 by abelov           ###   ########.fr       */
+/*   Updated: 2026/02/03 00:57:28 by fsmyth           ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
 #include "WebServer.hpp"
+#include "Logging.hpp"
 
 /*
 ** -------------------------------- STATIC VARS -------------------------------
@@ -96,7 +97,8 @@ void WebServer::serve_handle_worker(ConnWorker *wrkr, struct epoll_event &ev)
 
     if (ev.events & EPOLLERR)
     {
-        std::cout << "error occured on fd: " << wrkr->getConnFd() << " (EPOLLERR)" << std::endl;
+        // std::cout << "error occured on fd: " << wrkr->getConnFd() << " (EPOLLERR)" << std::endl;
+		log_connection(*wrkr, ERR);
         epoll_del(wrkr->getConnFd());
         wrkr->resetForReuse();
         _wrkrPool.free(wrkr);
@@ -110,7 +112,8 @@ void WebServer::serve_handle_worker(ConnWorker *wrkr, struct epoll_event &ev)
         Connection::e_result retval = wrkr->handleRequest();
         if (retval == Connection::CLOSED || retval == Connection::ERROR)
         {
-            std::cout << "Connection closed on fd: " << wrkr->getConnFd() << std::endl;
+            // std::cout << "Connection closed on fd: " << wrkr->getConnFd() << std::endl;
+			log_connection(*wrkr, DISCONNECT);
             epoll_del(wrkr->getConnFd());
             wrkr->resetForReuse();
             _wrkrPool.free(wrkr);
@@ -132,7 +135,8 @@ void WebServer::serve_handle_worker(ConnWorker *wrkr, struct epoll_event &ev)
         // If peer hung up and we have nothing queued to write, we can close now.
         if (hup && !wrkr->hasPendingResponses())
         {
-            std::cout << "Peer hung up (EPOLLHUP) and no pending responses on fd: " << wrkr->getConnFd() << std::endl;
+            // std::cout << "Peer hung up (EPOLLHUP) and no pending responses on fd: " << wrkr->getConnFd() << std::endl;
+			log_connection(*wrkr, HANGUP);
             epoll_del(wrkr->getConnFd());
             wrkr->resetForReuse();
             _wrkrPool.free(wrkr);
@@ -147,6 +151,7 @@ void WebServer::serve_handle_worker(ConnWorker *wrkr, struct epoll_event &ev)
         if (retval == Connection::CLOSED || retval == Connection::ERROR)
         {
             std::cout << "Connection closed on fd: " << wrkr->getConnFd() << std::endl;
+			log_connection(*wrkr, DISCONNECT);
             epoll_del(wrkr->getConnFd());
             wrkr->resetForReuse();
             _wrkrPool.free(wrkr);

@@ -6,7 +6,7 @@
 /*   By: abelov <abelov@student.42london.com>       +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/07/18 21:40:56 by abelov            #+#    #+#             */
-/*   Updated: 2025/07/18 21:40:57 by abelov           ###   ########.fr       */
+/*   Updated: 2026/02/03 00:35:34 by fsmyth           ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -170,7 +170,7 @@ StatusCode HttpResponse::readHtmlFile(const std::string &filename)
 
 	if (!file) {
 		std::string dir = filename + '/';
-		std::cerr << "File not found." << std::endl;
+		// std::cerr << "File not found." << std::endl;
 		throw Exception404();
 	}
 

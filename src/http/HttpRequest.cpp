@@ -6,7 +6,7 @@
 /*   By: margo <margo@student.42.fr>                +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/07/18 21:41:03 by abelov            #+#    #+#             */
-/*   Updated: 2026/01/27 15:51:41 by margo            ###   ########.fr       */
+/*   Updated: 2026/02/03 00:35:06 by fsmyth           ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -141,7 +141,7 @@ StatusCode HttpRequest::getHtmlResponse(HttpResponse& res, Location *location)
 		for (; it != res.location->_index.end(); it++)
 		{
 			path = res.location->_root + res.filename + *it;
-			std::cout << path << std::endl;
+			// std::cout << path << std::endl;
 			if (access(path.c_str(), F_OK) == 0)
 				break ;
 		}

@@ -6,7 +6,7 @@
 /*   By: margo <margo@student.42.fr>                +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/07/18 19:27:09 by abelov            #+#    #+#             */
-/*   Updated: 2026/02/01 17:52:23 by margo            ###   ########.fr       */
+/*   Updated: 2026/02/03 00:31:55 by fsmyth           ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -23,13 +23,23 @@
 #include <algorithm>
 #include "State.hpp"
 
-#define FT_RED		"\e[31m"
-#define FT_GREEN	"\e[32m"
-#define FT_YELLOW	"\e[33m"
-#define FT_BLUE		"\e[34m"
-#define FT_MAGENTA	"\e[35m"
-#define FT_CYAN		"\e[36m"
-#define FT_BOLD		"\e[1m"
+#define FT_WHITE		"\e[39m"
+#define FT_RED			"\e[31m"
+#define FT_GREEN		"\e[32m"
+#define FT_YELLOW		"\e[33m"
+#define FT_BLUE			"\e[34m"
+#define FT_MAGENTA		"\e[35m"
+#define FT_CYAN			"\e[36m"
+#define FT_BOLD			"\e[1m"
+
+#define FT_WHITE_BG		"\e[48m"
+#define FT_RED_BG		"\e[41m"
+#define FT_GREEN_BG		"\e[42m"
+#define FT_YELLOW_BG	"\e[43m"
+#define FT_BLUE_BG		"\e[44m"
+#define FT_MAGENTA_BG	"\e[45m"
+#define FT_CYAN_BG		"\e[46m"
+
 #define FT_RESET	"\e[m"
 
 typedef std::map<const std::string, std::string> StringMap;
