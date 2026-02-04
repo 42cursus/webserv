@@ -22,6 +22,7 @@
 #include "HttpRequest.hpp"
 #include "HttpResponse.hpp"
 #include "Location.hpp"
+#include "Logging.hpp"
 #include "Prefix_suffix.hpp"
 #include "State.hpp"
 #include "TCPServer.hpp"
@@ -150,34 +151,24 @@ Connection::e_result Connection::_sendToClient()
 	if (!item.res)
 		return ERROR;
 
-	HttpResponse *cur	   = item.res;
-	std::string	 &response = cur->response;
-	if (cur->start >= response.size())
-		return OK;
-	// if (cur->start == 0) {
-	// 	std::string &type = cur->headers["content-type"];
-	// 	if (!cur->body.empty()) {
-	// 		logServingFile(cur->filename, type);
-	// 		if (!type.empty() && type.substr(0, type.find_first_of('/')) == "text")
-	// 			std::cout << FT_BLUE << response << FT_RESET << std::endl;
-	// 		else {
-	// 			std::cout << FT_BLUE << response.substr(0, response.find(CRLF CRLF))
-	// 					  << "\n<Binary file>" << FT_RESET << std::endl;
-	// 		}
-	// 	}
-	// }
-	// size_t	msg_size = RESPONSE_MSG_SIZE;
-	size_t remaining = response.length() - cur->start;
-	// resize_socket_buffer(_conn_fd, msg_size);
-	remaining				   = std::min(remaining, response.length() - cur->start);
-	const ssize_t bytesWritten = ::write(_fd, response.data() + cur->start, remaining);
+    HttpResponse* cur = item.res;
+    std::string& response = cur->response;
+    if (cur->start >= response.size())
+        return OK;
+    if (cur->start == 0)
+		log_response(*this, *cur);
 
-	if (bytesWritten > 0) {
-		cur->start += static_cast<size_t>(bytesWritten);
-		if (cur->start >= response.size()) {
-			_srv->requests_handled++;
+    size_t	remaining = response.length() - cur->start;
+    // resize_socket_buffer(_conn_fd, msg_size);
+    remaining = std::min(remaining, response.length() - cur->start);
+    ssize_t bytesWritten = ::write(_fd, response.data() + cur->start, remaining);
 
-			const bool close_after = item.closeAfter;
+    if (bytesWritten > 0)
+    {
+        cur->start += static_cast<size_t>(bytesWritten);
+        if (cur->start >= response.size())
+        {
+            const bool close_after = item.closeAfter;
 
 			delete cur;
 			_pendingResponses.pop_front();
@@ -275,12 +266,11 @@ bool Connection::_tryExtractOneRequest()
 	HttpRequest *req = new HttpRequest();
 	try {
 		req->parseRequest(header_block);
-	} catch (HttpRequest::GenericException &) {
-		_srv->requests_failed++;
-		_inputBuffer.erase();
-		delete _req;
-		_req = NULL;
-		return false; // err
+	} catch (HttpRequest::GenericException&) {
+        _inputBuffer.erase();
+        delete _req;
+        _req = NULL;
+        return false; // err
 	}
 
 	size_t content_length = 0;
@@ -305,8 +295,10 @@ bool Connection::_tryExtractOneRequest()
 	delete _req;
 	_req = req;
 
-	HttpResponse *res = _prepareResponse();
-	if (_status == HANDLING_CGI) {
+	log_request(*this, *_req);
+    HttpResponse* res = _prepareResponse();
+	if (_status == HANDLING_CGI)
+	{
 		PendingResponse presp;
 		presp.res		 = res;
 		presp.closeAfter = !_shouldKeepAlive(*_req);
@@ -705,6 +697,16 @@ ConnWorker *Connection::getParent() const
 void Connection::setParent(ConnWorker *parent)
 {
 	_parent = parent;
+}
+
+void	Connection::setIpStr(std::string ip)
+{
+	_ip = ip;
+}
+
+std::string const&	Connection::getIpStr(void) const
+{
+	return _ip;
 }
 
 /*

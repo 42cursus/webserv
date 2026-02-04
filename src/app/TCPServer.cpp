@@ -17,6 +17,7 @@
 #include "Prefix_suffix.hpp"
 #include "WebServer.hpp"
 #include "WorkerPool.hpp"
+#include <arpa/inet.h>
 #include <cstring>
 #include <stdio.h>
 #include <sys/epoll.h>
@@ -43,8 +44,6 @@ TCPServer::TCPServer(const Config& conf) : cfg(conf)
 
 TCPServer::~TCPServer()
 {
-    std::cout << "Requests handled: " << requests_handled << std::endl;
-    std::cout << "Requests failed: " << requests_failed << std::endl;
 }
 
 /*
@@ -62,9 +61,6 @@ TCPServer::~TCPServer()
 
 int TCPServer::start()
 {
-	requests_handled = 0;
-	requests_failed = 0;
-
 	sockaddr_in in = cfg.http.server.ipv4_listen;
 
 	_socket_fd = socket(in.sin_family, SOCK_STREAM, 0);
@@ -144,6 +140,7 @@ void	TCPServer::acceptAllPendingConns(WorkerPool& wrkrPool, int epoll_fd)
 		// printf("%m\n");
 		// exit(0);
         int conn_fd = ::accept(_socket_fd, addr, &_addr_size);
+		// std::cout << inet_ntoa(_addr.sin_addr) << ":" << ntohs(_addr.sin_port) << std::endl;
         if (conn_fd < 0) {
 			// Something fundamentally wrong happened
             if (errno == EINTR)
@@ -156,6 +153,9 @@ void	TCPServer::acceptAllPendingConns(WorkerPool& wrkrPool, int epoll_fd)
 
         wrkr = wrkrPool.alloc(this);
         wrkr->setConnFd(conn_fd);
+		std::string ip = inet_ntoa(_addr.sin_addr);
+		ip += ":" + ::itoa(ntohs(_addr.sin_port));
+		const_cast<Connection&>(wrkr->getConn()).setIpStr(ip);
 
         // std::cout << "Accepted connection. fd: " << conn_fd << std::endl;
 		log_connection(*wrkr, CONNECT);

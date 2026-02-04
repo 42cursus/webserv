@@ -51,8 +51,6 @@ public:
 	int start();
 	void acceptAllPendingConns(WorkerPool& wrkrPool, int epoll_fd);
 	void stop();
-	unsigned long	requests_handled;
-	unsigned long	requests_failed;
 };
 
 

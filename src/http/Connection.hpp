@@ -77,6 +77,8 @@ public:
 	void handleErrorResponse(HttpResponse *res) const;
 	void handleRedirectResponse(HttpResponse *res, Redirect *redir) const;
 	void handleDirectoryRedirect(HttpResponse *res) const;
+	void setIpStr(std::string ip);
+	std::string const& getIpStr(void) const;
 	void closeSocketFd();
 	void reset();
 	void clearRequest();
@@ -94,6 +96,8 @@ private:
 	void _resetCurrentRequest();
 
 	bool _shouldKeepAlive(const HttpRequest &req) const;
+
+	std::string	_ip;
 
 	// transport
 	int		   _fd;
