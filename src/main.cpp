@@ -10,6 +10,7 @@
 /*                                                                            */
 /* ************************************************************************** */
 
+#include "Logging.hpp"
 #include "Parser.hpp"
 #include "Prefix_suffix.hpp"
 #include "WebServer.hpp"
@@ -40,21 +41,25 @@ int main(int argc, char **argv) {
 	if (sigaction(SIGINT, &act, &old_act) != 0)
 		exit(EXIT_FAILURE);
 
-	std::string filename = "resources/webserv.conf";
-	Parser		newParser(filename);
+	log_title();
 
+	std::string filename = "resources/webserv.conf";
 	if (argc > 1)
 		filename = argv[1];
+	Parser		newParser(filename);
+
 	try {
+		log_parsing(filename);
 		newParser.init_parser();
 		newParser.tokenise();
 		// printTokens(newParser.getTokens());
-		std::cout << std::endl;
+		// std::cout << std::endl;
 		newParser.parse();
 		// newParser.getConfig().printConfig();
 		// exit(1);
 	} catch (std::exception &e) {
-		std::cerr << e.what() << std::endl;
+		// std::cerr << e.what() << std::endl;
+		log_parsing_error(e);
 		exit(1);
 	}
 

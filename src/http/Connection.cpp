@@ -16,6 +16,7 @@
 #include <cstring>
 #include <cstdlib>
 #include <cerrno>
+#include <exception>
 #include <fcntl.h>
 #include <cstdio>
 #include <unistd.h>
@@ -267,11 +268,28 @@ bool Connection::_tryExtractOneRequest()
 	HttpRequest* req = new HttpRequest();
 	try {
 		req->parseRequest(header_block);
-	} catch (HttpRequest::GenericException&) {
+	} catch (std::exception &e) {
         _in.erase();
+        delete req;
         delete _req;
         _req = NULL;
-        return false; // err
+		log_request_error(*this, e);
+
+		HttpResponse*	res = new HttpResponse();
+		res->set_response_code(SC_400);
+		res->headers["Server"] = "Webserv/0.69";
+		handleErrorResponse(res);
+		res->buildHttpResponse();
+
+		const PendingResponse &presp = (PendingResponse) {
+			.res = res,
+			.closeAfter = true
+		};
+		_pendingResponses.push_back(presp);
+
+		_status = READY_TO_WRITE;
+
+        return false;
 	}
 
     size_t content_length = 0;
@@ -299,6 +317,7 @@ bool Connection::_tryExtractOneRequest()
     _req = req;
 
 	log_request(*this, *_req);
+	// std::cout << this->_req_buffer;
     HttpResponse* res = _prepareResponse();
 	if (_status == HANDLING_CGI)
 	{
