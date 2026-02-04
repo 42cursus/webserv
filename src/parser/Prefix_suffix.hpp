@@ -26,7 +26,25 @@ struct TrieNode
 };
 
 void		prefix_trie_insert(TrieNode *head, std::string const& path, void *data);
-void		*prefix_trie_search(TrieNode *head, std::string const& path);
+
+template<typename T>
+T *prefix_trie_search(TrieNode *head, std::string const &path)
+{
+	TrieNode *current  = head;
+	void	 *last_loc = NULL;
+
+	for (uint64_t i = 0; i < path.length() && current != NULL; i++) {
+		// std::cout << path[i] << std::endl;
+		size_t idx = static_cast<size_t>(path[i]);
+
+		current = current->children[idx];
+		if (current != NULL && current->data != NULL)
+			last_loc = current->data;
+	}
+
+	return reinterpret_cast<T *>(last_loc);
+}
+
 void		suffix_trie_insert(TrieNode *head, CGI *cgi);
 CGI			*suffix_trie_search(TrieNode *head, std::string const& suffix);
 

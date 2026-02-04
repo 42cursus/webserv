@@ -47,7 +47,7 @@ private:
     std::vector<TCPServer *>        _servers;
     std::vector<struct epoll_event> _events;
     int                             _epoll_fd;
-    int epoll_mod(int fd, void *tagged_ptr, EPOLL_EVENTS events);
+    int epoll_mod(int fd, void *tagged_ptr, uint32_t events);
     int epoll_del(int fd);
     void serve_handle_worker(ConnWorker *wrkr, epoll_event &ev);
 };

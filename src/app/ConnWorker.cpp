@@ -24,7 +24,6 @@
 */
 
 ConnWorker::ConnWorker()
-    : _conn()
 {
 	_conn.setParent(this);
 }
@@ -118,8 +117,17 @@ ConnWorker::e_status ConnWorker::getStatus() const
     return _conn.getStatus();
 }
 
+ConnWorker::e_status ConnWorker::setStatus(Connection::e_status status)
+{
+    return _conn.setStatus(status);
+}
+
 const Connection &ConnWorker::getConn() const {
     return _conn;
+}
+
+const Connection *ConnWorker::getConnPtr() const {
+    return &_conn;
 }
 
 /*

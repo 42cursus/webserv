@@ -17,6 +17,7 @@
 #include <dirent.h>
 #include <fstream>
 #include <iostream>
+#include <limits>
 #include <sstream>
 #include <sys/stat.h>
 #include <vector>
@@ -156,6 +157,31 @@ std::string itoa(int value)
 	return oss.str();
 }
 
+std::string size_to_ascii(std::size_t value)
+{
+	enum { BUF_SIZE = std::numeric_limits<std::size_t>::digits10 + 1 };
+	char buf[BUF_SIZE + 1];
+	char *out = buf;
+	const char base[] = "0123456789";
+	const std::size_t radix = sizeof(base);
+
+	std::size_t stack[BUF_SIZE];
+	int sp = 0;
+
+	stack[sp++] = value;
+	while (sp) {
+		std::size_t v = stack[--sp];
+		if (v >= radix) {
+			stack[sp++] = v % radix;
+			stack[sp++] = v / radix;
+		} else {
+			*out++ = base[v];
+		}
+	}
+	*out = '\0';
+	return std::string(buf);
+}
+
 static bool is_dir(std::string const &path)
 {
 	struct stat statbuf;
@@ -269,6 +295,9 @@ void HttpResponse::buildDefaultErrorPage(void)
 }
 
 HttpResponse::HttpResponse() : start(0)
+{}
+
+HttpResponse::~HttpResponse()
 {}
 
 const char *HttpResponse::GenericException::what() const throw()

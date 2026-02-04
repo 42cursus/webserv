@@ -71,6 +71,6 @@ int main(int argc, char **argv) {
 	srv.serve();
 	srv.stop();
 
-	return (0);
+	return (EXIT_SUCCESS);
 	(void) filename;
 }

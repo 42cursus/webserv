@@ -34,28 +34,33 @@
 */
 
 namespace {
-    std::string trim(const std::string &s);
-    bool starts_with(const std::string &s, const std::string &prefix);
-}
+	std::string trim(const std::string &s);
+	bool		starts_with(const std::string &s, const std::string &prefix);
+}// namespace
 
 /*
 ** ------------------------------- CONSTRUCTORS -------------------------------
 */
 
-CgiHandler::CgiHandler(HttpRequest& req, const Location& loc, const std::string& script_path, HttpResponse& res) :
-    _state(), _pid(0),
-    _stdin_pipe(), _stdout_pipe(),
-     _res(res), _req(req),
-    _script_path(script_path)
-{
-    (void)loc;
-}
+CgiHandler::CGISession::CGISession() :
+	_pid(0),
+	_stdin_pipe(),
+	_stdout_pipe(),
+	bytes_sent(0),
+	bytes_received(0)
+{}
 
-CgiHandler::CGISession::CGISession(std::size_t bytes_sent, std::size_t bytes_received): bytes_sent(bytes_sent),
-    bytes_received(bytes_received)
+CgiHandler::CgiHandler(HttpRequest		 &req,
+					   const Location	 &loc,
+					   const std::string &script_path,
+					   HttpResponse		 &res) :
+	_state(),
+	_res(res),
+	_req(req),
+	_script_path(script_path)
 {
+	(void) loc;
 }
-
 
 /*
 ** ------------------------------- DESTRUCTORS --------------------------------
@@ -76,195 +81,250 @@ CgiHandler::CGISession::CGISession(std::size_t bytes_sent, std::size_t bytes_rec
 
 StatusCode CgiHandler::handle(HttpRequest &req, HttpResponse &res)
 {
-    pipe(_stdin_pipe);
-    pipe(_stdout_pipe);
+	CGISession sess;
+	sess._parentConnection = const_cast<Connection *>(this->wrkr->getConnPtr());
+	pipe(sess._stdin_pipe);
+	pipe(sess._stdout_pipe);
 
+	sess._pid = fork();
+	if (sess._pid == 0)// child
+	{
+		dup2(sess._stdout_pipe[1], STDOUT_FILENO);// stdout -> pipe
+		close(sess._stdout_pipe[0]);
+		close(sess._stdout_pipe[1]);
 
-    this->_pid = fork();
-    if (_pid == 0) // child
-    {
-        dup2(_stdout_pipe[1], STDOUT_FILENO); // stdout -> pipe
-        close(_stdout_pipe[0]);
-        close(_stdout_pipe[1]);
+		dup2(sess._stdin_pipe[0], STDIN_FILENO);// pipe -> stdin
+		close(sess._stdin_pipe[1]);
+		close(sess._stdin_pipe[0]);
 
-        dup2(_stdin_pipe[0], STDIN_FILENO); // pipe -> stdin
-        close(_stdin_pipe[1]);
-        close(_stdin_pipe[0]);
+		// build ENVP
 
-        // build ENVP
+		std::string script = apply_location(req.path, res.location);
+		// build ARGV
 
-        std::string script = apply_location(req.path, res.location);
-        // build ARGV
+		std::vector<std::string> env;
+		_build_env(env);
+		env.push_back("TRY=me");
+		env.push_back("SEE=you");
 
-        const char *argv[3] = {
-            "/usr/bin/python3",
-            script.c_str(),
-            NULL,
-        };
+		std::vector<char*> envp;
+		envp.reserve(env.size() + 1);
+		for (size_t i = 0; i < env.size(); ++i)
+			envp.push_back(::strdup(env[i].c_str()));
+		envp.push_back(NULL);
 
-        const char *envp[3] = {
-            "TRY=me",
-            "SEE=you",
-            NULL,
-        };
-        execve(argv[0], (char *const *)argv, (char *const *)envp);
-    }
-    else if (_pid < 0)
-        return (SC_500);
+		std::vector<std::string> argv_str;
+		argv_str.push_back("/usr/bin/python3");
+		argv_str.push_back(script);
 
-    close(_stdout_pipe[1]);
-    close(_stdin_pipe[0]);
+		std::vector<char*> argv;
+		argv.reserve(argv_str.size() + 1);
+		for (size_t i = 0; i < argv_str.size(); ++i) {
+			const std::string &str = argv_str[i];
+			char *buf = new char[str.size() + 1]; // allocating RAW memory
+			std::strncpy(buf, str.c_str(), str.size() + 1);
+			argv.push_back(buf);
+		}
+		argv.push_back(NULL);
 
-    // write(_stdin_pipe[1], "", 0);
-    // close(_stdin_pipe[1]);
+		if (execve(argv[0], &argv[0], &envp[0]) == -1) {
+			for (size_t i = 0; i < argv.size(); ++i)
+				delete[] argv[i];
+			for (size_t i = 0; i < envp.size(); ++i)
+				delete[] envp[i];
 
-    // FILE*	fp = fdopen(_stdout_pipe[0], "r");
-    // char	*line = NULL;
-    // size_t	n = 0;
-    // ssize_t	nread = 0;
-    // while ((nread = getline(&line, &n, fp)) != -1)
-    // {
-    //     res.body.append(line);
-    // }
-    // fclose(fp);
-    // free(line);
-    // wait(NULL);
+			std::exit(EXIT_FAILURE); // probably should be 127
+		}
+	} else if (sess._pid < 0)
+		return (SC_500);
 
+	close(sess._stdout_pipe[1]);
+	close(sess._stdin_pipe[0]);
 
-    return SC_200;
+	// write(sess._stdin_pipe[1], "", 0);
+	// close(sess._stdin_pipe[1]);
+
+	// FILE*	fp = fdopen(_stdout_pipe[0], "r");
+	// char	*line = NULL;
+	// size_t	n = 0;
+	// ssize_t	nread = 0;
+	// while ((nread = getline(&line, &n, fp)) != -1)
+		// res.body.append(line);
+	// fclose(fp);
+	// free(line);
+
+	waitpid(sess._pid, &sess._wstatus, WUNTRACED);
+	while (!WIFEXITED(sess._wstatus) && !WIFSIGNALED(sess._wstatus))
+		waitpid(sess._pid, &sess._wstatus, WUNTRACED);
+
+	this->wrkr->cgiSession = new CGISession();
+	*this->wrkr->cgiSession = sess;
+	return SC_200;
 }
 
-void	CgiHandler::register_read_pipe(int epoll_fd)
+Connection::e_result CgiHandler::CGISession::onWritable()
 {
-    struct epoll_event ev;
-    std::memset(&ev, 0, sizeof(ev));
-    ev.data.ptr = tag_ptr(this, WebServer::EP_CGI);
-    ev.events = EPOLLIN;
-    epoll_ctl(epoll_fd, EPOLL_CTL_ADD, this->_stdout_pipe[0], &ev);
+	if (_parentConnection->hasPendingResponses())
+		_parentConnection->_sendToClient();
+
+	return  Connection::OK;
 }
 
-void	CgiHandler::register_write_pipe(int epoll_fd)
+Connection::e_result CgiHandler::CGISession::onReadable()
 {
-    struct epoll_event ev;
-    std::memset(&ev, 0, sizeof(ev));
-    ev.data.ptr = tag_ptr(this, WebServer::EP_CGI);
-    ev.events = EPOLLOUT;
-    epoll_ctl(epoll_fd, EPOLL_CTL_ADD, this->_stdin_pipe[1], &ev);
+
+	Connection::e_result result = Connection::OK;
+
+	std::vector<char> v(8192);
+
+	const ssize_t bytesRead = read(this->_stdout_pipe[0], &v[0], v.size());
+
+	if (bytesRead > 0) {
+		v.resize(bytesRead);
+		std::string toAppend(v.begin(), v.end());
+		_raw_output += toAppend;
+
+		HttpResponse *res = _parentConnection->getCurrentResponse();
+
+		if (res->response.size() == 0)
+			res->buildHttpResponse();
+
+		res->response.append(_raw_output);
+
+		result = Connection::WANT_WRITE;
+	}
+	else if (bytesRead < 0)
+		result = Connection::ERROR;
+	return result;
 }
 
-void CgiHandler::_build_env(std::vector<std::string>& env)
+int CgiHandler::CGISession::register_read_pipe(int epoll_fd)
 {
-    env.push_back("GATEWAY_INTERFACE=CGI/1.1");
-    env.push_back("SERVER_PROTOCOL=HTTP/1.1");
-
-    env.push_back("REQUEST_METHOD=" + _req.method);
-    env.push_back("SCRIPT_NAME=" + _req.path);
-    env.push_back("PATH_INFO=" + _req.path);
-
-    if (_req.headers.count("query-string"))
-        env.push_back("QUERY_STRING=" + _req.headers["query-string"]);
-    else
-        env.push_back("QUERY_STRING=");
-
-    if (_req.headers.count("content-type"))
-        env.push_back("CONTENT_TYPE=" + _req.headers["content-type"]);
-    else
-        env.push_back("CONTENT_TYPE=");
-
-    if (_req.headers.count("content-length"))
-        env.push_back("CONTENT_LENGTH=" + _req.headers["content-length"]);
-    else
-        env.push_back("CONTENT_LENGTH=0");
+	struct epoll_event ev = {};
+	ev.data.ptr = tag_ptr(this, WebServer::EP_CGI);
+	ev.events	= EPOLLIN;
+	return epoll_ctl(epoll_fd, EPOLL_CTL_ADD, _stdout_pipe[0], &ev);
 }
 
-std::string	CgiHandler::raw_output(void) const
+int CgiHandler::CGISession::register_write_pipe(int epoll_fd)
 {
-    return (_raw_output);
+	struct epoll_event ev = {};
+	CGISession *ptr = this;
+	ev.data.ptr = tag_ptr(ptr, WebServer::EP_CGI);
+	ev.events	= EPOLLOUT;
+	return epoll_ctl(epoll_fd, EPOLL_CTL_ADD, _stdin_pipe[1], &ev);
 }
 
-void CgiHandler::_parse_output_into_response()
+void CgiHandler::_build_env(std::vector<std::string> &env)
 {
-    // Split headers/body at first empty line. Accept \r\n\r\n or \n\n.
-    size_t sep = _raw_output.find("\r\n\r\n");
-    size_t sep_len = 4;
-    if (sep == std::string::npos)
-    {
-        sep = _raw_output.find("\n\n");
-        sep_len = 2;
-    }
+	env.push_back("GATEWAY_INTERFACE=CGI/1.1");
+	env.push_back("SERVER_PROTOCOL=HTTP/1.1");
 
-    std::string header_block;
-    std::string body;
-    if (sep == std::string::npos)
-    {
-        // No CGI headers -> treat everything as body.
-        header_block = "";
-        body = _raw_output;
-    }
-    else
-    {
-        header_block = _raw_output.substr(0, sep);
-        body = _raw_output.substr(sep + sep_len);
-    }
+	env.push_back("REQUEST_METHOD=" + _req.method);
+	env.push_back("SCRIPT_NAME=" + _req.path);
+	env.push_back("PATH_INFO=" + _req.path);
 
-    _res.body = body;
+	if (_req.headers.count("query-string"))
+		env.push_back("QUERY_STRING=" + _req.headers["query-string"]);
+	else
+		env.push_back("QUERY_STRING=");
 
-    if (_res.headers.find("content-type") == _res.headers.end())
-        _res.headers["content-type"] = "text/plain";
+	if (_req.headers.count("content-type"))
+		env.push_back("CONTENT_TYPE=" + _req.headers["content-type"]);
+	else
+		env.push_back("CONTENT_TYPE=");
 
-    std::istringstream iss(header_block);
-    std::string line;
-    while (std::getline(iss, line))
-    {
-        line = trim(line);
-        if (line.empty())
-            continue;
+	if (_req.headers.count("content-length"))
+		env.push_back("CONTENT_LENGTH=" + _req.headers["content-length"]);
+	else
+		env.push_back("CONTENT_LENGTH=0");
+}
 
-        if (starts_with(line, "Status:"))
-        {
-            std::string v = trim(line.substr(std::strlen("Status:")));
-            // format: "200 OK"
-            std::istringstream ss(v);
-            int code = 200;
-            ss >> code;
-            _res.statuscode = ::itoa(code);
+void CgiHandler::_parse_output_into_response(CGISession &sess)
+{
+	// Split headers/body at first empty line. Accept \r\n\r\n or \n\n.
+	size_t sep	   = sess._raw_output.find(CRLF CRLF);
+	size_t sep_len = 4;
+	if (sep == std::string::npos) {
+		sep		= sess._raw_output.find("\n\n");
+		sep_len = 2;
+	}
 
-            std::string rest;
-            std::getline(ss, rest);
-            rest = trim(rest);
-            _res.statusmsg = rest.empty() ? "OK" : rest;
-            continue;
-        }
+	std::string header_block;
+	std::string body;
+	if (sep == std::string::npos) {
+		// No CGI headers -> treat everything as body.
+		header_block = "";
+		body		 = sess._raw_output;
+	} else {
+		header_block = sess._raw_output.substr(0, sep);
+		body		 = sess._raw_output.substr(sep + sep_len);
+	}
 
-        size_t colon = line.find(':');
-        if (colon == std::string::npos)
-            continue;
+	_res.body = body;
 
-        std::string key = line.substr(0, colon);
-        std::string val = trim(line.substr(colon + 1));
+	if (_res.headers.find("content-type") == _res.headers.end())
+		_res.headers["content-type"] = "text/plain";
 
-        // normalize header key to lowercase (your codebase uses lowercase keys)
-        for (size_t i = 0; i < key.size(); i++)
-            key[i] = static_cast<char>(std::tolower(key[i]));
+	std::istringstream iss(header_block);
+	std::string		   line;
+	while (std::getline(iss, line)) {
+		line = trim(line);
+		if (line.empty())
+			continue;
 
-        _res.headers[key] = val;
-    }
+		if (starts_with(line, "Status:")) {
+			std::string v = trim(line.substr(std::strlen("Status:")));
+			// format: "200 OK"
+			std::istringstream ss(v);
+			int				   code = SC_200;
+			ss >> code;
+			_res.statuscode = ::itoa(code);
+
+			std::string rest;
+			std::getline(ss, rest);
+			rest		   = trim(rest);
+			_res.statusmsg = rest.empty() ? "OK" : rest;
+			continue;
+		}
+
+		size_t colon = line.find(':');
+		if (colon == std::string::npos)
+			continue;
+
+		std::string key = line.substr(0, colon);
+		std::string val = trim(line.substr(colon + 1));
+
+		// normalize a header key to lowercase (your codebase uses lowercase keys)
+		for (size_t i = 0; i < key.size(); i++)
+			key[i] = static_cast<char>(std::tolower(key[i]));
+
+		_res.headers[key] = val;
+	}
 }
 
 /*
 ** -------------------------------- ACCESSORS ---------------------------------
 */
 
-HttpResponse &CgiHandler::res() const {
-    return _res;
+HttpResponse &CgiHandler::res() const
+{
+	return _res;
 }
 
-HttpRequest &CgiHandler::req() const {
-    return _req;
+HttpRequest &CgiHandler::req() const
+{
+	return _req;
 }
 
-std::string CgiHandler::body_buffer() const {
-    return _body_buffer;
+std::string CgiHandler::CGISession::body_buffer() const
+{
+	return _body_buffer;
+}
+
+std::string CgiHandler::CGISession::raw_output() const
+{
+	return (_raw_output);
 }
 
 /*
@@ -276,18 +336,21 @@ std::string CgiHandler::body_buffer() const {
 */
 
 namespace {
-    bool starts_with(const std::string &s, const std::string &prefix) {
-        return s.size() >= prefix.size() && s.compare(0, prefix.size(), prefix) == 0;
-    }
+	bool starts_with(const std::string &s, const std::string &prefix)
+	{
+		return s.size() >= prefix.size() && s.compare(0, prefix.size(), prefix) == 0;
+	}
 
 
-    std::string trim(const std::string &s) {
-        size_t b = 0;
-        while (b < s.size() && (s[b] == ' ' || s[b] == '\t' || s[b] == '\r' || s[b] == '\n'))
-            b++;
-        size_t e = s.size();
-        while (e > b && (s[e - 1] == ' ' || s[e - 1] == '\t' || s[e - 1] == '\r' || s[e - 1] == '\n'))
-            e--;
-        return s.substr(b, e - b);
-    }
-}
+	std::string trim(const std::string &s)
+	{
+		size_t b = 0;
+		while (b < s.size() && (s[b] == ' ' || s[b] == '\t' || s[b] == '\r' || s[b] == '\n'))
+			b++;
+		size_t e = s.size();
+		while (e > b &&
+			   (s[e - 1] == ' ' || s[e - 1] == '\t' || s[e - 1] == '\r' || s[e - 1] == '\n'))
+			e--;
+		return s.substr(b, e - b);
+	}
+}// namespace

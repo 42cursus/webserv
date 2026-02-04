@@ -47,6 +47,11 @@ public:
 		READY_TO_WRITE
 	};
 
+	struct PendingResponse {
+		HttpResponse *res;
+		bool		  closeAfter;// close connection after this response is fully sent
+	};
+
 	Connection();
 	explicit Connection(int fd, TCPServer *srv);
 	Connection(const Connection &other);
@@ -59,9 +64,13 @@ public:
 	ConnWorker *getParent() const;
 	void		setParent(ConnWorker *parent);
 	e_status	getStatus() const;
+	e_status	setStatus(e_status);
 
 	e_result onReadable();
 	e_result onWritable();
+
+	void enqueueResponse(PendingResponse &req);
+	HttpResponse *getCurrentResponse() const;
 
 
 	bool hasPendingResponses() const;
@@ -72,11 +81,12 @@ public:
 	void reset();
 	void clearRequest();
 
+	e_result _sendToClient();
+
 private:
 	Connection &operator=(const Connection &);
 
 	e_result _recvFromClient();
-	e_result _sendToClient();
 	e_result _processInput();
 
 	bool _tryExtractOneRequest();
@@ -96,15 +106,10 @@ private:
 	//    HttpResponse*   _res;
 
 	// input buffering
-	std::string _in;
-	size_t		_in_off;
+	std::string _inputBuffer;
+	size_t		_inOffset;
 
 	bool _peerClosedInput;
-
-	struct PendingResponse {
-		HttpResponse *res;
-		bool		  closeAfter;// close connection after this response is fully sent
-	};
 
 	// output queue
 	std::deque<PendingResponse> _pendingResponses;

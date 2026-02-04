@@ -15,7 +15,6 @@
 #include <algorithm>
 #include <cerrno>
 #include <cstdio>
-#include <cstdlib>
 #include <cstring>
 #include <fcntl.h>
 #include <unistd.h>
@@ -44,7 +43,7 @@ Connection::Connection() :
 	_srv(NULL),
 	_status(READING_HEADERS),
 	_req(NULL),
-	_in_off(0),
+	_inOffset(0),
 	_peerClosedInput(false),
 	_parent(NULL),
 	_req_buffer()
@@ -60,7 +59,7 @@ Connection::Connection(const Connection &other) :
 	_srv(other._srv),
 	_status(other._status),
 	_req(other._req),
-	_in_off(other._in_off),
+	_inOffset(other._inOffset),
 	_peerClosedInput(other._peerClosedInput),
 	_pendingResponses(other._pendingResponses),
 	_parent(other._parent)
@@ -71,14 +70,13 @@ Connection::Connection(int fd, TCPServer *srv) :
 	_srv(srv),
 	_status(READING_HEADERS),
 	_req(NULL),
-	_in(),
-	_in_off(0),
+	_inOffset(0),
 	_peerClosedInput(false),
-	_pendingResponses(),
 	_req_buffer()
 {
 	int flags = fcntl(_fd, F_GETFL, 0);
-	if (flags >= 0) fcntl(_fd, F_SETFL, flags | O_NONBLOCK);
+	if (flags >= 0)
+		fcntl(_fd, F_SETFL, flags | O_NONBLOCK);
 }
 
 /*
@@ -112,11 +110,12 @@ Connection::e_result Connection::_recvFromClient()
 		ssize_t nread = ::read(_fd, _req_buffer, REQUEST_BUF_SIZE);
 		if (nread > 0) {
 			_req_buffer[nread] = '\0';
-			_in.append(_req_buffer, static_cast<size_t>(nread));
-			continue;// drain the kernel buffer
+			_inputBuffer.append(_req_buffer, static_cast<size_t>(nread));
+			continue; // drain the kernel buffer
 		}
 		if (nread == 0) {
-			// Peer closed its write-side (FIN). We might still have a full request in _in.
+			// Peer closed its write-side (FIN).
+			// We might still have a full request in _in.
 			_peerClosedInput = true;
 			return OK;
 		}
@@ -128,8 +127,10 @@ Connection::e_result Connection::_recvFromClient()
 			//_req->printBody();
 		}
 
-		if (errno == EINTR) continue;
-		if (errno == EAGAIN || errno == EWOULDBLOCK) return OK;
+		if (errno == EINTR)  // FIXME: CAN'T DO THAT!!!
+			continue;
+		if (errno == EAGAIN || errno == EWOULDBLOCK)  // FIXME: CAN'T DO THAT!!!
+			return OK;
 
 		return ERROR;
 	}
@@ -142,30 +143,37 @@ void logServingFile(const std::string &path, const std::string &mimetype)
 
 Connection::e_result Connection::_sendToClient()
 {
-	if (_pendingResponses.empty()) return OK;
+	if (_pendingResponses.empty())
+		return OK;
 
 	PendingResponse &item = _pendingResponses.front();
-	if (!item.res) return ERROR;
+	if (!item.res)
+		return ERROR;
 
 	HttpResponse *cur	   = item.res;
 	std::string	 &response = cur->response;
-	if (cur->start >= response.size()) return OK;
-	//if (cur->start == 0)// {
-		//std::string &type = cur->headers["content-type"];
-		//if (!cur->body.empty())// logServingFile(cur->filename, type);
-		//if (!type.empty() && type.substr(0, type.find_first_of("/")) == "text")
-			//std::cout << FT_BLUE << response << FT_RESET << std::endl;
-		//else
-			//std::cout << FT_BLUE << response.substr(0, response.find(CRLF CRLF)) << "\n<Binary file>" << FT_RESET << std::endl;
-	//}
+	if (cur->start >= response.size())
+		return OK;
+	// if (cur->start == 0) {
+	// 	std::string &type = cur->headers["content-type"];
+	// 	if (!cur->body.empty()) {
+	// 		logServingFile(cur->filename, type);
+	// 		if (!type.empty() && type.substr(0, type.find_first_of('/')) == "text")
+	// 			std::cout << FT_BLUE << response << FT_RESET << std::endl;
+	// 		else {
+	// 			std::cout << FT_BLUE << response.substr(0, response.find(CRLF CRLF))
+	// 					  << "\n<Binary file>" << FT_RESET << std::endl;
+	// 		}
+	// 	}
+	// }
 	// size_t	msg_size = RESPONSE_MSG_SIZE;
 	size_t remaining = response.length() - cur->start;
 	// resize_socket_buffer(_conn_fd, msg_size);
-	remaining = std::min(remaining, response.length() - cur->start);
-	ssize_t w = ::write(_fd, response.data() + cur->start, remaining);
+	remaining				   = std::min(remaining, response.length() - cur->start);
+	const ssize_t bytesWritten = ::write(_fd, response.data() + cur->start, remaining);
 
-	if (w > 0) {
-		cur->start += static_cast<size_t>(w);
+	if (bytesWritten > 0) {
+		cur->start += static_cast<size_t>(bytesWritten);
 		if (cur->start >= response.size()) {
 			_srv->requests_handled++;
 
@@ -174,37 +182,47 @@ Connection::e_result Connection::_sendToClient()
 			delete cur;
 			_pendingResponses.pop_front();
 
-			// If the request said "Connection: close", close *after* we sent its response.
-			if (close_after) return CLOSED;
+			// If the request said "Connection: close",
+			// close *after* we sent its response.
+			if (close_after)
+				return CLOSED;
 
-			if (!_pendingResponses.empty()) return WANT_WRITE;
+			if (!_pendingResponses.empty())
+				return WANT_WRITE;
 
 			_status = READING_HEADERS;
 
-			Connection::e_result pr =
-				_processInput();// try to parse / enqueue immediately so we don't wait for another EPOLLIN.
-			if (pr == WANT_WRITE) return WANT_WRITE;
+			// try to parse / enqueue immediately
+			// so we don't wait for another EPOLLIN.
+			e_result pr = _processInput();
+			if (pr == WANT_WRITE)
+				return WANT_WRITE;
 			return OK;
 		}
 		return WANT_WRITE;
 	}
 
-	if (w == 0) return CLOSED;
+	if (bytesWritten == 0)
+		return CLOSED;
 
-	if (errno == EINTR || errno == EAGAIN || errno == EWOULDBLOCK) return WANT_WRITE;
+	if (errno == EINTR || errno == EAGAIN || errno == EWOULDBLOCK) // FIXME: CAN'T DO THAT!!!
+		return WANT_WRITE;
 
-	if (errno == EPIPE || errno == ECONNRESET) return CLOSED;
+	if (errno == EPIPE || errno == ECONNRESET) // FIXME: CAN'T DO THAT!!!
+		return CLOSED;
 
 	return ERROR;
 }
 
 void Connection::_consumeInputBytes(size_t nbytes)
 {
-	_in_off += nbytes;
+	_inOffset += nbytes;
 
-	if (_in_off > 65536 || (_in_off > 0 && _in_off * 2 > _in.size())) {
-		_in.erase(0, _in_off);
-		_in_off = 0;
+	size_t magic_nbr = 65536; // FIXME: magic-number...
+
+	if (_inOffset > magic_nbr || (_inOffset > 0 && _inOffset * 2 > _inputBuffer.size())) {
+		_inputBuffer.erase(0, _inOffset);
+		_inOffset = 0;
 	}
 }
 
@@ -224,12 +242,16 @@ void Connection::_resetCurrentRequest()
 bool Connection::_shouldKeepAlive(const HttpRequest &req) const
 {
 	std::string proto = req.protocol;
-	std::string conn  = req.headers.count("connection") ? req.headers.find("connection")->second : "";
+	std::string conn;
 
-	for (size_t i = 0; i < conn.size(); i++)// normalize to lowercase
+	if (req.headers.count("connection"))
+		conn = req.headers.find("connection")->second;
+
+	for (size_t i = 0; i < conn.size(); i++) // normalize to lowercase
 		conn[i] = static_cast<char>(std::tolower(conn[i]));
 
-	if (proto.find("HTTP/1.1") == 0) return conn != "close";
+	if (proto.find("HTTP/1.1") == 0)
+		return conn != "close";
 	return conn == "keep-alive";
 }
 
@@ -240,11 +262,12 @@ bool Connection::_shouldKeepAlive(const HttpRequest &req) const
  */
 bool Connection::_tryExtractOneRequest()
 {
-	size_t hdr_end = _in.find(CRLF CRLF, _in_off);
-	if (hdr_end == std::string::npos) return false;
+	size_t hdr_end = _inputBuffer.find(CRLF CRLF, _inOffset);
+	if (hdr_end == std::string::npos)
+		return false;
 
-	const size_t	  header_bytes = (hdr_end - _in_off) + 4;
-	const std::string header_block = _in.substr(_in_off, header_bytes);
+	const size_t	  header_bytes = (hdr_end - _inOffset) + 4;
+	const std::string header_block = _inputBuffer.substr(_inOffset, header_bytes);
 
 	// std::cout << FT_MAGENTA << "Request ready on fd: " << _fd << std::endl;
 	// std::cout << FT_GREEN << header_block << FT_RESET << std::endl;
@@ -254,10 +277,10 @@ bool Connection::_tryExtractOneRequest()
 		req->parseRequest(header_block);
 	} catch (HttpRequest::GenericException &) {
 		_srv->requests_failed++;
-		_in.erase();
+		_inputBuffer.erase();
 		delete _req;
 		_req = NULL;
-		return false;// err
+		return false; // err
 	}
 
 	size_t content_length = 0;
@@ -266,7 +289,7 @@ bool Connection::_tryExtractOneRequest()
 	req->content_length = content_length;
 
 	const size_t need_total = header_bytes + content_length;
-	if (_in.size() - _in_off < need_total) {
+	if (_inputBuffer.size() - _inOffset < need_total) {
 		delete req;
 		return false; // not enough body yet
 	}
@@ -274,7 +297,7 @@ bool Connection::_tryExtractOneRequest()
 	// TODO: reuse extract body function
 	if (req->content_length > 0) {
 		req->body.resize(content_length);
-		std::memcpy(req->body.data(), _in.data() + _in_off + header_bytes, content_length);
+		std::memcpy(&req->body[0], &_inputBuffer[0] + _inOffset + header_bytes, content_length);
 	}
 
 	_consumeInputBytes(need_total);
@@ -283,11 +306,23 @@ bool Connection::_tryExtractOneRequest()
 	_req = req;
 
 	HttpResponse *res = _prepareResponse();
-	if (_status == HANDLING_CGI) { return false; }
+	if (_status == HANDLING_CGI) {
+		PendingResponse presp;
+		presp.res		 = res;
+		presp.closeAfter = !_shouldKeepAlive(*_req);
+
+		_pendingResponses.push_back(presp);
+		return false;
+	}
+
+
 	res->buildHttpResponse();
 	// _req->printBody();
 
-	const PendingResponse &presp = (PendingResponse) {.res = res, .closeAfter = !_shouldKeepAlive(*_req)};
+	PendingResponse presp;
+	presp.res		 = res;
+	presp.closeAfter = !_shouldKeepAlive(*_req);
+
 	_pendingResponses.push_back(presp);
 
 	_status = READY_TO_WRITE;
@@ -309,11 +344,13 @@ Connection::e_result Connection::_processInput()
 
 	while (true) {
 		const size_t before = _pendingResponses.size();
-		if (!_tryExtractOneRequest()) break;
-		if (_pendingResponses.size() > before) queued_any = true;
+		if (!_tryExtractOneRequest())
+			break;
+		if (_pendingResponses.size() > before)
+			queued_any = true;
 	}
 
-	if (!_pendingResponses.empty())// switching to EPOLLOUT
+	if (!_pendingResponses.empty()) // switching to EPOLLOUT
 		return WANT_WRITE;
 
 	return queued_any ? WANT_WRITE : OK;
@@ -329,6 +366,19 @@ Connection::e_result Connection::onWritable()
 	return _handleWritable();
 }
 
+void Connection::enqueueResponse(PendingResponse &req)
+{
+	_pendingResponses.push_back(req);
+}
+
+HttpResponse *Connection::getCurrentResponse() const
+{
+	if (_pendingResponses.empty())
+		return NULL;
+
+	return _pendingResponses.front().res;
+}
+
 bool Connection::_wantWrite() const
 {
 	return !_pendingResponses.empty() && _status == READY_TO_WRITE;
@@ -337,14 +387,17 @@ bool Connection::_wantWrite() const
 Connection::e_result Connection::_handleReadable()
 {
 	e_result rr = _recvFromClient();
-	if (rr != OK) return rr;
+	if (rr != OK)
+		return rr;
 
 	// parse/enqueue as much as possible
 	e_result pr = _processInput();
-	if (pr == WANT_WRITE) return WANT_WRITE;
+	if (pr == WANT_WRITE)
+		return WANT_WRITE;
 
-	// If peer already closed input and we produced nothing to write, close now.
-	if (_peerClosedInput && _pendingResponses.empty()) return CLOSED;
+	// If the peer already closed input, and we produced nothing to write, close now.
+	if (_peerClosedInput && _pendingResponses.empty())
+		return CLOSED;
 
 	return _wantWrite() ? WANT_WRITE : OK;
 }
@@ -356,21 +409,21 @@ Connection::e_result Connection::_handleWritable()
 
 HttpResponse *Connection::_prepareResponse()
 {
-	HttpResponse*	res = new HttpResponse();
-	Redirect *redirect;
+	HttpResponse *res = new HttpResponse();
 
-	res->headers["Server"] = "Webserv/0.69";
-	 redirect = reinterpret_cast<Redirect*>(prefix_trie_search(_srv->getCfg().http.server.redirect_trie, _req->path));
+	res->headers["Server"]	= "Webserv/0.69";
+	TrieNode *redirect_trie = _srv->getCfg().http.server.redirect_trie;
+	Redirect *redirect		= prefix_trie_search<Redirect>(redirect_trie, _req->path);
 
-	if (redirect != NULL && _req->path == redirect->_path)
-	{
+	if (redirect != NULL && _req->path == redirect->_path) {
 		handleRedirectResponse(res, redirect);
 		return res;
 	}
 
-	res->location = reinterpret_cast<Location*>(prefix_trie_search(_srv->getCfg().http.server.loc_trie, _req->path));
-	if (!res->location)
-	{
+	TrieNode *loc_trie = _srv->getCfg().http.server.loc_trie;
+	Location *location = prefix_trie_search<Location>(loc_trie, _req->path);
+	res->location	   = location;
+	if (!res->location) {
 		res->set_response_code(SC_404);
 		handleErrorResponse(res);
 		return res;
@@ -387,16 +440,22 @@ HttpResponse *Connection::_prepareResponse()
 		return res;
 	}
 
-	CGI* cgi = suffix_trie_search(res->location->cgi_trie, _req->path);
+	CGI *cgi = suffix_trie_search(res->location->cgi_trie, _req->path);
 
 	try {
 		if (cgi != NULL) {
-			if (_parent == NULL) { throw new TCPServer::GenericException(); }
-			_parent->cgiSession = new CgiHandler(*_req, *res->location, cgi->_script, *res);
-			StatusCode code		= _parent->cgiSession->handle(*_req, *res);
+			if (this->_parent == NULL)
+				throw new TCPServer::GenericException();
+			CgiHandler *cgi_handler = new CgiHandler(*_req, *res->location, cgi->_script, *res);
+			cgi_handler->wrkr		= this->_parent;
+
+			StatusCode code = cgi_handler->handle(*_req, *res); // FIXME: what the heck???
+
 			res->set_response_code(code);
-			if (res->headers.find("content-length") == res->headers.end())
-				res->headers["content-length"] = ::itoa(static_cast<int>(res->body.size()));
+			if (res->headers.find("content-length") == res->headers.end()) {
+				// res->headers["content-length"] = ::size_to_ascii(res->body.size());
+				res->headers["content-length"] = ::size_to_ascii(19);
+			}
 			this->_status = HANDLING_CGI;
 			return res;
 		}
@@ -424,13 +483,13 @@ HttpResponse *Connection::_prepareResponse()
 		}
 	} catch (HttpResponse::Exception404 &) {
 		res->set_response_code(SC_404);
-        handleErrorResponse(res);
+		handleErrorResponse(res);
 		return res;
-	} catch (HttpResponse::Exception403&) {
+	} catch (HttpResponse::Exception403 &) {
 		res->set_response_code(SC_403);
-        handleErrorResponse(res);
+		handleErrorResponse(res);
 		return res;
-	} catch (HttpResponse::Exception30x&) {
+	} catch (HttpResponse::Exception30x &) {
 		handleDirectoryRedirect(res);
 		return res;
 	} catch (std::exception &) {
@@ -445,7 +504,8 @@ void Connection::_prepareResponse_get(HttpResponse *res) const
 {
 	res->body = _req->getHtmlResponse(*res, res->location);
 
-	if (_req->headers["range"].empty()) res->headers["accept-ranges"] = "bytes";
+	if (_req->headers["range"].empty())
+		res->headers["accept-ranges"] = "bytes";
 	else if (_req->headers["range"].find("bytes") == 0) {
 		_parseRange(*res);
 		res->set_response_code(SC_206);
@@ -456,16 +516,18 @@ void Connection::_prepareResponse_get(HttpResponse *res) const
 void Connection::_prepareResponse_put(HttpResponse *res) const
 {
 	std::string rel_path = _req->path.substr(res->location->_path.length(), _req->path.length());
-	if (rel_path.empty()) rel_path = "default";
+	if (rel_path.empty())
+		rel_path = "default";
 	std::string path = res->location->_root + rel_path;
 
-	if (access(path.c_str(), F_OK) == 0) res->set_response_code(SC_204);
+	if (access(path.c_str(), F_OK) == 0)
+		res->set_response_code(SC_204);
 	else
 		res->set_response_code(SC_201);
 
 	res->headers["content-length"] = "0";
-	int fd						   = open(path.c_str(), O_WRONLY | O_TRUNC | O_CREAT, S_IRWXU | S_IROTH | S_IRGRP);
-	write(fd, _req->body.data(), _req->body.size());
+	int fd = open(path.c_str(), O_WRONLY | O_TRUNC | O_CREAT, S_IRWXU | S_IROTH | S_IRGRP);
+	write(fd, &_req->body[0], _req->body.size());
 	close(fd);
 }
 
@@ -495,34 +557,35 @@ void Connection::_prepareResponse_delete(HttpResponse *res) const
 		res->set_response_code(SC_204);
 		res->headers["content-length"] = "0";
 	} else {
-		;// handle_error
+		; // handle_error
 	}
 }
 
-void Connection::handleErrorResponse(HttpResponse* res) const
+void Connection::handleErrorResponse(HttpResponse *res) const
 {
 	std::map<std::string, std::string>::const_iterator path_it;
 
 	path_it = _srv->getCfg().http.server.error_pages.find(res->statuscode);
-	while (path_it != _srv->getCfg().http.server.error_pages.end())
-	{
-		std::string	path = path_it->second;
-		Location	*location = reinterpret_cast<Location*>(prefix_trie_search(_srv->getCfg().http.server.loc_trie, path));
+	while (path_it != _srv->getCfg().http.server.error_pages.end()) {
+
+		TrieNode *loc_trie = _srv->getCfg().http.server.loc_trie;
+		Location *location = prefix_trie_search<Location>(loc_trie, path_it->second);
 
 		if (location == NULL)
 			break;
-		path = apply_location(path, location);
+
+		std::string path = apply_location(path, location);
 		// std::cout << path << std::endl;
 		res->headers["content-type"] = _req->getMimeType(path);
 		try {
 			res->readHtmlFile(path);
-		} catch (HttpResponse::Exception404 &e)
-		{
+		} catch (HttpResponse::Exception404 &ex) {
 			res->set_response_code(SC_404);
-			break ;
+			(void) ex; // FIXME: do actually smth with `ex`
+			break;
 		}
 		res->headers["content-length"] = ::itoa(res->body.length());
-		return ;
+		return;
 	}
 	res->headers["content-type"] = "text/html";
 	res->buildDefaultErrorPage();
@@ -538,39 +601,44 @@ void Connection::handleRedirectResponse(HttpResponse *res, Redirect *redir) cons
 
 void Connection::handleDirectoryRedirect(HttpResponse *res) const
 {
-	std::string path = res->location->_path + res->filename + '/';
+	std::string path		 = res->location->_path + res->filename + '/';
 	res->headers["Location"] = path;
 	handleErrorResponse(res);
 }
 
-void Connection::_parseRange(HttpResponse& res) const
+void Connection::_parseRange(HttpResponse &res) const
 {
 	std::string rangestr = _req->headers["range"];
 	size_t		i		 = rangestr.find('=');
 	char	   *endptr;
-	size_t		start = std::strtol(&rangestr.c_str()[i + 1], &endptr, 10);
+	size_t		start = std::strtol(&rangestr.c_str()[i + 1], &endptr, 0);
 
-	if (*endptr != '-') return;
+	if (*endptr != '-')
+		return;
 	endptr++;
-	size_t end = std::strtol(endptr, &endptr, 10);
-	if (end == 0) end = res.body.length() - 1;
+	size_t end = std::strtol(endptr, &endptr, 0);
+	if (end == 0)
+		end = res.body.length() - 1;
 
-	res.headers["content-range"] = "bytes " + ::itoa(start) + "-" + ::itoa(end) + "/" + ::itoa(res.body.length());
-	if (end < res.body.length() - 1) res.body.erase(end + 1);
+	res.headers["content-range"] =
+		"bytes " + ::itoa(start) + "-" + ::itoa(end) + "/" + ::itoa(res.body.length());
+	if (end < res.body.length() - 1)
+		res.body.erase(end + 1);
 	res.body.erase(0, start);
 }
 
 void Connection::clearRequest()
 {
-	_in.clear();
-	_in_off = 0;
+	_inputBuffer.clear();
+	_inOffset = 0;
 	_resetCurrentRequest();
 }
 
 void Connection::closeSocketFd()
 {
 	int fd = _fd;
-	if (fd != -1) ::close(fd);
+	if (fd != -1)
+		::close(fd);
 	_fd = -1;
 }
 
@@ -585,8 +653,8 @@ void Connection::reset()
 	delete _req;
 	_req = NULL;
 
-	_in.clear();
-	_in_off = 0;
+	_inputBuffer.clear();
+	_inOffset = 0;
 
 	_peerClosedInput = false;
 	_status			 = READING_HEADERS;
@@ -601,7 +669,7 @@ void Connection::setSrv(TCPServer *srv)
 	_srv = srv;
 }
 
-TCPServer const&	Connection::getSrv() const
+TCPServer const &Connection::getSrv() const
 {
 	return *_srv;
 }
@@ -610,15 +678,23 @@ void Connection::setFd(int fd)
 {
 	_fd		  = fd;
 	int flags = fcntl(_fd, F_GETFL, 0);
-	if (flags >= 0) fcntl(_fd, F_SETFL, flags | O_NONBLOCK);
+	if (flags >= 0)
+		fcntl(_fd, F_SETFL, flags | O_NONBLOCK);
 }
 
 int Connection::getFd() const
 {
 	return _fd;
 }
+
 Connection::e_status Connection::getStatus() const
 {
+	return _status;
+}
+
+Connection::e_status Connection::setStatus(e_status status)
+{
+	_status = status;
 	return _status;
 }
 

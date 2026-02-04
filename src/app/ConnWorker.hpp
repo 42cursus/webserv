@@ -23,39 +23,41 @@
 
 class ConnWorker {
 public:
-    typedef Connection::e_status e_status;
+	typedef Connection::e_status e_status;
 
-    explicit ConnWorker();
-    ConnWorker(const ConnWorker &other);
-    ~ConnWorker();
+	explicit ConnWorker();
+	ConnWorker(const ConnWorker &other);
+	~ConnWorker();
 
-    void setSrv(TCPServer *srv);
-    void setConnFd(int connFd);
+	void setSrv(TCPServer *srv);
+	void setConnFd(int connFd);
 
-    int getConnFd() const;
+	int getConnFd() const;
 
-    Connection::e_result handleRequest();
-    Connection::e_result sendResponse();
+	Connection::e_result handleRequest();
+	Connection::e_result sendResponse();
 
-    bool hasPendingResponses() const;
+	bool hasPendingResponses() const;
 
-    void resetForReuse();
-    void clearRequest();
+	void resetForReuse();
+	void clearRequest();
 
-    e_status getStatus() const;
+	e_status getStatus() const;
+	e_status setStatus(Connection::e_status);
 
-    void closeSocketFd();
+	void closeSocketFd();
 
-    class GenericException : public std::exception {
-    public:
-        const char *what() const throw();
-    };
+	class GenericException : public std::exception {
+	public:
+		const char *what() const throw();
+	};
 
-    ConnWorker& operator=(const ConnWorker&);
-    const Connection &getConn() const;
-	CgiHandler		*cgiSession;
+	ConnWorker			   &operator=(const ConnWorker &);
+	const Connection	   &getConn() const;
+	const Connection	   *getConnPtr() const;
+	CgiHandler::CGISession *cgiSession;
 
 private:
-    Connection _conn;
+	Connection _conn;
 };
-#endif //WORKER_HPP
+#endif//WORKER_HPP
