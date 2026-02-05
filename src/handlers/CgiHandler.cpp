@@ -153,6 +153,7 @@ StatusCode CgiHandler::handle(HttpRequest &req, HttpResponse &res)
 	// fclose(fp);
 	// free(line);
 
+	// FIXME: do it in a non-blocking way
 	waitpid(sess._pid, &sess._wstatus, WUNTRACED);
 	while (!WIFEXITED(sess._wstatus) && !WIFSIGNALED(sess._wstatus))
 		waitpid(sess._pid, &sess._wstatus, WUNTRACED);

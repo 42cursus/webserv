@@ -254,6 +254,7 @@ bool Connection::_shouldKeepAlive(const HttpRequest &req) const
  */
 bool Connection::_tryExtractOneRequest()
 {
+	/* ================================ */
 	size_t hdr_end = _inputBuffer.find(CRLF CRLF, _inOffset);
 	if (hdr_end == std::string::npos)
 		return false;
@@ -263,6 +264,8 @@ bool Connection::_tryExtractOneRequest()
 
 	// std::cout << FT_MAGENTA << "Request ready on fd: " << _fd << std::endl;
 	// std::cout << FT_GREEN << header_block << FT_RESET << std::endl;
+
+	/* ================================ */
 
 	HttpRequest *req = new HttpRequest();
 	try {
