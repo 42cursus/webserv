@@ -352,3 +352,14 @@ void	log_shutdown(void)
 
 	std::cout << log.str() << std::endl;
 }
+
+void	log_prune(ConnWorker const& wrkr)
+{
+	std::stringstream	log;
+
+	log_time(log);
+	log_status(log, LOG_SERVER);
+	log << " Pruning active connection with " << wrkr.getConn().getIpStr();
+
+	std::cout << log.str() << std::endl;
+}

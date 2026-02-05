@@ -12,6 +12,7 @@
 
 #include "WebServer.hpp"
 #include "Logging.hpp"
+#include "WorkerPool.hpp"
 #include <exception>
 
 /*
@@ -35,7 +36,8 @@ WebServer::WebServer() :
 */
 
 WebServer::~WebServer()
-{}
+{
+}
 
 /*
 ** -------------------------------- OPERATORS ---------------------------------
@@ -104,6 +106,7 @@ int WebServer::stop()
         _servers[i]->stop();
         delete _servers[i];
     }
+	_wrkrPool.killOrphans();
 	log_shutdown();
     return 0;
 }

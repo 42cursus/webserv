@@ -38,6 +38,7 @@ public:
 	ConnWorker *alloc(TCPServer *srv);
 	void		free(ConnWorker *wrkr);
 	size_t		getNumAlloced(void) const;
+	void		killOrphans();
 };
 
 #endif

@@ -57,6 +57,7 @@ void	log_startup_error(TCPServer const& srv, StartupCategory type);
 void	log_no_servers(void);
 void	log_server_stop(TCPServer const& srv);
 void	log_shutdown(void);
+void	log_prune(ConnWorker const& wrkr);
 
 void	log_connection(ConnWorker const& wrkr, ConnectStatus status);
 

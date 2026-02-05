@@ -13,6 +13,7 @@
 #include "WorkerPool.hpp"
 #include "ConnWorker.hpp"
 #include "Connection.hpp"
+#include "Logging.hpp"
 #include "TCPServer.hpp"
 #include <cstddef>
 #include <vector>
@@ -30,6 +31,10 @@ WorkerPool::WorkerPool(size_t size) : _allocp(0)
 
 WorkerPool::~WorkerPool()
 {
+}
+
+void	WorkerPool::killOrphans()
+{
     ConnWorker *	wrkr;
 
 	for (size_t i = 0; i < _size; i++)
@@ -37,7 +42,7 @@ WorkerPool::~WorkerPool()
 		wrkr = _getWorker(i);
 		if (wrkr->getConnFd() != -1)
 		{
-			std::cout << "Pruning orphaned worker with fd " << wrkr->getConnFd() << std::endl;
+			log_prune(*wrkr);
 			wrkr->closeSocketFd();
 		}
 	}
