@@ -67,13 +67,14 @@ int TCPServer::start()
 	_socket_fd = socket(in.sin_family, SOCK_STREAM, 0);
 
 	if (_socket_fd < 0) {
-		std::cerr << "Failed to create server socket." << std::endl;
+		log_startup_error(*this, SU_SOCKET_CREATE);
 		throw TCPServer::GenericException();
 	}
+	log_startup(*this, SU_SOCKET_CREATE);
     int flags = fcntl(_socket_fd, F_GETFL, 0);
     if (flags < 0 || fcntl(_socket_fd, F_SETFL, flags | O_NONBLOCK) < 0)
     {
-        std::cerr << "Failed to set O_NONBLOCK on listen socket: " << strerror(errno) << std::endl;
+		log_startup_error(*this, SU_SOCKET_CREATE);
         throw TCPServer::GenericException();
     }
 
@@ -85,15 +86,17 @@ int TCPServer::start()
 	int is_bind = bind(_socket_fd, (struct sockaddr *)&in, sizeof in);
 	if (is_bind < 0)
 	{
-		std::cerr << "Failed to bind server socket." << std::endl;
+		log_startup_error(*this, SU_SOCKET_BIND);
 		throw TCPServer::GenericException();
 	}
+	log_startup(*this, SU_SOCKET_BIND);
 	// listens on socket
 	if (listen(_socket_fd, 5) < 0)
 	{
-		std::cerr << "Failed to listen on server socket." << std::endl;
+		log_startup_error(*this, SU_SOCKET_LISTEN);
 		throw TCPServer::GenericException();
 	}
+	log_startup(*this, SU_SOCKET_LISTEN);
 
 	// struct sockaddr_in inin = in;
 	// inin.sin_family = in.sin_family;
@@ -104,12 +107,13 @@ int TCPServer::start()
 	// std::cout << "Server started on: "
 	// 		  << "http://" << inet_ntoa(inin.sin_addr) << ":" << ntohs(in.sin_port) << "/\n"
 	// 		  << std::endl;
-	log_startup(*this);
+	log_startup(*this, SU_SERVER_STARTED);
 	return _socket_fd;
 }
 
 void TCPServer::stop()
 {
+	log_server_stop(*this);
 	close(_socket_fd);
 	free_trie(this->getCfg().http.server.loc_trie);
 	free_trie(this->getCfg().http.server.redirect_trie);

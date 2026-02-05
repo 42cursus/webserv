@@ -62,10 +62,12 @@ all: $(NAME)
 $(NAME): $(OBJS)
 		$(CPP) $(CFLAGS) $(OBJS) -o $@
 		@echo "$(NAME) BUILD COMPLETE!"
+		@stty -echoctl
 
 $(BUILD_DIR)/%.o: %.cpp
 		@if [ ! -d $(@D) ]; then mkdir -p $(@D); fi
 		$(CPP) $(CFLAGS) $(INCLUDE_FLAGS) -c $^ -o $@
+
 
 ## clean
 clean:

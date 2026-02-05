@@ -26,6 +26,7 @@ void sig_handler(int sig, siginfo_t *info, void *ctx) {
 	int sipid = info->si_pid;
 	if (sig == SIGINT)
 		g_var = SIGINT;
+	// std::cout << "\e[1k" << std::endl;
 	return;
 	(void)ctx;
 	(void)sipid;
@@ -72,10 +73,9 @@ int main(int argc, char **argv) {
 	WebServer srv;
 
 	srv.init(cfgs);
-	srv.start();
+	if (srv.start() != 0)
+		return 1;
 	srv.serve();
 	srv.stop();
-
 	return (0);
-	(void) filename;
 }

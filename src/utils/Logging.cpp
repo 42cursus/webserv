@@ -140,6 +140,7 @@ void	log_connection(ConnWorker const& wrkr, ConnectStatus status)
 
 void log_request(Connection const& conn, HttpRequest const& req)
 {
+	// return ;
 	std::stringstream	log;
 
 	log_time(log);
@@ -199,6 +200,7 @@ static void log_statuscode(std::stringstream &log, std::string code)
 
 void log_response(Connection const& conn, HttpResponse const& res)
 {
+	// return ;
 	std::stringstream	log;
 
 	log_time(log);
@@ -251,14 +253,102 @@ void	log_parsing_error(std::exception &e)
 	std::cout << log.str() << std::endl;
 }
 
-void log_startup(TCPServer const& srv)
+void log_startup(TCPServer const& srv, StartupCategory type)
 {
 	std::stringstream	log;
 
 	log_time(log);
 	log_status(log, LOG_SERVER);
-	log << " Server started at : ";
-	log_server(log, srv);
+	switch (type) {
+		case (SU_SOCKET_CREATE):
+			log << " Server socket created on fd " << srv.getSocketFd();
+			break;
+		case (SU_SOCKET_BIND):
+			log << " Server socket bound to port "
+				<< colour_num(srv.idx * 2) << FT_BOLD
+				<< ntohs(srv.getCfg().http.server.ipv4_listen.sin_port)
+				<< FT_RESET;
+			break;
+		case (SU_SOCKET_LISTEN):
+			log << " Server listening on port "
+				<< colour_num(srv.idx * 2) << FT_BOLD
+				<< ntohs(srv.getCfg().http.server.ipv4_listen.sin_port)
+				<< FT_RESET;
+			break;
+		case (SU_SERVER_STARTED):
+			log << " Server started at : ";
+			log_server(log, srv);
+			break;
+	}
+
+	std::cout << log.str() << std::endl;
+}
+
+void log_startup_error(TCPServer const& srv, StartupCategory type)
+{
+	if (type == SU_SERVER_STARTED)
+		return ;
+
+	std::stringstream	log;
+
+	log_time(log);
+	log_status(log, LOG_ERROR);
+	switch (type) {
+		case (SU_SOCKET_CREATE):
+			log << " Failed to create server socket";
+			break ;
+		case (SU_SOCKET_BIND):
+			log << " Failed to bind to port "
+				<< colour_num(srv.idx * 2) << FT_BOLD
+				<< ntohs(srv.getCfg().http.server.ipv4_listen.sin_port)
+				<< FT_RESET
+				<< " : is a server already running?";
+			break ;
+		case (SU_SOCKET_LISTEN):
+			log << " Failed to listen on port "
+				<< colour_num(srv.idx * 2) << FT_BOLD
+				<< ntohs(srv.getCfg().http.server.ipv4_listen.sin_port)
+				<< FT_RESET;
+			break ;
+		default:
+			break ;
+	}
+
+	std::cout << log.str() << std::endl;
+}
+
+void	log_no_servers(void)
+{
+	std::stringstream	log;
+
+	log_time(log);
+	log_status(log, LOG_ERROR);
+	log << " No servers successfully started : shutting down...";
+
+	std::cout << log.str() << std::endl;
+}
+
+void	log_server_stop(TCPServer const& srv)
+{
+	std::stringstream	log;
+
+	log_time(log);
+	log_status(log, LOG_SERVER);
+	log << " Cleaning up server on port "
+		<< colour_num(srv.idx * 2) << FT_BOLD
+		<< ntohs(srv.getCfg().http.server.ipv4_listen.sin_port)
+		<< FT_RESET;
+
+	std::cout << log.str() << std::endl;
+}
+
+void	log_shutdown(void)
+{
+	std::stringstream	log;
+
+	log_time(log);
+	log_status(log, LOG_SERVER);
+	log << " Shutting down webserver...";
 
 	std::cout << log.str() << std::endl;
 }

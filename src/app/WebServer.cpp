@@ -12,6 +12,7 @@
 
 #include "WebServer.hpp"
 #include "Logging.hpp"
+#include <exception>
 
 /*
 ** -------------------------------- STATIC VARS -------------------------------
@@ -68,10 +69,24 @@ int WebServer::init(std::vector<Config>	&cfgs)
 int WebServer::start()
 {
     std::vector<TCPServer *>::iterator srv;
+    std::vector<TCPServer *> started;
     for (srv = _servers.begin(); srv != _servers.end(); ++srv) {
         TCPServer *server = *srv;
-        server->start();
+		try {
+			server->start();
+			started.push_back(server);
+		} catch (std::exception &e) {
+			server->stop();
+			delete server;
+		}
     }
+	_servers = started;
+
+	if (_servers.size() == 0)
+	{
+		log_no_servers();
+		return 1;
+	}
 
     for (uint64_t i = 0; i < _servers.size(); i++)
     {
@@ -89,6 +104,7 @@ int WebServer::stop()
         _servers[i]->stop();
         delete _servers[i];
     }
+	log_shutdown();
     return 0;
 }
 
