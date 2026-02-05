@@ -51,6 +51,8 @@ public:
 	int start();
 	void acceptAllPendingConns(WorkerPool& wrkrPool, int epoll_fd);
 	void stop();
+
+	int idx;
 };
 
 

@@ -67,6 +67,18 @@ public:
 	public:
 		const char* what() const throw();
 	};
+
+	class MalformedStartlineException : public  std::exception
+	{
+	public:
+		const char* what() const throw();
+	};
+
+	class MalformedHeaderException : public  std::exception
+	{
+	public:
+		const char* what() const throw();
+	};
 };
 
 #endif //HTTPREQUEST_HPP

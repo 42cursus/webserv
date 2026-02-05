@@ -17,6 +17,7 @@
 #include "StatusCode.hpp"
 #include "TCPServer.hpp"
 #include "webserv.hpp"
+#include <exception>
 #include <iomanip>
 #include <sys/types.h>
 #include <sys/socket.h>
@@ -33,25 +34,43 @@ static void log_time(std::stringstream &log)
 	log << buf;
 }
 
+std::string colour_num(int num)
+{
+	std::string out;
+
+	switch (num % 7) {
+		case (0):
+			out += FT_RED;
+			break;
+		case (1):
+			out += FT_GREEN;
+			break;
+		case (2):
+			out += FT_YELLOW;
+			break;
+		case (3):
+			out += FT_BLUE;
+			break;
+		case (4):
+			out += FT_MAGENTA;
+			break;
+		case (5):
+			out += FT_CYAN;
+			break;
+		case (6):
+			out += FT_WHITE;
+			break;
+	}
+
+	return out;
+}
+
 static void log_server(std::stringstream &log, TCPServer const& srv)
 {
 	sockaddr_in const& sock = srv.getCfg().http.server.ipv4_listen;
-	// struct addrinfo hints;
-	// struct addrinfo *res;
-	//
-	// hints.ai_family = AF_UNSPEC;
-	// hints.ai_flags = AI_CANONNAME;
-	// hints.ai_socktype = SOCK_STREAM;
-	// getaddrinfo("localhost", "8080", &hints, &res);
-	//
-	// for (; res != NULL; res = res->ai_next)
-	// {
-	//   std::cout << res->ai_canonname << std::endl;
-	// }
-	
 
 	log  << "http://" << FT_BLUE << FT_BOLD << inet_ntoa(sock.sin_addr);
-	log << FT_WHITE << ":" << FT_YELLOW << ntohs(sock.sin_port) << FT_RESET << " ";
+	log << FT_WHITE << ":" << colour_num(srv.idx * 2) << ntohs(sock.sin_port) << FT_RESET << " ";
 }
 
 static void log_status(std::stringstream &log, LogCategory cat)
@@ -59,20 +78,23 @@ static void log_status(std::stringstream &log, LogCategory cat)
 	log << '[' << FT_BOLD;
 	switch (cat)
 	{
-		case (ERROR):
+		case (LOG_ERROR):
 			log << FT_RED << "ERROR" << FT_RESET "]  ";
 			break;
-		case (WARNING):
+		case (LOG_WARNING):
 			log << FT_YELLOW << "WARNING" << FT_RESET "]";
 			break;
-		case (NOTICE):
+		case (LOG_NOTICE):
 			log << FT_MAGENTA << "NOTICE" << FT_RESET "] ";
 			break;
-		case (CONNECTION):
+		case (LOG_CONNECTION):
 			log << FT_GREEN << "CONNECT" << FT_RESET "]";
 			break;
-		case (IO):
+		case (LOG_IO):
 			log << FT_BLUE << "I/O" FT_RESET << "]    ";
+			break;
+		case (LOG_SERVER):
+			log << FT_CYAN << "SERVER" FT_RESET << "] ";
 			break;
 	}
 }
@@ -91,23 +113,23 @@ void	log_connection(ConnWorker const& wrkr, ConnectStatus status)
 	log_server(log, wrkr.getConn().getSrv());
 
 	switch (status) {
-		case (CONNECT):
-			log_status(log, CONNECTION);
+		case (CONN_CONNECT):
+			log_status(log, LOG_CONNECTION);
 			log << ' ' << wrkr.getConn().getIpStr()
 				<< " : Client connection " FT_GREEN "established" FT_RESET;
 			break;
-		case (DISCONNECT):
-			log_status(log, CONNECTION);
+		case (CONN_DISCONNECT):
+			log_status(log, LOG_CONNECTION);
 			log << ' ' << wrkr.getConn().getIpStr()
 				<< " : Client connection " FT_MAGENTA "disconnected" FT_RESET;
 			break;
-		case (HANGUP):
-			log_status(log, WARNING);
+		case (CONN_HANGUP):
+			log_status(log, LOG_WARNING);
 			log << ' ' << wrkr.getConn().getIpStr()
 				<< " : Client connection " FT_YELLOW "hung up" FT_RESET;
 			break;
-		case (ERR):
-			log_status(log, ERROR);
+		case (CONN_ERROR):
+			log_status(log, LOG_WARNING);
 			log << ' ' << wrkr.getConn().getIpStr()
 				<< " : Client connection " FT_RED "encountered an error" FT_RESET;
 			break;
@@ -118,17 +140,32 @@ void	log_connection(ConnWorker const& wrkr, ConnectStatus status)
 
 void log_request(Connection const& conn, HttpRequest const& req)
 {
+	// return ;
 	std::stringstream	log;
 
 	log_time(log);
 	log_server(log, conn.getSrv());
-	log_status(log, IO);
+	log_status(log, LOG_IO);
 
 	log << ' ' << conn.getIpStr() << " : ";
 	log << FT_CYAN FT_BOLD << "REQUEST" FT_RESET  " \""
 		<< req.method << " " << req.path << " " << req.protocol
 		<< "\" ";
 	log << "headers=" << req.header_len << " body=" << req.content_length;
+
+	std::cout << log.str() << std::endl;
+}
+
+void	log_request_error(Connection const& conn, std::exception &e)
+{
+	std::stringstream	log;
+
+	log_time(log);
+	log_server(log, conn.getSrv());
+	log_status(log, LOG_WARNING);
+
+	log << ' ' << conn.getIpStr() << " : ";
+	log << e.what();
 
 	std::cout << log.str() << std::endl;
 }
@@ -163,11 +200,12 @@ static void log_statuscode(std::stringstream &log, std::string code)
 
 void log_response(Connection const& conn, HttpResponse const& res)
 {
+	// return ;
 	std::stringstream	log;
 
 	log_time(log);
 	log_server(log, conn.getSrv());
-	log_status(log, IO);
+	log_status(log, LOG_IO);
 
 	log << ' ' << conn.getIpStr() << " : ";
 	log << FT_MAGENTA FT_BOLD << "RESPONSE " FT_RESET;
@@ -178,6 +216,150 @@ void log_response(Connection const& conn, HttpResponse const& res)
 	std::map<std::string, std::string>::const_iterator it;
 	if ((it = res.headers.find("content-type")) != res.headers.end())
 		log << " type=" << it->second;
+
+	std::cout << log.str() << std::endl;
+}
+
+void log_title(void)
+{
+	std::string title =	FT_BLUE " _       __     __                        \n"
+						FT_BLUE "| |     / /__  / /_  ________  ______   __ "    FT_RED "  ___   _______ \n"
+						FT_BLUE "| | /| / / _ \\/ __ \\/ ___/ _ \\/ ___/ | / / " FT_RED " / _ \\ / __/ _ \\\n"
+						FT_BLUE "| |/ |/ /  __/ /_/ (__  )  __/ /   | |/ /  "    FT_RED "/ // // _ \\\\_, /\n"
+						FT_BLUE "|__/|__/\\___/_.___/____/\\___/_/    |___/   "  FT_RED "\\___(_)___/___/ \n";
+
+	std::cout << FT_BOLD << title << FT_RESET << std::endl;
+}
+
+void	log_parsing(std::string& filename)
+{
+	std::stringstream	log;
+
+	log_time(log);
+	log_status(log, LOG_SERVER);
+	log << " Parsing config file : " << FT_BOLD << FT_MAGENTA << filename << FT_RESET;
+
+	std::cout << log.str() << std::endl;
+}
+
+void	log_parsing_error(std::exception &e)
+{
+	std::stringstream	log;
+
+	log_time(log);
+	log_status(log, LOG_ERROR);
+	log << ' ' << e.what();
+
+	std::cout << log.str() << std::endl;
+}
+
+void log_startup(TCPServer const& srv, StartupCategory type)
+{
+	std::stringstream	log;
+
+	log_time(log);
+	log_status(log, LOG_SERVER);
+	switch (type) {
+		case (SU_SOCKET_CREATE):
+			log << " Server socket created on fd " << srv.getSocketFd();
+			break;
+		case (SU_SOCKET_BIND):
+			log << " Server socket bound to port "
+				<< colour_num(srv.idx * 2) << FT_BOLD
+				<< ntohs(srv.getCfg().http.server.ipv4_listen.sin_port)
+				<< FT_RESET;
+			break;
+		case (SU_SOCKET_LISTEN):
+			log << " Server listening on port "
+				<< colour_num(srv.idx * 2) << FT_BOLD
+				<< ntohs(srv.getCfg().http.server.ipv4_listen.sin_port)
+				<< FT_RESET;
+			break;
+		case (SU_SERVER_STARTED):
+			log << " Server started at : ";
+			log_server(log, srv);
+			break;
+	}
+
+	std::cout << log.str() << std::endl;
+}
+
+void log_startup_error(TCPServer const& srv, StartupCategory type)
+{
+	if (type == SU_SERVER_STARTED)
+		return ;
+
+	std::stringstream	log;
+
+	log_time(log);
+	log_status(log, LOG_ERROR);
+	switch (type) {
+		case (SU_SOCKET_CREATE):
+			log << " Failed to create server socket";
+			break ;
+		case (SU_SOCKET_BIND):
+			log << " Failed to bind to port "
+				<< colour_num(srv.idx * 2) << FT_BOLD
+				<< ntohs(srv.getCfg().http.server.ipv4_listen.sin_port)
+				<< FT_RESET
+				<< " : is a server already running?";
+			break ;
+		case (SU_SOCKET_LISTEN):
+			log << " Failed to listen on port "
+				<< colour_num(srv.idx * 2) << FT_BOLD
+				<< ntohs(srv.getCfg().http.server.ipv4_listen.sin_port)
+				<< FT_RESET;
+			break ;
+		default:
+			break ;
+	}
+
+	std::cout << log.str() << std::endl;
+}
+
+void	log_no_servers(void)
+{
+	std::stringstream	log;
+
+	log_time(log);
+	log_status(log, LOG_ERROR);
+	log << " No servers successfully started : shutting down...";
+
+	std::cout << log.str() << std::endl;
+}
+
+void	log_server_stop(TCPServer const& srv)
+{
+	std::stringstream	log;
+
+	log_time(log);
+	log_status(log, LOG_SERVER);
+	log << " Cleaning up server on port "
+		<< colour_num(srv.idx * 2) << FT_BOLD
+		<< ntohs(srv.getCfg().http.server.ipv4_listen.sin_port)
+		<< FT_RESET;
+
+	std::cout << log.str() << std::endl;
+}
+
+void	log_shutdown(void)
+{
+	std::stringstream	log;
+
+	log_time(log);
+	log_status(log, LOG_SERVER);
+	log << " Shutting down webserver...";
+
+	std::cout << log.str() << std::endl;
+}
+
+void	log_prune(ConnWorker const& wrkr)
+{
+	std::stringstream	log;
+
+	log_time(log);
+	log_status(log, LOG_SERVER);
+	log << " Pruning active connection with " << wrkr.getConn().getIpStr();
 
 	std::cout << log.str() << std::endl;
 }

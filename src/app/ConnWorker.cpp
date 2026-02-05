@@ -68,9 +68,12 @@ Connection::e_result ConnWorker::handleRequest()
 Connection::e_result ConnWorker::sendResponse()
 {
     Connection::e_result r = _conn.onWritable();
-    if (r == Connection::WANT_WRITE)
-        return Connection::WANT_WRITE;
-    return Connection::OK;
+	
+    // if (r == Connection::WANT_WRITE)
+    //     return Connection::WANT_WRITE;
+    // return Connection::OK;
+	
+	return r;
 }
 
 bool ConnWorker::hasPendingResponses() const

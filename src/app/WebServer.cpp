@@ -12,6 +12,8 @@
 
 #include "WebServer.hpp"
 #include "Logging.hpp"
+#include "WorkerPool.hpp"
+#include <exception>
 
 /*
 ** -------------------------------- STATIC VARS -------------------------------
@@ -34,7 +36,8 @@ WebServer::WebServer() :
 */
 
 WebServer::~WebServer()
-{}
+{
+}
 
 /*
 ** -------------------------------- OPERATORS ---------------------------------
@@ -52,11 +55,13 @@ int WebServer::init(std::vector<Config>	&cfgs)
 {
     // man 2 epoll_create: size must be greater than zero to ensure backward compatibility
     this->_epoll_fd = epoll_create(1);
+	int	srv_count = 0;
 
     std::vector<Config>::iterator cfg;
     for (cfg = cfgs.begin(); cfg != cfgs.end(); ++cfg) {
         Config &config = *cfg;
         TCPServer *server = new TCPServer(config);
+		server->idx = srv_count++;
         _servers.push_back(server);
     }
 
@@ -66,10 +71,24 @@ int WebServer::init(std::vector<Config>	&cfgs)
 int WebServer::start()
 {
     std::vector<TCPServer *>::iterator srv;
+    std::vector<TCPServer *> started;
     for (srv = _servers.begin(); srv != _servers.end(); ++srv) {
         TCPServer *server = *srv;
-        server->start();
+		try {
+			server->start();
+			started.push_back(server);
+		} catch (std::exception &e) {
+			server->stop();
+			delete server;
+		}
     }
+	_servers = started;
+
+	if (_servers.size() == 0)
+	{
+		log_no_servers();
+		return 1;
+	}
 
     for (uint64_t i = 0; i < _servers.size(); i++)
     {
@@ -87,6 +106,8 @@ int WebServer::stop()
         _servers[i]->stop();
         delete _servers[i];
     }
+	_wrkrPool.killOrphans();
+	log_shutdown();
     return 0;
 }
 
@@ -98,7 +119,7 @@ void WebServer::serve_handle_worker(ConnWorker *wrkr, struct epoll_event &ev)
     if (ev.events & EPOLLERR)
     {
         // std::cout << "error occured on fd: " << wrkr->getConnFd() << " (EPOLLERR)" << std::endl;
-		log_connection(*wrkr, ERR);
+		log_connection(*wrkr, CONN_ERROR);
         epoll_del(wrkr->getConnFd());
         wrkr->resetForReuse();
         _wrkrPool.free(wrkr);
@@ -113,7 +134,7 @@ void WebServer::serve_handle_worker(ConnWorker *wrkr, struct epoll_event &ev)
         if (retval == Connection::CLOSED || retval == Connection::ERROR)
         {
             // std::cout << "Connection closed on fd: " << wrkr->getConnFd() << std::endl;
-			log_connection(*wrkr, DISCONNECT);
+			log_connection(*wrkr, CONN_DISCONNECT);
             epoll_del(wrkr->getConnFd());
             wrkr->resetForReuse();
             _wrkrPool.free(wrkr);
@@ -138,7 +159,7 @@ void WebServer::serve_handle_worker(ConnWorker *wrkr, struct epoll_event &ev)
         if (hup && !wrkr->hasPendingResponses())
         {
             // std::cout << "Peer hung up (EPOLLHUP) and no pending responses on fd: " << wrkr->getConnFd() << std::endl;
-			log_connection(*wrkr, HANGUP);
+			log_connection(*wrkr, CONN_HANGUP);
             epoll_del(wrkr->getConnFd());
             wrkr->resetForReuse();
             _wrkrPool.free(wrkr);
@@ -152,8 +173,8 @@ void WebServer::serve_handle_worker(ConnWorker *wrkr, struct epoll_event &ev)
         Connection::e_result retval = wrkr->sendResponse();
         if (retval == Connection::CLOSED || retval == Connection::ERROR)
         {
-            std::cout << "Connection closed on fd: " << wrkr->getConnFd() << std::endl;
-			log_connection(*wrkr, DISCONNECT);
+            // std::cout << "Connection closed on fd: " << wrkr->getConnFd() << std::endl;
+			log_connection(*wrkr, CONN_DISCONNECT);
             epoll_del(wrkr->getConnFd());
             wrkr->resetForReuse();
             _wrkrPool.free(wrkr);

@@ -50,8 +50,7 @@ size_t	HttpRequest::_parseStartLine(const std::string &line)
 	}
 	if (tokens.size() != 3)
 	{
-		std::cerr << "Failed to parse start line." << std::endl;
-		throw HttpRequest::GenericException();
+		throw HttpRequest::MalformedStartlineException();
 	}
 	method = tokens[0];
 	headers["method"] = method;
@@ -75,11 +74,13 @@ size_t	HttpRequest::_parseHeader(const std::string &line)
 			break;
 		if (line[i] == ' ')
 		{
-			std::cerr << "Malformed request in header: " << FT_BLUE << line.substr(0, line_end) << FT_RESET << std::endl;
-			throw HttpRequest::GenericException();
+			// std::cerr << "Malformed request in header: " << FT_BLUE << line.substr(0, line_end) << FT_RESET << std::endl;
+			throw HttpRequest::MalformedHeaderException();
 		}
 		field += std::tolower(line[i++]);
 	}
+	if (i == line_end)
+		throw HttpRequest::GenericException();
 	while (line[++i] == ' ')
 		;
 	while (i < line_end)
@@ -185,6 +186,7 @@ std::string HttpRequest::getMimeType(const std::string &path) const {
 	mimeTypes.insert(std::make_pair("jpeg", "image/jpeg"));
 	mimeTypes.insert(std::make_pair("jpg", "image/jpeg"));
 	mimeTypes.insert(std::make_pair("png", "image/png"));
+	mimeTypes.insert(std::make_pair("ico", "image/x-icon"));
 	mimeTypes.insert(std::make_pair("mp4", "video/mp4"));
 
 	std::string fileExtension = path.substr(path.find_last_of(".") + 1);
@@ -205,10 +207,19 @@ HttpRequest::e_method	HttpRequest::get_method() const
 	throw GenericException();
 }
 
-
 const char *HttpRequest::GenericException::what() const throw()
 {
 	return "Client exception happened";
+}
+
+const char *HttpRequest::MalformedStartlineException::what() const throw()
+{
+	return "Malformed request in start line";
+}
+
+const char *HttpRequest::MalformedHeaderException::what() const throw()
+{
+	return "Malformed request in header";
 }
 
 HttpRequest::HttpRequest()

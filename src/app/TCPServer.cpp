@@ -17,6 +17,7 @@
 #include "Prefix_suffix.hpp"
 #include "WebServer.hpp"
 #include "WorkerPool.hpp"
+#include "webserv.hpp"
 #include <arpa/inet.h>
 #include <cstring>
 #include <stdio.h>
@@ -66,13 +67,14 @@ int TCPServer::start()
 	_socket_fd = socket(in.sin_family, SOCK_STREAM, 0);
 
 	if (_socket_fd < 0) {
-		std::cerr << "Failed to create server socket." << std::endl;
+		log_startup_error(*this, SU_SOCKET_CREATE);
 		throw TCPServer::GenericException();
 	}
+	log_startup(*this, SU_SOCKET_CREATE);
     int flags = fcntl(_socket_fd, F_GETFL, 0);
     if (flags < 0 || fcntl(_socket_fd, F_SETFL, flags | O_NONBLOCK) < 0)
     {
-        std::cerr << "Failed to set O_NONBLOCK on listen socket: " << strerror(errno) << std::endl;
+		log_startup_error(*this, SU_SOCKET_CREATE);
         throw TCPServer::GenericException();
     }
 
@@ -84,30 +86,34 @@ int TCPServer::start()
 	int is_bind = bind(_socket_fd, (struct sockaddr *)&in, sizeof in);
 	if (is_bind < 0)
 	{
-		std::cerr << "Failed to bind server socket." << std::endl;
+		log_startup_error(*this, SU_SOCKET_BIND);
 		throw TCPServer::GenericException();
 	}
+	log_startup(*this, SU_SOCKET_BIND);
 	// listens on socket
 	if (listen(_socket_fd, 5) < 0)
 	{
-		std::cerr << "Failed to listen on server socket." << std::endl;
+		log_startup_error(*this, SU_SOCKET_LISTEN);
 		throw TCPServer::GenericException();
 	}
+	log_startup(*this, SU_SOCKET_LISTEN);
 
-	struct sockaddr_in inin = in;
-	inin.sin_family = in.sin_family;
-	if (ntohs(in.sin_addr.s_addr) == htonl(INADDR_ANY))
-		inin.sin_addr.s_addr = inet_addr("127.0.0.1");
-
-	std::cout << "Listen socket_fd: " << _socket_fd << std::endl;
-	std::cout << "Server started on: "
-			  << "http://" << inet_ntoa(inin.sin_addr) << ":" << ntohs(in.sin_port) << "/\n"
-			  << std::endl;
+	// struct sockaddr_in inin = in;
+	// inin.sin_family = in.sin_family;
+	// if (ntohs(in.sin_addr.s_addr) == htonl(INADDR_ANY))
+	// inin.sin_addr.s_addr = inet_addr("127.0.0.1");
+	//
+	// std::cout << "Listen socket_fd: " << _socket_fd << std::endl;
+	// std::cout << "Server started on: "
+	// 		  << "http://" << inet_ntoa(inin.sin_addr) << ":" << ntohs(in.sin_port) << "/\n"
+	// 		  << std::endl;
+	log_startup(*this, SU_SERVER_STARTED);
 	return _socket_fd;
 }
 
 void TCPServer::stop()
 {
+	log_server_stop(*this);
 	close(_socket_fd);
 	free_trie(this->getCfg().http.server.loc_trie);
 	free_trie(this->getCfg().http.server.redirect_trie);
@@ -153,12 +159,13 @@ void	TCPServer::acceptAllPendingConns(WorkerPool& wrkrPool, int epoll_fd)
 
         wrkr = wrkrPool.alloc(this);
         wrkr->setConnFd(conn_fd);
+		unsigned short port = ntohs(_addr.sin_port);
 		std::string ip = inet_ntoa(_addr.sin_addr);
-		ip += ":" + ::itoa(ntohs(_addr.sin_port));
+		ip += ':' + colour_num(port) + ::itoa(port) + FT_RESET;
 		const_cast<Connection&>(wrkr->getConn()).setIpStr(ip);
 
         // std::cout << "Accepted connection. fd: " << conn_fd << std::endl;
-		log_connection(*wrkr, CONNECT);
+		log_connection(*wrkr, CONN_CONNECT);
         struct timeval timeout;
         timeout.tv_sec = 0;  // 5 seconds timeout
         timeout.tv_usec = 20;
