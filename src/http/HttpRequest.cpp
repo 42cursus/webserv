@@ -183,6 +183,7 @@ std::string HttpRequest::getMimeType(const std::string &path) const {
 	mimeTypes.insert(std::make_pair("jpeg", "image/jpeg"));
 	mimeTypes.insert(std::make_pair("jpg", "image/jpeg"));
 	mimeTypes.insert(std::make_pair("png", "image/png"));
+	mimeTypes.insert(std::make_pair("ico", "image/x-icon"));
 	mimeTypes.insert(std::make_pair("mp4", "video/mp4"));
 
 	std::string fileExtension = path.substr(path.find_last_of(".") + 1);
