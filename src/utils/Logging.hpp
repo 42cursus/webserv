@@ -64,6 +64,7 @@ void	log_connection(ConnWorker const& wrkr, ConnectStatus status);
 void	log_request(Connection const& conn, HttpRequest const& req);
 void	log_request_error(Connection const& conn, std::exception &e);
 void	log_response(Connection const& conn, HttpResponse const& res);
+void	log_chunk_response(Connection const& conn, HttpResponse const& res);
 
 std::string	colour_num(int num);
 

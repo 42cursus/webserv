@@ -12,6 +12,7 @@
 
 #include "Logging.hpp"
 #include "ConnWorker.hpp"
+#include "Connection.hpp"
 #include "HttpRequest.hpp"
 #include "HttpResponse.hpp"
 #include "StatusCode.hpp"
@@ -216,6 +217,26 @@ void log_response(Connection const& conn, HttpResponse const& res)
 	if ((it = res.headers.find("content-length")) != res.headers.end())
 		log << " body=" << it->second;
 
+	if ((it = res.headers.find("content-type")) != res.headers.end())
+		log << " type=" << it->second;
+
+	std::cout << log.str() << std::endl;
+}
+
+void log_chunk_response(Connection const& conn, HttpResponse const& res)
+{
+	std::stringstream	log;
+
+	log_time(log);
+	log_server(log, conn.getSrv());
+	log_status(log, LOG_IO);
+
+	log << ' ' << conn.getIpStr() << " : ";
+	log << FT_YELLOW FT_BOLD << "CHUNK " << FT_RESET;
+	log_statuscode(log, res.statuscode);
+	log << " sent=" << res.response.length();
+
+	std::map<std::string, std::string>::const_iterator it;
 	if ((it = res.headers.find("content-type")) != res.headers.end())
 		log << " type=" << it->second;
 

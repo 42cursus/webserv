@@ -169,8 +169,8 @@ Connection::e_result Connection::_sendToClient()
     std::string& response = cur->response;
     if (cur->start >= response.size())
         return OK;
-    // if (cur->start == 0 && cur->chunk_start == 0)
-    if (cur->start == 0)
+    if (cur->start == 0 && cur->chunk_start == 0)
+    // if (cur->start == 0)
 		log_response(*this, *cur);
 
     size_t	remaining = response.length() - cur->start;
@@ -191,6 +191,7 @@ Connection::e_result Connection::_sendToClient()
 						cur->chunking_express = true;
 					cur->start = 0;
 					cur->response = cur->chunk_response(32768);
+					log_chunk_response(*this, *cur);
 					return WANT_WRITE;
 				}
 			}
