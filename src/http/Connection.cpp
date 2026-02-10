@@ -13,6 +13,7 @@
 #include "Connection.hpp"
 #include "ConnWorker.hpp"
 #include <algorithm>
+#include <cstddef>
 #include <cstring>
 #include <cstdlib>
 #include <cerrno>
@@ -161,9 +162,14 @@ Connection::e_result Connection::_sendToClient()
         return ERROR;
 
     HttpResponse* cur = item.res;
+	
+	// if (cur->chunked && cur->chunking_ready)
+	// 	return _sendToClientChunked(item);
+
     std::string& response = cur->response;
     if (cur->start >= response.size())
         return OK;
+    // if (cur->start == 0 && cur->chunk_start == 0)
     if (cur->start == 0)
 		log_response(*this, *cur);
 
@@ -177,6 +183,18 @@ Connection::e_result Connection::_sendToClient()
         cur->start += static_cast<size_t>(w);
         if (cur->start >= response.size())
         {
+			if (cur->chunked)
+			{
+				if (!cur->chunking_express)
+				{
+					if (cur->chunk_start >= cur->body.size())
+						cur->chunking_express = true;
+					cur->start = 0;
+					cur->response = cur->chunk_response(32768);
+					return WANT_WRITE;
+				}
+			}
+
             const bool close_after = item.closeAfter;
 
             delete cur;
@@ -210,6 +228,16 @@ Connection::e_result Connection::_sendToClient()
 
     return ERROR;
 }
+
+// Connection::e_result Connection::_sendToClientChunked(PendingResponse &item)
+// {
+//     HttpResponse*	cur = item.res;
+// 	const size_t	body_size = cur->body.size();
+//
+//     if (cur->start >= body_size)
+//         return OK;
+//
+// }
 
 void Connection::_consumeInputBytes(size_t nbytes)
 {
@@ -441,6 +469,7 @@ HttpResponse* Connection::_prepareResponse()
 
 		switch (_req->get_method()) {
 			case (HttpRequest::GET): {
+				res->chunked = true;
 				StaticFileHandler handler(*res->location);
 				StatusCode code = handler.handle(*_req, *res);
 				res->set_response_code(code);

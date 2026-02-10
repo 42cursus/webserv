@@ -210,10 +210,12 @@ void log_response(Connection const& conn, HttpResponse const& res)
 	log << ' ' << conn.getIpStr() << " : ";
 	log << FT_MAGENTA FT_BOLD << "RESPONSE " FT_RESET;
 	log_statuscode(log, res.statuscode);
-	log << " sent=" << res.response.length()
-		<< " body=" << res.headers.find("content-length")->second;
-
+	log << " sent=" << res.response.length();
 	std::map<std::string, std::string>::const_iterator it;
+
+	if ((it = res.headers.find("content-length")) != res.headers.end())
+		log << " body=" << it->second;
+
 	if ((it = res.headers.find("content-type")) != res.headers.end())
 		log << " type=" << it->second;
 

@@ -75,10 +75,16 @@ public:
 	void clearRequest();
 
 private:
+	struct PendingResponse {
+		HttpResponse *res;
+		bool		  closeAfter;// close connection after this response is fully sent
+	};
+
 	Connection &operator=(const Connection &);
 
 	e_result _recvFromClient();
 	e_result _sendToClient();
+	// e_result _sendToClientChunked(PendingResponse &item);
 	e_result _processInput();
 
 	bool _tryExtractOneRequest();
@@ -104,11 +110,6 @@ private:
 	size_t		_in_off;
 
 	bool _peerClosedInput;// read() returned 0 at least once
-
-	struct PendingResponse {
-		HttpResponse *res;
-		bool		  closeAfter;// close connection after this response is fully sent
-	};
 
 	// output queue
 	std::deque<PendingResponse> _pendingResponses;

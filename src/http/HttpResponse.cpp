@@ -16,6 +16,7 @@
 #include <fstream>
 #include <iostream>
 #include "HttpResponse.hpp"
+#include "Connection.hpp"
 #include "webserv.hpp"
 #include <dirent.h>
 #include <sys/stat.h>
@@ -155,6 +156,13 @@ std::string itoa(int value)
 	return oss.str();
 }
 
+std::string itoha(size_t value)
+{
+	std::ostringstream oss;
+	oss << std::hex << value;
+	return oss.str();
+}
+
 static bool is_dir(std::string const& path)
 {
 	struct stat statbuf;
@@ -194,11 +202,38 @@ void HttpResponse::buildHttpResponse(void)
 	// headers["content-type"] = mimetype;
 	// headers["content-length"] = itoa(body.length());
 	buffer << "HTTP/1.1 " << statuscode << " " << statusmsg << "\r\n";
-
+	if (chunked)
+	{
+		headers["transfer-encoding"] = "chunked";
+		headers.erase("content-length");
+	}
 	for (StringMap::const_iterator it = headers.begin(); it != headers.end(); ++it)
 		buffer << it->first << ": " << it->second << "\r\n";
-	buffer << "\r\n" << body;
+	buffer << "\r\n";
+	if (!chunked)
+		buffer << body;
 	response = buffer.str();
+}
+
+std::string HttpResponse::chunk_response(size_t chunk_size)
+{
+	ssize_t remaining = body.size() - chunk_start;
+
+	if (remaining < 0)
+		chunk_size = 0;
+	else if (remaining < static_cast<ssize_t>(chunk_size))
+		chunk_size = remaining;
+
+	std::string chunk = ::itoha(chunk_size);
+
+	chunk += CRLF;
+	if (chunk_start < body.size())
+		chunk += body.substr(chunk_start, chunk_size);
+	chunk += CRLF;
+	chunk_start += chunk_size;
+
+	// std::cout << chunk;
+	return chunk;
 }
 
 static std::vector<std::string> _get_directory_members(std::string path)
@@ -273,7 +308,7 @@ void HttpResponse::buildDefaultErrorPage(void)
 	this->body += "<p><em>Faithfully yours, Fintan.</em></p>\n</body>\n</html>\n";
 }
 
-HttpResponse::HttpResponse() : start(0)
+HttpResponse::HttpResponse() : start(0), chunked(false), chunk_start(0), chunking_express(false)
 {
 
 }

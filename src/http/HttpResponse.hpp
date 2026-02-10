@@ -40,10 +40,14 @@ public:
 	std::string	response;
 	size_t		start;
 	Location	*location;
+	bool		chunked;
+	size_t		chunk_start;
+	bool		chunking_express;
 
 	void		buildAutoindexBody(void);
 	void		buildDefaultErrorPage(void);
 	void		buildHttpResponse(void);
+	std::string	chunk_response(size_t chunk_size);
 	StatusCode	readHtmlFile(const std::string &filename);
 	HttpResponse();
 
