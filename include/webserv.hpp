@@ -66,5 +66,6 @@ struct Config
 
 std::string itoa(int);
 std::string itoha(size_t);
+std::string size_to_ascii(size_t);
 
 #endif //WEBSERV_HPP

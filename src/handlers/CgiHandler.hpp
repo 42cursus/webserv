@@ -16,6 +16,7 @@
 #include <string>
 #include <vector>
 
+#include "Connection.hpp"
 #include "HttpRequest.hpp"
 #include "HttpResponse.hpp"
 #include "IHandler.hpp"
@@ -25,41 +26,53 @@ class ConnWorker;
 
 class CgiHandler : public IHandler {
 public:
-    enum State {
-        READY,
-        WRITING_BODY,
-        READING_OUTPUT,
-        DONE,
-        ERROR
-    };
+	enum State { READY, WRITING_BODY, READING_OUTPUT, DONE, ERROR };
 
-    CgiHandler(HttpRequest &req, const Location &loc, const std::string &script_path, HttpResponse &res);
+	class CGISession {
+	public:
+		CGISession();
+		Connection::e_result onWritable();
+		Connection::e_result onReadable();
+		int					 register_read_pipe(int epoll_fd);
+		int					 register_write_pipe(int epoll_fd);
+		std::string			 body_buffer() const;
+		std::string			 raw_output() const;
 
-    std::string body_buffer() const;
-    std::string raw_output() const;
+		pid_t		_pid;
+		int			_wstatus;
+		int			_stdin_pipe[2]; // server -> CGI
+		int			_stdout_pipe[2];// CGI -> server
+		std::string _body_buffer;
+		std::string _raw_output; // FIXME: should probably use std::vector<char> as by design std::string doesn't guarantee contiguous space
 
-    HttpResponse &res() const;
-    HttpRequest &req() const;
-	ConnWorker		*wrkr;
+		Connection *_parentConnection;
 
-	StatusCode handle(HttpRequest &req, HttpResponse &res);
-	void		register_read_pipe(int epoll_fd);
-	void		register_write_pipe(int epoll_fd);
+	private:
+		std::size_t bytes_sent, bytes_received;
+	};
 
 private:
-    State _state;
-    pid_t _pid;
-    int _stdin_pipe[2]; // server -> CGI
-    int _stdout_pipe[2];// CGI -> server
-    std::string _body_buffer;
-    std::string _raw_output;
+	State _state;
 
-    HttpResponse &_res;
-    HttpRequest &_req;
-    std::string _script_path;
 
-    void _build_env(std::vector<std::string> &env);
-    void _parse_output_into_response();
+	HttpResponse &_res;
+	HttpRequest	 &_req;
+	std::string	  _script_path;
+
+	void _build_env(std::vector<std::string> &env);
+	void _parse_output_into_response(CGISession &sess);
+
+public:
+	CgiHandler(HttpRequest		 &req,
+			   const Location	 &loc,
+			   const std::string &script_path,
+			   HttpResponse		 &res);
+
+	HttpResponse &res() const;
+	HttpRequest	 &req() const;
+	ConnWorker	 *wrkr;
+
+	StatusCode handle(HttpRequest &req, HttpResponse &res);
 };
 
 #endif//CGIHANDLER_HPP

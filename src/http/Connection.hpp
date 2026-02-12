@@ -34,10 +34,10 @@ class ConnWorker;
 class Connection {
 public:
 	enum e_result {
-		OK		   = 0,
-		WANT_WRITE = 1,
-		CLOSED	   = 2,
-		ERROR	   = 3
+		OK = 0,
+		WANT_WRITE,
+		CLOSED,
+		ERROR
 	};
 
 	enum e_status {
@@ -45,6 +45,11 @@ public:
 		READING_BODY,
 		HANDLING_CGI,
 		READY_TO_WRITE
+	};
+
+	struct PendingResponse {
+		HttpResponse *res;
+		bool		  closeAfter;// close connection after this response is fully sent
 	};
 
 	Connection();
@@ -59,9 +64,13 @@ public:
 	ConnWorker *getParent() const;
 	void		setParent(ConnWorker *parent);
 	e_status	getStatus() const;
+	e_status	setStatus(e_status);
 
 	e_result onReadable();
 	e_result onWritable();
+
+	void enqueueResponse(PendingResponse &req);
+	HttpResponse *getCurrentResponse() const;
 
 
 	bool hasPendingResponses() const;
@@ -74,6 +83,8 @@ public:
 	void reset();
 	void clearRequest();
 
+	e_result _sendToClient();
+
 private:
 	struct PendingResponse {
 		HttpResponse *res;
@@ -83,8 +94,6 @@ private:
 	Connection &operator=(const Connection &);
 
 	e_result _recvFromClient();
-	e_result _sendToClient();
-	// e_result _sendToClientChunked(PendingResponse &item);
 	e_result _processInput();
 
 	bool _tryExtractOneRequest();
@@ -106,10 +115,10 @@ private:
 	//    HttpResponse*   _res;
 
 	// input buffering
-	std::string _in;
-	size_t		_in_off;
+	std::string _inputBuffer;
+	size_t		_inOffset;
 
-	bool _peerClosedInput;// read() returned 0 at least once
+	bool _peerClosedInput;
 
 	// output queue
 	std::deque<PendingResponse> _pendingResponses;
@@ -123,6 +132,9 @@ private:
 	void		  _prepareResponse_put(HttpResponse *res) const;
 	void		  _prepareResponse_delete(HttpResponse *res) const;
 	void		  _prepareResponse_post(HttpResponse *res) const;
+	bool		  _wantWrite() const;
+	e_result	  _handleReadable();
+	e_result	  _handleWritable();
 };
 
 #endif//CONNECTION_HPP

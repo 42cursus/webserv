@@ -24,7 +24,6 @@
 */
 
 ConnWorker::ConnWorker()
-    : _conn()
 {
 	_conn.setParent(this);
 }
@@ -68,13 +67,7 @@ Connection::e_result ConnWorker::handleRequest()
 
 Connection::e_result ConnWorker::sendResponse()
 {
-    Connection::e_result r = _conn.onWritable();
-	
-    // if (r == Connection::WANT_WRITE)
-    //     return Connection::WANT_WRITE;
-    // return Connection::OK;
-	
-	return r;
+	return _conn.onWritable();
 }
 
 bool ConnWorker::hasPendingResponses() const
@@ -121,8 +114,17 @@ ConnWorker::e_status ConnWorker::getStatus() const
     return _conn.getStatus();
 }
 
+ConnWorker::e_status ConnWorker::setStatus(Connection::e_status status)
+{
+    return _conn.setStatus(status);
+}
+
 const Connection &ConnWorker::getConn() const {
     return _conn;
+}
+
+const Connection *ConnWorker::getConnPtr() const {
+    return &_conn;
 }
 
 /*

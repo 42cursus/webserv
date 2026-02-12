@@ -13,31 +13,31 @@
 #ifndef HTTPRESPONSE_HPP
 #define HTTPRESPONSE_HPP
 
-#include <string>
-#include <map>
-#include "webserv.hpp"
 #include "State.hpp"
+#include "webserv.hpp"
+#include <map>
+#include <string>
 
 class HttpResponse {
 
 private:
+	static const int   HTTP_RESPONSE_STATUS_CODES = 600;
+	static const char *_status_codes[HTTP_RESPONSE_STATUS_CODES][2];
+	struct StatusCodeInitializer {
+		StatusCodeInitializer();
+		static void _set_status(int code, const char *num, const char *msg);
+	};
 
-    static const int	HTTP_RESPONSE_STATUS_CODES = 600;
-    static const char	*_status_codes[HTTP_RESPONSE_STATUS_CODES][2];
-    struct StatusCodeInitializer {
-        StatusCodeInitializer();
-        static void _set_status(int code, const char *num, const char *msg);
-    };
-
-    static StatusCodeInitializer status_code_initializer;
+	__attribute__((unused)) static StatusCodeInitializer status_code_initializer;
 
 public:
+	std::map<std::string, std::string> headers;
+
 	std::string statuscode;
 	std::string statusmsg;
-	std::map<std::string, std::string> headers;
 	std::string body;
 	std::string filename;
-	std::string	response;
+	std::string response;
 	size_t		start;
 	Location	*location;
 	bool		chunked;
@@ -50,34 +50,36 @@ public:
 	std::string	chunk_response(size_t chunk_size);
 	StatusCode	readHtmlFile(const std::string &filename);
 	HttpResponse();
+	~HttpResponse();
 
-	class GenericException : public  std::exception
-	{
+	void	   buildAutoindexBody(void);
+	void	   buildDefaultErrorPage(void);
+	void	   buildHttpResponse(void);
+	StatusCode readHtmlFile(const std::string &filename);
+
+
+	class GenericException : public std::exception {
 	public:
-		const char* what() const throw();
+		const char *what() const throw();
 	};
 
-	class Exception404 : public  std::exception
-	{
+	class Exception404 : public std::exception {
 	public:
-		const char* what() const throw();
+		const char *what() const throw();
 	};
 
-	class Exception403 : public  std::exception
-	{
+	class Exception403 : public std::exception {
 	public:
-		const char* what() const throw();
+		const char *what() const throw();
 	};
 
-	class Exception30x : public  std::exception
-	{
+	class Exception30x : public std::exception {
 	public:
-		const char* what() const throw();
+		const char *what() const throw();
 	};
-	
-	void		set_response_code(StatusCode code);
 
+	void set_response_code(StatusCode code);
 };
 
 
-#endif //HTTPRESPONSE_HPP
+#endif//HTTPRESPONSE_HPP

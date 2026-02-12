@@ -26,7 +26,10 @@
 #include "src/handlers/CgiHandler.hpp"
 #include "Location.hpp"
 
-HttpRequest::HttpRequest(const std::string &path) : path(path)
+HttpRequest::HttpRequest(const std::string &path) : path(path), content_length(0)
+{}
+
+HttpRequest::~HttpRequest()
 {}
 
 size_t	HttpRequest::_parseStartLine(const std::string &line)

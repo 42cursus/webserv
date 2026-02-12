@@ -145,15 +145,17 @@ void WebServer::serve_handle_worker(ConnWorker *wrkr, struct epoll_event &ev)
         {
             wrkr->cgiSession->register_write_pipe(_epoll_fd);
             wrkr->cgiSession->register_read_pipe(_epoll_fd);
-            epoll_del(wrkr->getConnFd());
-            //  FIXME: do stuff: too tired to figure out how to handle this rn
+
+            // epoll_del(wrkr->getConnFd());
+        	wrkr->setStatus(Connection::READY_TO_WRITE);
+
             return;
         }
 
         if (retval == Connection::WANT_WRITE || wrkr->getStatus() == Connection::READY_TO_WRITE)
-            epoll_mod(wrkr->getConnFd(), tag_ptr(wrkr, WebServer::EP_WRKR), EPOLLOUT); // FIXME: now it can only be writte which is not true
+            epoll_mod(wrkr->getConnFd(), tag_ptr(wrkr, EP_WRKR), EPOLLIN | EPOLLOUT);
 
-        // If peer hung up and we have nothing queued to write, we can close now.
+        // If peer hung up, and we have nothing queued to write, we can close now.
         if (hup && !wrkr->hasPendingResponses())
         {
             // std::cout << "Peer hung up (EPOLLHUP) and no pending responses on fd: " << wrkr->getConnFd() << std::endl;
@@ -199,11 +201,10 @@ int WebServer::serve()
 {
     extern sig_atomic_t				g_var;
     ConnWorker* 					wrkr;
-    CgiHandler*						cgiSession;
 
-    while(g_var != SIGINT)
+	while(g_var != SIGINT)
     {
-        int nfds = epoll_wait(_epoll_fd, _events.data(), EVS_SIZE, -1);
+        int nfds = epoll_wait(_epoll_fd, &_events[0], EVS_SIZE, -1); // event demultiplexer
         for (int i = 0; i < nfds; i++)
         {
             void *ptr = _events[i].data.ptr;
@@ -221,9 +222,31 @@ int WebServer::serve()
                     serve_handle_worker(wrkr, _events[i]);
                     break;
                 }
-                case (EP_CGIS): {
-                    cgiSession = reinterpret_cast<CgiHandler *>(detag_ptr(ptr));
-                    (void)cgiSession; // handle cgi IO
+                case (EP_CGI): {
+                    CgiHandler::CGISession* cgiSession = reinterpret_cast<CgiHandler::CGISession *>(detag_ptr(ptr));
+
+                	if (_events[i].events & EPOLLIN) {
+						Connection::e_result result = cgiSession->onReadable();
+                		if (result == Connection::OK) {
+                			epoll_del(cgiSession->_stdout_pipe[0]);
+                		} else if (result == Connection::WANT_WRITE) {
+							int fd = cgiSession->_parentConnection->getFd();
+
+							ConnWorker *worker = cgiSession->_parentConnection->getParent();
+							epoll_mod(fd, tag_ptr(worker,EP_WRKR), EPOLLIN | EPOLLOUT);
+
+                			//write(fd, &cgiSession->_raw_output[0], cgiSession->_raw_output.size()); // FIXME:!!!!!
+
+                		} else if (result == Connection::ERROR) {
+							; // do stuff
+                		}
+					} else if (_events[i].events & EPOLLOUT) {
+                		Connection::e_result result = cgiSession->onWritable();
+						if (result == Connection::OK) {
+							epoll_del(cgiSession->_stdin_pipe[1]);
+						} else if (result == Connection::ERROR) {
+						}
+                	}
                     break;
                 }
                 default:
@@ -236,7 +259,7 @@ int WebServer::serve()
     return 0;
 }
 
-int WebServer::epoll_mod(int fd, void* tagged_ptr, EPOLL_EVENTS events)
+int WebServer::epoll_mod(int fd, void *tagged_ptr, uint32_t events)
 {
     struct epoll_event ev;
     std::memset(&ev, 0, sizeof(ev));
@@ -277,7 +300,7 @@ void	*tag_ptr(void *ptr, WebServer::epoll_ptr_type tag)
         case (WebServer::EP_WRKR):
             tagged |= TAG_B;
             break;
-        case (WebServer::EP_CGIS):
+        case (WebServer::EP_CGI):
             tagged |= TAG_C;
             break;
         case (WebServer::EP_NONE):
@@ -300,7 +323,7 @@ WebServer::epoll_ptr_type	get_tag(void *ptr)
             return WebServer::EP_WRKR;
         case (0xC):
             // std::cout << "ptr tagged as server" << std::endl;
-            return WebServer::EP_CGIS;
+            return WebServer::EP_CGI;
         default:
             return WebServer::EP_NONE;
     }
