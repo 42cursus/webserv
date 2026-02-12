@@ -168,7 +168,6 @@ std::string itoha(size_t value)
 	return oss.str();
 }
 
-static bool is_dir(std::string const& path)
 std::string size_to_ascii(std::size_t value)
 {
 	enum { BUF_SIZE = std::numeric_limits<std::size_t>::digits10 + 1 };
@@ -333,8 +332,8 @@ void HttpResponse::buildDefaultErrorPage(void)
 	this->body += "<p><em>Faithfully yours, Fintan.</em></p>\n</body>\n</html>\n";
 }
 
-HttpResponse::HttpResponse() : start(0), chunked(false), chunk_start(0), chunking_express(false)
-{
+HttpResponse::HttpResponse() : start(0), chunked(false), chunk_start(0), chunking_express(false), body_complete(false)
+{}
 
 HttpResponse::~HttpResponse()
 {}

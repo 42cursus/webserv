@@ -126,7 +126,6 @@ StatusCode CgiHandler::handle(HttpRequest &req, HttpResponse &res)
 			argv.push_back(buf);
 		}
 		argv.push_back(NULL);
-
 		if (execve(argv[0], &argv[0], &envp[0]) == -1) {
 			for (size_t i = 0; i < argv.size(); ++i)
 				delete[] argv[i];
@@ -161,12 +160,13 @@ StatusCode CgiHandler::handle(HttpRequest &req, HttpResponse &res)
 	this->wrkr->cgiSession = new CGISession();
 	*this->wrkr->cgiSession = sess;
 	return SC_200;
+	(void)_state;
 }
 
 Connection::e_result CgiHandler::CGISession::onWritable()
 {
 	if (_parentConnection->hasPendingResponses())
-		_parentConnection->_sendToClient();
+		_parentConnection->_sendToClient(); // FIXME: onWritable is for writing body to cgi handler
 
 	return  Connection::OK;
 }
@@ -179,24 +179,34 @@ Connection::e_result CgiHandler::CGISession::onReadable()
 	std::vector<char> v(8192);
 
 	const ssize_t bytesRead = read(this->_stdout_pipe[0], &v[0], v.size());
+	HttpResponse *res = _parentConnection->getCurrentResponse();
 
 	if (bytesRead > 0) {
 		v.resize(bytesRead);
 		std::string toAppend(v.begin(), v.end());
 		_raw_output += toAppend;
 
-		HttpResponse *res = _parentConnection->getCurrentResponse();
 
 		if (res->response.size() == 0)
 			res->buildHttpResponse();
 
-		res->response.append(_raw_output);
+		res->body.append(_raw_output);
 
 		result = Connection::WANT_WRITE;
 	}
 	else if (bytesRead < 0)
+	{
+		std::cout << "Cgi read error" << std::endl;
 		result = Connection::ERROR;
+	}
+	else
+	{
+		std::cout << "Cgi read zero" << std::endl;
+		res->body_complete = true;
+	}
 	return result;
+	(void)this->bytes_sent;
+	(void)this->bytes_received;
 }
 
 int CgiHandler::CGISession::register_read_pipe(int epoll_fd)
@@ -213,7 +223,7 @@ int CgiHandler::CGISession::register_write_pipe(int epoll_fd)
 	CGISession *ptr = this;
 	ev.data.ptr = tag_ptr(ptr, WebServer::EP_CGI);
 	ev.events	= EPOLLOUT;
-	return epoll_ctl(epoll_fd, EPOLL_CTL_ADD, _stdin_pipe[1], &ev);
+	return epoll_ctl(epoll_fd, EPOLL_CTL_ADD, this->_parentConnection->getFd(), &ev);
 }
 
 void CgiHandler::_build_env(std::vector<std::string> &env)

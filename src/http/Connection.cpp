@@ -182,7 +182,12 @@ Connection::e_result Connection::_sendToClient()
 				if (!cur->chunking_express)
 				{
 					if (cur->chunk_start >= cur->body.size())
-						cur->chunking_express = true;
+					{
+						// if (cur->body_complete)
+							cur->chunking_express = true;
+						// else
+						// 	return WANT_WRITE;
+					}
 					cur->start = 0;
 					cur->response = cur->chunk_response(32768);
 					log_chunk_response(*this, *cur);
@@ -496,18 +501,19 @@ HttpResponse *Connection::_prepareResponse()
 
 			StatusCode code = cgi_handler->handle(*_req, *res); // FIXME: what the heck???
 
+			res->chunked = true;
 			res->set_response_code(code);
-			if (res->headers.find("content-length") == res->headers.end()) {
-				// res->headers["content-length"] = ::size_to_ascii(res->body.size());
-				res->headers["content-length"] = ::size_to_ascii(19);
-			}
+			// if (res->headers.find("content-length") == res->headers.end()) {
+			// 	// res->headers["content-length"] = ::size_to_ascii(res->body.size());
+			// 	res->headers["content-length"] = ::size_to_ascii(19);
+			// }
 			this->_status = HANDLING_CGI;
 			return res;
 		}
 
 		switch (_req->get_method()) {
 			case (HttpRequest::GET): {
-				res->chunked = true;
+				// res->chunked = true;
 				StaticFileHandler handler(*res->location);
 				StatusCode		  code = handler.handle(*_req, *res);
 				res->set_response_code(code);

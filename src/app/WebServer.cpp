@@ -11,9 +11,11 @@
 /* ************************************************************************** */
 
 #include "WebServer.hpp"
+#include "HttpResponse.hpp"
 #include "Logging.hpp"
 #include "WorkerPool.hpp"
 #include <exception>
+#include <sys/epoll.h>
 
 /*
 ** -------------------------------- STATIC VARS -------------------------------
@@ -247,6 +249,11 @@ int WebServer::serve()
 						} else if (result == Connection::ERROR) {
 						}
                 	}
+					// else if (_events[i].events & (EPOLLERR | EPOLLHUP)) {
+					// 	HttpResponse* res = cgiSession->_parentConnection->getCurrentResponse();
+					// 	// std::cout << "Pipe error" << std::endl;
+					// 	res->body_complete = true;
+					// }
                     break;
                 }
                 default:

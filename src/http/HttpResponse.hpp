@@ -43,12 +43,8 @@ public:
 	bool		chunked;
 	size_t		chunk_start;
 	bool		chunking_express;
+	bool		body_complete;
 
-	void		buildAutoindexBody(void);
-	void		buildDefaultErrorPage(void);
-	void		buildHttpResponse(void);
-	std::string	chunk_response(size_t chunk_size);
-	StatusCode	readHtmlFile(const std::string &filename);
 	HttpResponse();
 	~HttpResponse();
 
@@ -56,6 +52,7 @@ public:
 	void	   buildDefaultErrorPage(void);
 	void	   buildHttpResponse(void);
 	StatusCode readHtmlFile(const std::string &filename);
+	std::string	chunk_response(size_t chunk_size);
 
 
 	class GenericException : public std::exception {

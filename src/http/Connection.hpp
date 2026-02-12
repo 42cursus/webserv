@@ -86,10 +86,6 @@ public:
 	e_result _sendToClient();
 
 private:
-	struct PendingResponse {
-		HttpResponse *res;
-		bool		  closeAfter;// close connection after this response is fully sent
-	};
 
 	Connection &operator=(const Connection &);
 
