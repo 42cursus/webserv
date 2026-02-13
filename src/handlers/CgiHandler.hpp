@@ -46,7 +46,6 @@ public:
 		std::string _raw_output; // FIXME: should probably use std::vector<char> as by design std::string doesn't guarantee contiguous space
 
 		Connection *_parentConnection;
-		CgiHandler *_parentHandler;
 
 	private:
 		std::size_t bytes_sent, bytes_received;

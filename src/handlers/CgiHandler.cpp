@@ -160,7 +160,6 @@ StatusCode CgiHandler::handle(HttpRequest &req, HttpResponse &res)
 
 	this->wrkr->cgiSession = new CGISession();
 	*this->wrkr->cgiSession = sess;
-	sess._parentHandler = this;
 	return SC_200;
 	(void)_state;
 }

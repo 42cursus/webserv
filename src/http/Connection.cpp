@@ -527,10 +527,10 @@ HttpResponse *Connection::_prepareResponse()
 		if (cgi != NULL) {
 			if (this->_parent == NULL)
 				throw new TCPServer::GenericException();
-			CgiHandler *cgi_handler = new CgiHandler(*_req, *res->location, cgi->_script, *res);
-			cgi_handler->wrkr		= this->_parent;
+			CgiHandler cgi_handler(*_req, *res->location, cgi->_script, *res);
+			cgi_handler.wrkr		= this->_parent;
 
-			StatusCode code = cgi_handler->handle(*_req, *res); // FIXME: what the heck???
+			StatusCode code = cgi_handler.handle(*_req, *res); // FIXME: what the heck???
 
 			res->chunked = true;
 			res->set_response_code(code);
