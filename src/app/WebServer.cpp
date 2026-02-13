@@ -14,6 +14,7 @@
 #include "HttpResponse.hpp"
 #include "Logging.hpp"
 #include "WorkerPool.hpp"
+#include <csignal>
 #include <exception>
 #include <sys/epoll.h>
 
@@ -241,6 +242,10 @@ int WebServer::serve()
                 			//write(fd, &cgiSession->_raw_output[0], cgiSession->_raw_output.size()); // FIXME:!!!!!
 
                 		} else if (result == Connection::ERROR) {
+							epoll_del(cgiSession->_stdout_pipe[0]);
+							epoll_del(cgiSession->_stdin_pipe[1]);
+							kill(cgiSession->_pid, SIGTERM);
+							delete cgiSession;
 							; // do stuff
                 		}
 					} else if (_events[i].events & EPOLLOUT) {

@@ -11,6 +11,7 @@
 /* ************************************************************************** */
 
 #include "CgiHandler.hpp"
+#include "Connection.hpp"
 #include "HttpRequest.hpp"
 #include "HttpResponse.hpp"
 #include "Prefix_suffix.hpp"
@@ -182,6 +183,8 @@ Connection::e_result CgiHandler::CGISession::onReadable()
 
 	const ssize_t bytesRead = read(this->_stdout_pipe[0], &v[0], v.size());
 	HttpResponse *res = _parentConnection->getCurrentResponse();
+	if (res == NULL)
+		return Connection::ERROR;
 
 	if (bytesRead > 0) {
 		v.resize(bytesRead);

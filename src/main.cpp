@@ -38,7 +38,7 @@ void	sig_chld(int signo)
 	pid_t	pid;
 	int		stat;
 
-	std::cout << "handler called" << std::endl;
+	// std::cout << "handler called" << std::endl;
 
 	while ((pid = waitpid(-1, &stat, WNOHANG)) > 0) ;
 	return ;

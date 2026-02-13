@@ -1,8 +1,9 @@
 import os
 import time
 
-print("hello world")
-print(os.getenv("TRY"))
+# time.sleep(5)
+# print("hello world")
+# print(os.getenv("TRY"))
 num = 0
 # while True:
 while num < 10000000:
