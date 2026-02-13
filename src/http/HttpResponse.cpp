@@ -332,7 +332,16 @@ void HttpResponse::buildDefaultErrorPage(void)
 	this->body += "<p><em>Faithfully yours, Fintan.</em></p>\n</body>\n</html>\n";
 }
 
-HttpResponse::HttpResponse() : start(0), chunked(false), chunk_start(0), chunking_express(false), body_complete(false)
+HttpResponse::HttpResponse() :
+	statuscode(),
+	statusmsg(),
+	body(),
+	filename(),
+	start(0),
+	chunked(false),
+	chunk_start(0),
+	chunking_express(false),
+	body_complete(false)
 {}
 
 HttpResponse::~HttpResponse()

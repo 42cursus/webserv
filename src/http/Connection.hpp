@@ -27,6 +27,9 @@
 #ifndef CRLF
 #define CRLF "\r\n"
 #endif
+#ifndef CHUNK_END
+#define CHUNK_END "0\r\n\r\n"
+#endif
 
 class TCPServer;
 class ConnWorker;

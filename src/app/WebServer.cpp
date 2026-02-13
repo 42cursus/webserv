@@ -169,7 +169,7 @@ void WebServer::serve_handle_worker(ConnWorker *wrkr, struct epoll_event &ev)
         }
     }
     // Checks if a WRITE can be performed without blocking
-    else if (ev.events & EPOLLOUT && wrkr->getStatus() == Connection::READY_TO_WRITE)
+    if (ev.events & EPOLLOUT && wrkr->getStatus() == Connection::READY_TO_WRITE)
     {
         // std::cout << "Write ready on fd: " << wrkr->getConnFd() << std::endl;
         Connection::e_result retval = wrkr->sendResponse();
@@ -186,6 +186,7 @@ void WebServer::serve_handle_worker(ConnWorker *wrkr, struct epoll_event &ev)
         if (retval == Connection::OK)
         {
             // If peer hung up, don’t switch back to EPOLLIN; close once drained.
+        	// std::cout << "Returned Connection::OK" << std::endl;
             if (hup && !wrkr->hasPendingResponses())
             {
                 std::cout << "Finished writes after peer hangup on fd: " << wrkr->getConnFd() << std::endl;
@@ -243,17 +244,20 @@ int WebServer::serve()
 							; // do stuff
                 		}
 					} else if (_events[i].events & EPOLLOUT) {
-                		Connection::e_result result = cgiSession->onWritable();
-						if (result == Connection::OK) {
-							epoll_del(cgiSession->_stdin_pipe[1]);
-						} else if (result == Connection::ERROR) {
-						}
+						//           		Connection::e_result result = cgiSession->onWritable();
+						// if (result == Connection::OK) {
+						// 	epoll_del(cgiSession->_stdin_pipe[1]);
+						// } else if (result == Connection::ERROR) {
+						// }
                 	}
-					// else if (_events[i].events & (EPOLLERR | EPOLLHUP)) {
-					// 	HttpResponse* res = cgiSession->_parentConnection->getCurrentResponse();
-					// 	// std::cout << "Pipe error" << std::endl;
-					// 	res->body_complete = true;
-					// }
+					else if (_events[i].events & (EPOLLERR | EPOLLHUP)) {
+						HttpResponse* res = cgiSession->_parentConnection->getCurrentResponse();
+						// std::cout << "Pipe error" << std::endl;
+						res->body_complete = true;
+                		epoll_del(cgiSession->_stdout_pipe[0]);
+                		epoll_del(cgiSession->_stdin_pipe[1]);
+						delete cgiSession;
+					}
                     break;
                 }
                 default:

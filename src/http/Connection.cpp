@@ -149,7 +149,10 @@ void logServingFile(const std::string &path, const std::string &mimetype)
 Connection::e_result Connection::_sendToClient()
 {
 	if (_pendingResponses.empty())
+	{
+		// std::cout << "Returning OK as queue empty" << std::endl;
 		return OK;
+	}
 
 	PendingResponse &item = _pendingResponses.front();
 	if (!item.res)
@@ -162,7 +165,27 @@ Connection::e_result Connection::_sendToClient()
 
     std::string& response = cur->response;
     if (cur->start >= response.size())
-        return OK;
+	{
+		if (cur->chunk_start < cur->body.size() || cur->body_complete)
+		{
+			cur->start = 0;
+			cur->response = cur->chunk_response(32768);
+			if (cur->body_complete)
+			{
+				cur->chunking_express = true;
+				// cur->response += CHUNK_END;
+			}
+			log_chunk_response(*this, *cur);
+			// return WANT_WRITE;
+		}
+		else if (!cur->chunked)
+		{
+			// std::cout << "Returning OK as start > response.size()" << std::endl;
+        	return OK;
+		}
+		else
+			return WANT_WRITE;
+	}
     if (cur->start == 0 && cur->chunk_start == 0)
     // if (cur->start == 0)
 		log_response(*this, *cur);
@@ -183,10 +206,10 @@ Connection::e_result Connection::_sendToClient()
 				{
 					if (cur->chunk_start >= cur->body.size())
 					{
-						// if (cur->body_complete)
+						if (cur->body_complete)
 							cur->chunking_express = true;
-						// else
-						// 	return WANT_WRITE;
+						else
+							return WANT_WRITE;
 					}
 					cur->start = 0;
 					cur->response = cur->chunk_response(32768);
@@ -215,6 +238,7 @@ Connection::e_result Connection::_sendToClient()
 			e_result pr = _processInput();
 			if (pr == WANT_WRITE)
 				return WANT_WRITE;
+			// std::cout << "Returning OK as response complete" << std::endl;
 			return OK;
 		}
 		return WANT_WRITE;
@@ -357,12 +381,13 @@ bool Connection::_tryExtractOneRequest()
     HttpResponse* res = _prepareResponse();
 	if (_status == HANDLING_CGI)
 	{
+		res->buildHttpResponse();
 		PendingResponse presp;
 		presp.res		 = res;
 		presp.closeAfter = !_shouldKeepAlive(*_req);
 
 		_pendingResponses.push_back(presp);
-		return false;
+		return true;
 	}
 
 
@@ -454,6 +479,12 @@ Connection::e_result Connection::_handleReadable()
 
 Connection::e_result Connection::_handleWritable()
 {
+	// if (_status != READY_TO_WRITE)
+	// {
+	// 	std::cout << "Returning OK in handleWritable" << std::endl;
+	// 	return OK;
+	// }
+	// return _sendToClient();
 	return (_status != READY_TO_WRITE) ? OK : _sendToClient();
 }
 
@@ -620,13 +651,14 @@ void Connection::handleErrorResponse(HttpResponse *res) const
 	path_it = _srv->getCfg().http.server.error_pages.find(res->statuscode);
 	while (path_it != _srv->getCfg().http.server.error_pages.end()) {
 
+		std::string	path = path_it->second;
 		TrieNode *loc_trie = _srv->getCfg().http.server.loc_trie;
 		Location *location = prefix_trie_search<Location>(loc_trie, path_it->second);
 
 		if (location == NULL)
 			break;
 
-		std::string path = apply_location(path, location);
+		path = apply_location(path, location);
 		// std::cout << path << std::endl;
 		res->headers["content-type"] = _req->getMimeType(path);
 		try {

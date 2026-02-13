@@ -153,12 +153,13 @@ StatusCode CgiHandler::handle(HttpRequest &req, HttpResponse &res)
 	// free(line);
 
 	// FIXME: do it in a non-blocking way
-	waitpid(sess._pid, &sess._wstatus, WUNTRACED);
-	while (!WIFEXITED(sess._wstatus) && !WIFSIGNALED(sess._wstatus))
-		waitpid(sess._pid, &sess._wstatus, WUNTRACED);
+	// waitpid(sess._pid, &sess._wstatus, WUNTRACED);
+	// while (!WIFEXITED(sess._wstatus) && !WIFSIGNALED(sess._wstatus))
+	// 	waitpid(sess._pid, &sess._wstatus, WUNTRACED);
 
 	this->wrkr->cgiSession = new CGISession();
 	*this->wrkr->cgiSession = sess;
+	sess._parentHandler = this;
 	return SC_200;
 	(void)_state;
 }
@@ -176,6 +177,7 @@ Connection::e_result CgiHandler::CGISession::onReadable()
 
 	Connection::e_result result = Connection::OK;
 
+	// std::vector<char> v(32768);
 	std::vector<char> v(8192);
 
 	const ssize_t bytesRead = read(this->_stdout_pipe[0], &v[0], v.size());
@@ -186,11 +188,7 @@ Connection::e_result CgiHandler::CGISession::onReadable()
 		std::string toAppend(v.begin(), v.end());
 		_raw_output += toAppend;
 
-
-		if (res->response.size() == 0)
-			res->buildHttpResponse();
-
-		res->body.append(_raw_output);
+		res->body.append(toAppend);
 
 		result = Connection::WANT_WRITE;
 	}
@@ -223,6 +221,7 @@ int CgiHandler::CGISession::register_write_pipe(int epoll_fd)
 	CGISession *ptr = this;
 	ev.data.ptr = tag_ptr(ptr, WebServer::EP_CGI);
 	ev.events	= EPOLLOUT;
+	return epoll_ctl(epoll_fd, EPOLL_CTL_ADD, _stdin_pipe[1], &ev);
 	return epoll_ctl(epoll_fd, EPOLL_CTL_ADD, this->_parentConnection->getFd(), &ev);
 }
 
