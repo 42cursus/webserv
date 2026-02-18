@@ -2,6 +2,18 @@
 and storing references inside polymorphic objects is a great way to manufacture that confusion." (c)
 
 ```bash
+echo -n "param1=val1&param2=val2" | \
+    REQUEST_METHOD=POST \
+    CONTENT_TYPE=application/x-www-form-urlencoded \
+    CONTENT_LENGTH=23 \
+    SCRIPT_NAME=/doodle/cgi-bin/index.php \
+    SCRIPT_FILENAME=/www/doodle/cgi-bin/index.php \
+    REDIRECT_STATUS=200 \
+    php-cgi
+```
+
+
+```bash
 
 chmod +x ubuntu_cgi_tester
 

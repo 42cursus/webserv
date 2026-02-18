@@ -73,6 +73,7 @@ public:
 	ConnWorker	 *wrkr;
 
 	StatusCode handle(HttpRequest &req, HttpResponse &res);
+	StatusCode handlePHP(HttpRequest &req, HttpResponse &res);
 };
 
 #endif//CGIHANDLER_HPP

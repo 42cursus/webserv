@@ -530,7 +530,11 @@ HttpResponse *Connection::_prepareResponse()
 			CgiHandler cgi_handler(*_req, *res->location, cgi->_script, *res);
 			cgi_handler.wrkr		= this->_parent;
 
-			StatusCode code = cgi_handler.handle(*_req, *res); // FIXME: what the heck???
+			StatusCode code = SC_200;
+			if (cgi->_script == "php")  // FIXME: what the heck???
+				code = cgi_handler.handlePHP(*_req, *res);
+			else
+				code = cgi_handler.handle(*_req, *res);
 
 			res->chunked = true;
 			res->set_response_code(code);

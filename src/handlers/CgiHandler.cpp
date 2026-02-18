@@ -164,6 +164,96 @@ StatusCode CgiHandler::handle(HttpRequest &req, HttpResponse &res)
 	(void)_state;
 }
 
+StatusCode CgiHandler::handlePHP(HttpRequest &req, HttpResponse &res)
+{
+	CGISession sess;
+	sess._parentConnection = const_cast<Connection *>(this->wrkr->getConnPtr());
+	pipe(sess._stdin_pipe);
+	pipe(sess._stdout_pipe);
+
+	sess._pid = fork();
+	if (sess._pid == 0)// child
+	{
+		dup2(sess._stdout_pipe[1], STDOUT_FILENO);// stdout -> pipe
+		close(sess._stdout_pipe[0]);
+		close(sess._stdout_pipe[1]);
+
+		dup2(sess._stdin_pipe[0], STDIN_FILENO);// pipe -> stdin
+		close(sess._stdin_pipe[1]);
+		close(sess._stdin_pipe[0]);
+
+		// build ENVP
+
+		std::string script = apply_location(req.path, res.location);
+		// build ARGV
+
+		std::vector<std::string> env;
+		_build_env(env);
+		env.push_back("TRY=me");
+		env.push_back("SEE=you");
+		env.push_back("REQUEST_METHOD=POST");
+		env.push_back("CONTENT_TYPE=application/x-www-form-urlencoded");
+		env.push_back("CONTENT_LENGTH=23");
+		env.push_back("SCRIPT_NAME=/doodle/cgi-bin/index.php");
+		env.push_back("SCRIPT_NAME=/www/doodle/cgi-bin/index.php");
+		env.push_back("REDIRECT_STATUS=200");
+
+		std::vector<char*> envp;
+		envp.reserve(env.size() + 1);
+		for (size_t i = 0; i < env.size(); ++i)
+			envp.push_back(::strdup(env[i].c_str()));
+		envp.push_back(NULL);
+
+		std::vector<std::string> argv_str;
+		argv_str.push_back("/usr/bin/php-cgi");
+		argv_str.push_back(script);
+
+		std::vector<char*> argv;
+		argv.reserve(argv_str.size() + 1);
+		for (size_t i = 0; i < argv_str.size(); ++i) {
+			const std::string &str = argv_str[i];
+			char *buf = new char[str.size() + 1]; // allocating RAW memory
+			std::strncpy(buf, str.c_str(), str.size() + 1);
+			argv.push_back(buf);
+		}
+		argv.push_back(NULL);
+		if (execve(argv[0], &argv[0], &envp[0]) == -1) {
+			for (size_t i = 0; i < argv.size(); ++i)
+				delete[] argv[i];
+			for (size_t i = 0; i < envp.size(); ++i)
+				delete[] envp[i];
+
+			std::exit(EXIT_FAILURE); // probably should be 127
+		}
+	} else if (sess._pid < 0)
+		return (SC_500);
+
+	close(sess._stdout_pipe[1]);
+	close(sess._stdin_pipe[0]);
+
+	// write(sess._stdin_pipe[1], "", 0);
+	// close(sess._stdin_pipe[1]);
+
+	// FILE*	fp = fdopen(_stdout_pipe[0], "r");
+	// char	*line = NULL;
+	// size_t	n = 0;
+	// ssize_t	nread = 0;
+	// while ((nread = getline(&line, &n, fp)) != -1)
+		// res.body.append(line);
+	// fclose(fp);
+	// free(line);
+
+	// FIXME: do it in a non-blocking way
+	// waitpid(sess._pid, &sess._wstatus, WUNTRACED);
+	// while (!WIFEXITED(sess._wstatus) && !WIFSIGNALED(sess._wstatus))
+	// 	waitpid(sess._pid, &sess._wstatus, WUNTRACED);
+
+	this->wrkr->cgiSession = new CGISession();
+	*this->wrkr->cgiSession = sess;
+	return SC_200;
+	(void)_state;
+}
+
 Connection::e_result CgiHandler::CGISession::onWritable()
 {
 	if (_parentConnection->hasPendingResponses())
