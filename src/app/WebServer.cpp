@@ -249,11 +249,11 @@ int WebServer::serve()
 							; // do stuff
                 		}
 					} else if (_events[i].events & EPOLLOUT) {
-						//           		Connection::e_result result = cgiSession->onWritable();
-						// if (result == Connection::OK) {
-						// 	epoll_del(cgiSession->_stdin_pipe[1]);
-						// } else if (result == Connection::ERROR) {
-						// }
+						Connection::e_result result = cgiSession->onWritable();
+						if (result == Connection::OK) {
+							epoll_del(cgiSession->_stdin_pipe[1]);
+						} else if (result == Connection::ERROR) {
+						}
                 	}
 					else if (_events[i].events & (EPOLLERR | EPOLLHUP)) {
 						HttpResponse* res = cgiSession->_parentConnection->getCurrentResponse();

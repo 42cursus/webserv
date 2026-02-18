@@ -531,7 +531,7 @@ HttpResponse *Connection::_prepareResponse()
 			cgi_handler.wrkr		= this->_parent;
 
 			StatusCode code = SC_200;
-			if (cgi->_script == "php")  // FIXME: what the heck???
+			if (cgi->_script != "php")  // FIXME: what the heck???
 				code = cgi_handler.handlePHP(*_req, *res);
 			else
 				code = cgi_handler.handle(*_req, *res);

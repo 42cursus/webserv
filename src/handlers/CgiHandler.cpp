@@ -25,6 +25,7 @@
 #include <sys/epoll.h>
 
 #include <cstdio>
+#include <linux/limits.h>
 #include <sys/types.h>
 #include <sys/wait.h>
 #include <unistd.h>
@@ -187,6 +188,12 @@ StatusCode CgiHandler::handlePHP(HttpRequest &req, HttpResponse &res)
 		std::string script = apply_location(req.path, res.location);
 		// build ARGV
 
+		char		cwd[PATH_MAX];
+		std::string CWD = "";
+
+		if (getcwd(cwd, PATH_MAX) != NULL)
+			CWD += cwd;
+
 		std::vector<std::string> env;
 		_build_env(env);
 		env.push_back("TRY=me");
@@ -195,7 +202,7 @@ StatusCode CgiHandler::handlePHP(HttpRequest &req, HttpResponse &res)
 		env.push_back("CONTENT_TYPE=application/x-www-form-urlencoded");
 		env.push_back("CONTENT_LENGTH=23");
 		env.push_back("SCRIPT_NAME=/doodle/cgi-bin/index.php");
-		env.push_back("SCRIPT_NAME=/www/doodle/cgi-bin/index.php");
+		env.push_back("SCRIPT_FILENAME=" + CWD + "/resources/cgi-bin/index.php");
 		env.push_back("REDIRECT_STATUS=200");
 
 		std::vector<char*> envp;
