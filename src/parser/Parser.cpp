@@ -11,6 +11,8 @@
 /* ************************************************************************** */
 
 #include "Parser.hpp"
+#include "ConfigLexer.hpp"
+#include "ConfigValidator.hpp"
 #include "State.hpp"
 
 /*
@@ -40,13 +42,13 @@ Parser::Parser(std::string filePath) : _config_root(filePath)
 Parser::~Parser()
 {}
 
-
-
+Parser::Error::Error(std::string msg) { _msg = msg; }
 
 /*
 ** ------------------------------- DESTRUCTORS --------------------------------
 */
 
+Parser::Error::~Error() throw() {}
 
 /*
 ** -------------------------------- OPERATORS ---------------------------------
@@ -60,64 +62,9 @@ Parser::~Parser()
 ** --------------------------------- METHODS ----------------------------------
 */
 
-
-std::string getExecutablePath()
-{
-	char	buf[PATH_MAX] = {0x00};
-	ssize_t len			  = ::readlink("/proc/self/exe", buf, sizeof(buf) - 1);
-
-	if (len <= 0)
-		throw std::runtime_error("readlink(/proc/self/exe) failed");
-
-	buf[len] = '\0';
-	return std::string(buf);
-}
-
-std::string getDirname(const std::string &path)
-{
-	std::string::size_type pos = path.find_last_of('/');
-
-	if (pos == std::string::npos) // no slash -> current dir
-		return ".";
-	if (pos == 0)
-		return "/";
-	return path.substr(0, pos);
-}
-
-std::string joinPath(const std::string &a, const std::string &b)
-{
-	std::string ret;
-
-	if (a.empty() || (!b.empty() && b[0] == '/'))
-		ret = b;
-	else if (a[a.size() - 1] == '/')
-		ret = a + b;
-	else
-		ret = a + "/" + b;
-	return ret;
-}
-
 void Parser::init_key_database()
 {
-	std::string line;
-
-	std::string executablePath = getExecutablePath();
-	std::string currentDir	   = getDirname(executablePath);
-	std::string keywordsPath   = joinPath(currentDir, "resources/keywords.txt");
-
-	std::fstream fin;
-	fin.open(keywordsPath.c_str(), std::ios::in);
-	if (!fin.is_open())
-		throw std::runtime_error("Cannot open keywords file: " + keywordsPath);
-
-	while (std::getline(fin, line)) {
-		std::stringstream iss(line);
-		std::string		  key;
-
-		iss >> key;
-		_key_database.push_back(key);
-	}
-	fin.close();
+	ConfigLexer::loadKeyDatabase(_key_database);
 }
 
 void Parser::init_directive_handlers()
@@ -233,7 +180,9 @@ void Parser::handleBlockOut()
 		_current_block->getParent()->setInBlock(false);
 		_current_block = _current_block->getParent();
 	} else if (_current_block->getBlockType() == CGI_) {
-		if (!validateCgiScriptExt(getLastCGI()._ext, getLastCGI()._script))
+		std::string ext	   = getLastCGI()._ext;
+		std::string script = getLastCGI()._script;
+		if (!ConfigValidator::validateCgiScriptExt(ext, script))
 			throw Error("Error: invalid cgi script extension");
 
 		getLastCGI().setEndLine(_current_line);
@@ -244,51 +193,7 @@ void Parser::handleBlockOut()
 
 void Parser::tokenise()
 {
-	std::string	  line;
-	std::ifstream file(_config_root.c_str());
-
-	if (!file.is_open())
-		throw Error("Error: file doesn't exit/can't open file");
-
-	while (std::getline(file, line)) {
-		std::istringstream iss(line);
-		std::string		   word;
-
-		_current_line++;
-		if (line.empty())
-			continue;
-
-		while (iss >> word) {
-			if (word[0] == '#')
-				break;
-			else if (findKeyInDatabase(word) != "") {
-				if (word == "log_format")
-					readLogFormatString(file, iss, word);
-				else
-					_tokens.push_back(makeToken(KEY, word, _current_line));
-			} else if (word == "{")
-				_tokens.push_back(makeToken(BLOCK_START, word, _current_line));
-			else if (word == "}")
-				_tokens.push_back(makeToken(BLOCK_END, word, _current_line));
-			else if (word == "=")
-				_tokens.push_back(makeToken(EQUAL, word, _current_line));
-			else if (word.find('/') != std::string::npos) {
-				if (word[word.length() - 1] == ';') {
-					_tokens.push_back(
-						makeToken(REGEX, word.substr(0, word.length() - 1), _current_line));
-					_tokens.push_back(makeToken(SEMICOLON, ";", _current_line));
-				} else
-					_tokens.push_back(makeToken(REGEX, word, _current_line));
-			} else if (word == ";" || word[word.length() - 1] == ';') {
-				if (word != ";")
-					_tokens.push_back(
-						makeToken(KEY, word.substr(0, word.length() - 1), _current_line));
-				_tokens.push_back(makeToken(SEMICOLON, ";", _current_line));
-			} else
-				_tokens.push_back(makeToken(ILLEGAL, word, _current_line));
-		}
-	}
-	file.close();
+	ConfigLexer::tokenizeFile(_config_root, _key_database, _tokens, _current_line);
 }
 
 void Parser::parse()
@@ -437,6 +342,11 @@ void Parser::setCurrentBlock(IBlock *current)
 /*
 ** -------------------------------- EXCEPTIONS --------------------------------
 */
+
+const char* Parser::Error::what() const throw()
+{
+	return _msg.c_str();
+}
 
 /*
 ** -------------------------------- MISCELLANEOUS --------------------------------

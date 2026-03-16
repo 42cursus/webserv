@@ -151,16 +151,7 @@ class   Parser
         void    handleBlockIn(std::vector<t_token> line);
         void    handleBlockOut();
 
-        // error checks
-        bool    validateCgiParam(std::string cgi_param);
-        bool    validateMethod(std::string method);
-        bool    validateErrorPage(std::string error_page);
-        bool    validateErrorCode(std::string error_code);
-        bool    validateBool(std::string boolean);
-        bool    validateCgiScriptExt(std::string ext, std::string script);
-        bool    validateLocationRedirect(std::string path, std::string root);
-        
-        // exceptions
+		// exceptions
         class   Error: public std::exception
         {
             private:

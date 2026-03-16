@@ -6,7 +6,7 @@
 #    By: mganchev <mganchev@student.42.fr>          +#+  +:+       +#+         #
 #                                                 +#+#+#+#+#+   +#+            #
 #    Created: 2025/07/17 22:30:53 by abelov            #+#    #+#              #
-#    Updated: 2026/01/29 10:08:37 by mganchev         ###   ########.fr        #
+#    Updated: 2026/03/16 17:03:55 by abelov           ###   ########.fr        #
 #                                                                              #
 # **************************************************************************** #
 
@@ -44,7 +44,9 @@ SRCS			= src/main.cpp \
 				  src/parser/Prefix_suffix.cpp \
 				  src/parser/DirectiveHandlers.cpp \
 				  src/parser/State.cpp \
-				  src/parser/Error.cpp \
+				  src/parser/ConfigLexer.cpp \
+				  src/parser/ConfigValidator.cpp \
+				  src/parser/ConfigCompiler.cpp \
 				  src/parser/ParserUtils.cpp \
 				  src/parser/Parser.cpp \
 				  src/utils/Utils.cpp \
