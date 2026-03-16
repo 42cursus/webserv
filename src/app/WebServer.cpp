@@ -6,7 +6,7 @@
 /*   By: abelov <abelov@student.42london.com>       +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/01/31 21:42:24 by abelov            #+#    #+#             */
-/*   Updated: 2026/02/03 00:57:28 by fsmyth           ###   ########.fr       */
+/*   Updated: 2026/03/16 17:44:19 by abelov           ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -147,8 +147,11 @@ void WebServer::serve_handle_worker(ConnWorker *wrkr, struct epoll_event &ev)
 
         if (wrkr->getStatus() == Connection::HANDLING_CGI)
         {
-            wrkr->cgiSession->register_write_pipe(_epoll_fd);
-            wrkr->cgiSession->register_read_pipe(_epoll_fd);
+            CgiHandler::CGISession *cgiSession = wrkr->getCgiSession();
+            if (cgiSession == NULL)
+                return;
+            cgiSession->register_write_pipe(_epoll_fd);
+            cgiSession->register_read_pipe(_epoll_fd);
 
             // epollDel(wrkr->getConnFd());
         	wrkr->setStatus(Connection::READY_TO_WRITE);

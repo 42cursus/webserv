@@ -31,6 +31,7 @@ INCLUDE_FLAGS	:= -I. \
 SRCS			= src/main.cpp \
 				  src/app/WebServer.cpp \
 				  src/app/CgiSessionManager.cpp \
+				  src/app/ConnectionContext.cpp \
 				  src/app/ConnWorker.cpp \
 				  src/app/WorkerPool.cpp \
 				  src/app/TCPServer.cpp \

@@ -11,11 +11,10 @@
 /* ************************************************************************** */
 
 #pragma once
-#include "CgiHandler.hpp"
 #ifndef WORKER_HPP
 #define WORKER_HPP
 
-#include "Connection.hpp"
+#include "ConnectionContext.hpp"
 #include "HttpRequest.hpp"
 #include "HttpResponse.hpp"
 #include "TCPServer.hpp"
@@ -55,9 +54,11 @@ public:
 	ConnWorker			   &operator=(const ConnWorker &);
 	const Connection	   &getConn() const;
 	const Connection	   *getConnPtr() const;
-	CgiHandler::CGISession *cgiSession;
+	CgiHandler::CGISession *getCgiSession() const;
+	void					setCgiSession(CgiHandler::CGISession *session);
+	void					clearCgiSession();
 
 private:
-	Connection _conn;
+	ConnectionContext _ctx;
 };
 #endif//WORKER_HPP

@@ -74,6 +74,9 @@ void CgiSessionManager::handleEvent(CgiHandler::CGISession *cgiSession, epoll_ev
 			epollDel(epoll_fd, cgiSession->_stdout_pipe[0]);
 			epollDel(epoll_fd, cgiSession->_stdin_pipe[1]);
 			kill(cgiSession->_pid, SIGTERM);
+			ConnWorker *worker = cgiSession->_parentConnection->getParent();
+			if (worker != NULL)
+				worker->clearCgiSession();
 			delete cgiSession;
 		}
 		return;
@@ -92,6 +95,9 @@ void CgiSessionManager::handleEvent(CgiHandler::CGISession *cgiSession, epoll_ev
 			res->body_complete = true;
 		epollDel(epoll_fd, cgiSession->_stdout_pipe[0]);
 		epollDel(epoll_fd, cgiSession->_stdin_pipe[1]);
+		ConnWorker *worker = cgiSession->_parentConnection->getParent();
+		if (worker != NULL)
+			worker->clearCgiSession();
 		delete cgiSession;
 	}
 }
@@ -107,5 +113,3 @@ void CgiSessionManager::handleEvent(CgiHandler::CGISession *cgiSession, epoll_ev
 /*
 ** -------------------------------- MISCELLANEOUS --------------------------------
 */
-
-

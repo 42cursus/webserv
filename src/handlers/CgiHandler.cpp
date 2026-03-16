@@ -159,8 +159,9 @@ StatusCode CgiHandler::handle(HttpRequest &req, HttpResponse &res)
 	// while (!WIFEXITED(sess._wstatus) && !WIFSIGNALED(sess._wstatus))
 	// 	waitpid(sess._pid, &sess._wstatus, WUNTRACED);
 
-	this->wrkr->cgiSession = new CGISession();
-	*this->wrkr->cgiSession = sess;
+	CGISession *session = new CGISession();
+	*session = sess;
+	this->wrkr->setCgiSession(session);
 	return SC_200;
 	(void)_state;
 }
@@ -255,8 +256,9 @@ StatusCode CgiHandler::handlePHP(HttpRequest &req, HttpResponse &res)
 	// while (!WIFEXITED(sess._wstatus) && !WIFSIGNALED(sess._wstatus))
 	// 	waitpid(sess._pid, &sess._wstatus, WUNTRACED);
 
-	this->wrkr->cgiSession = new CGISession();
-	*this->wrkr->cgiSession = sess;
+	CGISession *session = new CGISession();
+	*session = sess;
+	this->wrkr->setCgiSession(session);
 	return SC_200;
 	(void)_state;
 }
