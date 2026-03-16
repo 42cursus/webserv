@@ -30,6 +30,7 @@
 #include "Logging.hpp"
 #include "Prefix_suffix.hpp"
 #include "RequestParser.hpp"
+#include "ResponseWriter.hpp"
 #include "State.hpp"
 #include "TCPServer.hpp"
 #include "webserv.hpp"
@@ -160,102 +161,38 @@ Connection::e_result Connection::_sendToClient()
 	if (!item.res)
 		return ERROR;
 
-    HttpResponse* cur = item.res;
-	
-	// if (cur->chunked && cur->chunking_ready)
-	// 	return _sendToClientChunked(item);
+	HttpResponse *cur = item.res;
+	ResponseWriter::e_result rw = ResponseWriter::writeCurrent(*this, _fd, *cur);
 
-    std::string& response = cur->response;
-    if (cur->start >= response.size())
-	{
-		if (cur->chunk_start < cur->body.size() || cur->body_complete)
-		{
-			cur->start = 0;
-			cur->response = cur->chunk_response(32768);
-			if (cur->body_complete)
-			{
-				cur->chunking_express = true;
-				// cur->response += CHUNK_END;
-			}
-			log_chunk_response(*this, *cur);
-			// return WANT_WRITE;
-		}
-		else if (!cur->chunked)
-		{
-			// std::cout << "Returning OK as start > response.size()" << std::endl;
-        	return OK;
-		}
-		else
-			return WANT_WRITE;
-	}
-    if (cur->start == 0 && cur->chunk_start == 0)
-    // if (cur->start == 0)
-		log_response(*this, *cur);
-
-    size_t	remaining = response.length() - cur->start;
-    // resize_socket_buffer(_conn_fd, msg_size);
-    remaining = std::min(remaining, response.length() - cur->start);
-    ssize_t bytesWritten = ::write(_fd, response.data() + cur->start, remaining);
-
-    if (bytesWritten > 0)
-    {
-        cur->start += static_cast<size_t>(bytesWritten);
-        if (cur->start >= response.size())
-        {
-			if (cur->chunked)
-			{
-				if (!cur->chunking_express)
-				{
-					if (cur->chunk_start >= cur->body.size())
-					{
-						if (cur->body_complete)
-							cur->chunking_express = true;
-						else
-							return WANT_WRITE;
-					}
-					cur->start = 0;
-					cur->response = cur->chunk_response(32768);
-					log_chunk_response(*this, *cur);
-					return WANT_WRITE;
-				}
-			}
-
-            const bool close_after = item.closeAfter;
-
-			delete cur;
-			_pendingResponses.pop_front();
-
-			// If the request said "Connection: close",
-			// close *after* we sent its response.
-			if (close_after)
-				return CLOSED;
-
-			if (!_pendingResponses.empty())
-				return WANT_WRITE;
-
-			_status = READING_HEADERS;
-
-			// try to parse / enqueue immediately
-			// so we don't wait for another EPOLLIN.
-			e_result pr = _processInput();
-			if (pr == WANT_WRITE)
-				return WANT_WRITE;
-			// std::cout << "Returning OK as response complete" << std::endl;
-			return OK;
-		}
+	if (rw == ResponseWriter::WR_WANT_WRITE)
 		return WANT_WRITE;
-	}
+	if (rw == ResponseWriter::WR_CLOSED)
+		return CLOSED;
+	if (rw == ResponseWriter::WR_ERROR)
+		return ERROR;
+	if (rw != ResponseWriter::WR_RESP_COMPLETE)
+		return OK;
 
-	if (bytesWritten == 0)
+	const bool close_after = item.closeAfter;
+	delete cur;
+	_pendingResponses.pop_front();
+
+	// If the request said "Connection: close",
+	// close *after* we sent its response.
+	if (close_after)
 		return CLOSED;
 
-	if (errno == EINTR || errno == EAGAIN || errno == EWOULDBLOCK) // FIXME: CAN'T DO THAT!!!
+	if (!_pendingResponses.empty())
 		return WANT_WRITE;
 
-	if (errno == EPIPE || errno == ECONNRESET) // FIXME: CAN'T DO THAT!!!
-		return CLOSED;
+	_status = READING_HEADERS;
 
-	return ERROR;
+	// try to parse / enqueue immediately
+	// so we don't wait for another EPOLLIN.
+	e_result pr = _processInput();
+	if (pr == WANT_WRITE)
+		return WANT_WRITE;
+	return OK;
 }
 
 // Connection::e_result Connection::_sendToClientChunked(PendingResponse &item)
