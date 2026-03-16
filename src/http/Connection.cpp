@@ -17,11 +17,9 @@
 #include <cstring>
 #include <cstdlib>
 #include <cerrno>
-#include <exception>
 #include <stdexcept>
 #include <fcntl.h>
 #include <cstdio>
-#include <cstring>
 #include <unistd.h>
 
 #include "HttpRequest.hpp"
@@ -29,6 +27,7 @@
 #include "Location.hpp"
 #include "Logging.hpp"
 #include "Prefix_suffix.hpp"
+#include "RequestDispatcher.hpp"
 #include "RequestParser.hpp"
 #include "ResponseWriter.hpp"
 #include "State.hpp"
@@ -288,7 +287,7 @@ bool Connection::_tryExtractOneRequest()
 
 	log_request(*this, *_req);
 	// std::cout << this->_req_buffer;
-    HttpResponse* res = _prepareResponse();
+	HttpResponse* res = RequestDispatcher::dispatch(*this, *_req);
 	if (_status == HANDLING_CGI)
 	{
 		res->buildHttpResponse();
@@ -396,105 +395,6 @@ Connection::e_result Connection::_handleWritable()
 	// }
 	// return _sendToClient();
 	return (_status != READY_TO_WRITE) ? OK : _sendToClient();
-}
-
-HttpResponse *Connection::_prepareResponse()
-{
-	HttpResponse *res = new HttpResponse();
-
-	res->headers["Server"]	= "Webserv/0.69";
-	TrieNode *redirect_trie = _srv->getCfg().http.server.redirect_trie;
-	Redirect *redirect		= prefix_trie_search<Redirect>(redirect_trie, _req->path);
-
-	if (redirect != NULL && _req->path == redirect->_path) {
-		handleRedirectResponse(res, redirect);
-		return res;
-	}
-
-	TrieNode *loc_trie = _srv->getCfg().http.server.loc_trie;
-	Location *location = prefix_trie_search<Location>(loc_trie, _req->path);
-	res->location	   = location;
-	if (!res->location) {
-		res->set_response_code(SC_404);
-		handleErrorResponse(res);
-		return res;
-	}
-
-	res->filename = _req->path.substr(res->location->_path.length(), _req->path.length());
-	std::string mimetype;
-
-	res->set_response_code(SC_200);
-
-	if (!_req->is_method_permitted(res->location)) {
-		res->set_response_code(SC_405);
-		handleErrorResponse(res);
-		return res;
-	}
-
-	CGI *cgi = suffix_trie_search(res->location->cgi_trie, _req->path);
-
-	try {
-		if (cgi != NULL) {
-			if (this->_parent == NULL)
-				throw new TCPServer::GenericException();
-			CgiHandler cgi_handler(*_req, *res->location, cgi->_script, *res);
-			cgi_handler.wrkr		= this->_parent;
-
-			StatusCode code = SC_200;
-			if (cgi->_script != "php")  // FIXME: what the heck???
-				code = cgi_handler.handlePHP(*_req, *res);
-			else
-				code = cgi_handler.handle(*_req, *res);
-
-			res->chunked = true;
-			res->set_response_code(code);
-			// if (res->headers.find("content-length") == res->headers.end()) {
-			// 	// res->headers["content-length"] = ::size_to_ascii(res->body.size());
-			// 	res->headers["content-length"] = ::size_to_ascii(19);
-			// }
-			this->_status = HANDLING_CGI;
-			return res;
-		}
-
-		switch (_req->get_method()) {
-			case (HttpRequest::GET): {
-				// res->chunked = true;
-				StaticFileHandler handler(*res->location);
-				StatusCode		  code = handler.handle(*_req, *res);
-				res->set_response_code(code);
-				return res;
-			}
-			case (HttpRequest::PUT):
-				_prepareResponse_put(res);
-				break;
-			case (HttpRequest::POST):
-				_prepareResponse_post(res);
-				break;
-			case (HttpRequest::DELETE):
-				_prepareResponse_delete(res);
-				break;
-			default:
-				res->set_response_code(SC_501);
-				handleErrorResponse(res);
-				return res;
-		}
-	} catch (HttpResponse::Exception404 &) {
-		res->set_response_code(SC_404);
-		handleErrorResponse(res);
-		return res;
-	} catch (HttpResponse::Exception403 &) {
-		res->set_response_code(SC_403);
-		handleErrorResponse(res);
-		return res;
-	} catch (HttpResponse::Exception30x &) {
-		handleDirectoryRedirect(res);
-		return res;
-	} catch (std::exception &) {
-		res->set_response_code(SC_500);
-		handleErrorResponse(res);
-		return res;
-	}
-	return res;
 }
 
 void Connection::_prepareResponse_get(HttpResponse *res) const

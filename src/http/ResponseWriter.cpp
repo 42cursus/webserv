@@ -64,10 +64,10 @@ ResponseWriter::e_result ResponseWriter::writeCurrent(Connection const &conn, in
 	if (bytesWritten == 0)
 		return WR_CLOSED;
 
-	if (errno == EINTR || errno == EAGAIN || errno == EWOULDBLOCK)
+	if (errno == EINTR || errno == EAGAIN || errno == EWOULDBLOCK) // FIXME: CAN'T DO THAT!!!
 		return WR_WANT_WRITE;
 
-	if (errno == EPIPE || errno == ECONNRESET)
+	if (errno == EPIPE || errno == ECONNRESET) // FIXME: CAN'T DO THAT!!!
 		return WR_CLOSED;
 
 	return WR_ERROR;
