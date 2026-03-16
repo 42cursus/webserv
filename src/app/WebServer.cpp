@@ -11,6 +11,7 @@
 /* ************************************************************************** */
 
 #include "WebServer.hpp"
+#include "CgiSessionManager.hpp"
 #include "HttpResponse.hpp"
 #include "Logging.hpp"
 #include "WorkerPool.hpp"
@@ -149,7 +150,7 @@ void WebServer::serve_handle_worker(ConnWorker *wrkr, struct epoll_event &ev)
             wrkr->cgiSession->register_write_pipe(_epoll_fd);
             wrkr->cgiSession->register_read_pipe(_epoll_fd);
 
-            // epoll_del(wrkr->getConnFd());
+            // epollDel(wrkr->getConnFd());
         	wrkr->setStatus(Connection::READY_TO_WRITE);
 
             return;
@@ -228,41 +229,7 @@ int WebServer::serve()
                 }
                 case (EP_CGI): {
                     CgiHandler::CGISession* cgiSession = reinterpret_cast<CgiHandler::CGISession *>(detag_ptr(ptr));
-
-                	if (_events[i].events & EPOLLIN) {
-						Connection::e_result result = cgiSession->onReadable();
-                		if (result == Connection::OK) {
-                			epoll_del(cgiSession->_stdout_pipe[0]);
-                		} else if (result == Connection::WANT_WRITE) {
-							int fd = cgiSession->_parentConnection->getFd();
-
-							ConnWorker *worker = cgiSession->_parentConnection->getParent();
-							epoll_mod(fd, tag_ptr(worker,EP_WRKR), EPOLLIN | EPOLLOUT);
-
-                			//write(fd, &cgiSession->_raw_output[0], cgiSession->_raw_output.size()); // FIXME:!!!!!
-
-                		} else if (result == Connection::ERROR) {
-							epoll_del(cgiSession->_stdout_pipe[0]);
-							epoll_del(cgiSession->_stdin_pipe[1]);
-							kill(cgiSession->_pid, SIGTERM);
-							delete cgiSession;
-							; // do stuff
-                		}
-					} else if (_events[i].events & EPOLLOUT) {
-						Connection::e_result result = cgiSession->onWritable();
-						if (result == Connection::OK) {
-							epoll_del(cgiSession->_stdin_pipe[1]);
-						} else if (result == Connection::ERROR) {
-						}
-                	}
-					else if (_events[i].events & (EPOLLERR | EPOLLHUP)) {
-						HttpResponse* res = cgiSession->_parentConnection->getCurrentResponse();
-						// std::cout << "Pipe error" << std::endl;
-						res->body_complete = true;
-                		epoll_del(cgiSession->_stdout_pipe[0]);
-                		epoll_del(cgiSession->_stdin_pipe[1]);
-						delete cgiSession;
-					}
+                    CgiSessionManager::handleEvent(cgiSession, _events[i], _epoll_fd);
                     break;
                 }
                 default:

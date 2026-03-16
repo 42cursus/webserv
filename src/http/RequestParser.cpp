@@ -14,13 +14,6 @@
 #include <cstdlib>
 #include <cstring>
 
-#ifndef CRLF
-#define CRLF "\r\n"
-#endif
-#ifndef CHUNK_END
-#define CHUNK_END "0\r\n\r\n"
-#endif
-
 RequestParser::Result::Result() :
 	status(NEED_MORE_DATA),
 	request(NULL),

@@ -17,6 +17,13 @@
 #include <cstddef>
 #include <string>
 
+#ifndef CRLF
+#define CRLF "\r\n"
+#endif
+#ifndef CHUNK_END
+#define CHUNK_END "0\r\n\r\n"
+#endif
+
 class RequestParser {
 public:
 	enum e_status {
