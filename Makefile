@@ -35,6 +35,7 @@ SRCS			= src/main.cpp \
 				  src/app/TCPServer.cpp \
 				  src/http/Connection.cpp \
 				  src/http/HttpRequest.cpp \
+				  src/http/RequestParser.cpp \
 				  src/http/HttpResponse.cpp \
 				  src/parser/Location.cpp \
 				  src/parser/Prefix_suffix.cpp \

@@ -26,7 +26,10 @@
 #include <sstream>
 #include <fstream>
 #include <algorithm>
-#include <limits.h>
+#include <climits>    // PATH_MAX
+#include <unistd.h>   // readlink
+#include <fstream>
+
 #include "webserv.hpp"
 #include "Location.hpp"
 #include "State.hpp"

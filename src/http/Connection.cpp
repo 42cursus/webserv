@@ -18,6 +18,7 @@
 #include <cstdlib>
 #include <cerrno>
 #include <exception>
+#include <stdexcept>
 #include <fcntl.h>
 #include <cstdio>
 #include <cstring>
@@ -28,6 +29,7 @@
 #include "Location.hpp"
 #include "Logging.hpp"
 #include "Prefix_suffix.hpp"
+#include "RequestParser.hpp"
 #include "State.hpp"
 #include "TCPServer.hpp"
 #include "webserv.hpp"
@@ -314,67 +316,38 @@ bool Connection::_shouldKeepAlive(const HttpRequest &req) const
  */
 bool Connection::_tryExtractOneRequest()
 {
-	/* ================================ */
-	size_t hdr_end = _inputBuffer.find(CRLF CRLF, _inOffset);
-	if (hdr_end == std::string::npos)
+	RequestParser::Result extract = RequestParser::tryExtract(_inputBuffer, _inOffset);
+	if (extract.status == RequestParser::NEED_MORE_DATA)
 		return false;
 
-	const size_t	  header_bytes = (hdr_end - _inOffset) + 4;
-	const std::string header_block = _inputBuffer.substr(_inOffset, header_bytes);
+	if (extract.status == RequestParser::BAD_REQUEST) {
+		_inputBuffer.erase();
+		delete _req;
+		_req = NULL;
 
-	// std::cout << FT_MAGENTA << "Request ready on fd: " << _fd << std::endl;
-	// std::cout << FT_GREEN << header_block << FT_RESET << std::endl;
+		std::runtime_error parse_err(extract.error_message.empty() ? "Bad request" : extract.error_message);
+		log_request_error(*this, parse_err);
 
-	/* ================================ */
-
-	HttpRequest *req = new HttpRequest();
-	try {
-		req->parseRequest(header_block);
-	} catch (std::exception &e) {
-        _inputBuffer.erase();
-		delete req;
-        delete _req;
-        _req = NULL;
-		log_request_error(*this, e);
-
-		HttpResponse*	res = new HttpResponse();
+		HttpResponse *res = new HttpResponse();
 		res->set_response_code(SC_400);
 		res->headers["Server"] = "Webserv/0.69";
 		handleErrorResponse(res);
 		res->buildHttpResponse();
 
-		const PendingResponse &presp = (PendingResponse) {
+		const PendingResponse &presp = (PendingResponse){
 			.res = res,
 			.closeAfter = true
 		};
 		_pendingResponses.push_back(presp);
 
 		_status = READY_TO_WRITE;
-
-        return false;
+		return false;
 	}
 
-	size_t content_length = 0;
-	if (req->headers.count("content-length"))
-		content_length = static_cast<size_t>(std::atoi(req->headers["content-length"].c_str()));
-	req->content_length = content_length;
-
-	const size_t need_total = header_bytes + content_length;
-	if (_inputBuffer.size() - _inOffset < need_total) {
-		delete req;
-		return false; // not enough body yet
-	}
-
-	// TODO: reuse extract body function
-	if (req->content_length > 0) {
-		req->body.resize(content_length);
-		std::memcpy(&req->body[0], &_inputBuffer[0] + _inOffset + header_bytes, content_length);
-	}
-
-	_consumeInputBytes(need_total);
+	_consumeInputBytes(extract.consumed_bytes);
 
 	delete _req;
-	_req = req;
+	_req = extract.request;
 
 	log_request(*this, *_req);
 	// std::cout << this->_req_buffer;
