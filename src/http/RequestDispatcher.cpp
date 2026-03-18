@@ -52,6 +52,25 @@ HttpResponse *RequestDispatcher::dispatch(Connection &conn, HttpRequest &req)
 		return res;
 	}
 
+	if (res->location->_path == "/cgi-bin/" &&
+		req.path.compare(0, res->location->_path.size(), res->location->_path) == 0) {
+		std::string mapped = apply_location(req.path, res->location);
+		if (access(mapped.c_str(), F_OK) == 0 && access(mapped.c_str(), X_OK) == 0) {
+			if (conn.getParent() == NULL) {
+				res->set_response_code(SC_500);
+				conn.handleErrorResponse(res);
+				return res;
+			}
+			CgiHandler cgi_handler(req, *res->location, req.path, *res);
+			cgi_handler.wrkr = conn.getParent();
+			StatusCode code = cgi_handler.handle(req, *res);
+			res->chunked = true;
+			res->set_response_code(code);
+			conn.setStatus(Connection::HANDLING_CGI);
+			return res;
+		}
+	}
+
 	CGI *cgi = suffix_trie_search(res->location->cgi_trie, req.path);
 
 	try {

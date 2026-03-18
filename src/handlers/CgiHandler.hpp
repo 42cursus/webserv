@@ -54,6 +54,7 @@ public:
 	private:
 		std::size_t bytes_sent, bytes_received;
 		bool		_stdinClosed;
+		bool		_headersParsed;
 	};
 
 private:

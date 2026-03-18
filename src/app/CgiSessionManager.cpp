@@ -66,7 +66,9 @@ void CgiSessionManager::handleEvent(ConnWorker *worker, epoll_event &ev, int epo
 	if (ev.events & EPOLLIN) {
 		Connection::e_result result = cgiSession->onReadable();
 		if (result == Connection::OK) {
-			epollDel(epoll_fd, cgiSession->_stdout_pipe[0]);
+			HttpResponse *res = cgiSession->_parentConnection->getCurrentResponse();
+			if (res != NULL && res->body_complete)
+				epollDel(epoll_fd, cgiSession->_stdout_pipe[0]);
 		} else if (result == Connection::WANT_WRITE) {
 			ConnWorker *owner = cgiSession->_parentConnection->getParent();
 			if (owner != NULL) {
