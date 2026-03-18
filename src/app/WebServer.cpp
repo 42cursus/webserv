@@ -237,8 +237,8 @@ int WebServer::serve()
                     break;
                 }
                 case (EP_CGI): {
-                    CgiHandler::CGISession* cgiSession = reinterpret_cast<CgiHandler::CGISession *>(detag_ptr(ptr));
-                    CgiSessionManager::handleEvent(cgiSession, _events[i], _epoll_fd);
+                    ConnWorker* owner = reinterpret_cast<ConnWorker *>(detag_ptr(ptr));
+                    CgiSessionManager::handleEvent(owner, _events[i], _epoll_fd);
                     break;
                 }
                 default:

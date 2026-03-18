@@ -56,6 +56,7 @@ int main(int argc, char **argv) {
 		exit(EXIT_FAILURE);
 
 	signal(SIGCHLD, sig_chld);
+	signal(SIGPIPE, SIG_IGN);
 
 	log_title();
 

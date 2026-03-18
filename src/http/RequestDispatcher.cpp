@@ -58,11 +58,12 @@ HttpResponse *RequestDispatcher::dispatch(Connection &conn, HttpRequest &req)
 		if (cgi != NULL) {
 			if (conn.getParent() == NULL)
 				throw TCPServer::GenericException();
-			CgiHandler cgi_handler(req, *res->location, cgi->_script, *res);
+			std::string cgi_runner = cgi->_cgi_pass.empty() ? cgi->_script : cgi->_cgi_pass;
+			CgiHandler cgi_handler(req, *res->location, cgi_runner, *res);
 			cgi_handler.wrkr = conn.getParent();
 
 			StatusCode code = SC_200;
-			if (cgi->_script == "php")
+			if (cgi->_ext == ".php")
 				code = cgi_handler.handlePHP(req, *res);
 			else
 				code = cgi_handler.handle(req, *res);

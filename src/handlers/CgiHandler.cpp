@@ -39,6 +39,7 @@
 namespace {
 	std::string trim(const std::string &s);
 	bool		starts_with(const std::string &s, const std::string &prefix);
+	bool		ends_with(const std::string &s, const std::string &suffix);
 }// namespace
 
 /*
@@ -103,7 +104,7 @@ StatusCode CgiHandler::handle(HttpRequest &req, HttpResponse &res)
 
 		// build ENVP
 
-		std::string script = apply_location(req.path, res.location);
+		std::string script = _script_path.empty() ? apply_location(req.path, res.location) : _script_path;
 		// build ARGV
 
 		std::vector<std::string> env;
@@ -118,8 +119,11 @@ StatusCode CgiHandler::handle(HttpRequest &req, HttpResponse &res)
 		envp.push_back(NULL);
 
 		std::vector<std::string> argv_str;
-		argv_str.push_back("/usr/bin/python3");
-		argv_str.push_back(script);
+		if (ends_with(script, ".py")) {
+			argv_str.push_back("/usr/bin/python3");
+			argv_str.push_back(script);
+		} else
+			argv_str.push_back(script);
 
 		std::vector<char*> argv;
 		argv.reserve(argv_str.size() + 1);
@@ -331,7 +335,10 @@ Connection::e_result CgiHandler::CGISession::onReadable()
 int CgiHandler::CGISession::register_read_pipe(int epoll_fd)
 {
 	struct epoll_event ev = {};
-	ev.data.ptr = tag_ptr(this, WebServer::EP_CGI);
+	ConnWorker *owner = _parentConnection != NULL ? _parentConnection->getParent() : NULL;
+	if (owner == NULL)
+		return -1;
+	ev.data.ptr = tag_ptr(owner, WebServer::EP_CGI);
 	ev.events	= EPOLLIN;
 	return epoll_ctl(epoll_fd, EPOLL_CTL_ADD, _stdout_pipe[0], &ev);
 }
@@ -339,11 +346,12 @@ int CgiHandler::CGISession::register_read_pipe(int epoll_fd)
 int CgiHandler::CGISession::register_write_pipe(int epoll_fd)
 {
 	struct epoll_event ev = {};
-	CGISession *ptr = this;
-	ev.data.ptr = tag_ptr(ptr, WebServer::EP_CGI);
+	ConnWorker *owner = _parentConnection != NULL ? _parentConnection->getParent() : NULL;
+	if (owner == NULL)
+		return -1;
+	ev.data.ptr = tag_ptr(owner, WebServer::EP_CGI);
 	ev.events	= EPOLLOUT;
 	return epoll_ctl(epoll_fd, EPOLL_CTL_ADD, _stdin_pipe[1], &ev);
-	return epoll_ctl(epoll_fd, EPOLL_CTL_ADD, this->_parentConnection->getFd(), &ev);
 }
 
 void CgiHandler::CGISession::stageRequestBody(const std::vector<char> &body)
@@ -486,6 +494,13 @@ namespace {
 	bool starts_with(const std::string &s, const std::string &prefix)
 	{
 		return s.size() >= prefix.size() && s.compare(0, prefix.size(), prefix) == 0;
+	}
+
+	bool ends_with(const std::string &s, const std::string &suffix)
+	{
+		if (s.size() < suffix.size())
+			return false;
+		return s.compare(s.size() - suffix.size(), suffix.size(), suffix) == 0;
 	}
 
 
