@@ -39,6 +39,7 @@
 namespace {
 	std::string trim(const std::string &s);
 	bool		starts_with(const std::string &s, const std::string &prefix);
+	bool		ends_with(const std::string &s, const std::string &suffix);
 }// namespace
 
 /*
@@ -103,7 +104,7 @@ StatusCode CgiHandler::handle(HttpRequest &req, HttpResponse &res)
 
 		// build ENVP
 
-		std::string script = apply_location(req.path, res.location);
+		std::string script = _script_path.empty() ? apply_location(req.path, res.location) : _script_path;
 		// build ARGV
 
 		std::vector<std::string> env;
@@ -118,8 +119,11 @@ StatusCode CgiHandler::handle(HttpRequest &req, HttpResponse &res)
 		envp.push_back(NULL);
 
 		std::vector<std::string> argv_str;
-		argv_str.push_back("/usr/bin/python3");
-		argv_str.push_back(script);
+		if (ends_with(script, ".py")) {
+			argv_str.push_back("/usr/bin/python3");
+			argv_str.push_back(script);
+		} else
+			argv_str.push_back(script);
 
 		std::vector<char*> argv;
 		argv.reserve(argv_str.size() + 1);
@@ -262,35 +266,34 @@ StatusCode CgiHandler::handlePHP(HttpRequest &req, HttpResponse &res)
 
 Connection::e_result CgiHandler::CGISession::onWritable()
 {
-	static const size_t kPipeWriteChunk = 8192;
+	static const size_t kPipeWriteChunk = 65536;
 	if (_stdinClosed)
 		return Connection::OK;
+
+	while (_stdinBuckets.bytes() > 0) {
+		std::string payload = _stdinBuckets.flatten(kPipeWriteChunk);
+		if (payload.empty())
+			break;
+
+		const ssize_t written = write(_stdin_pipe[1], payload.data(), payload.size());
+		if (written > 0) {
+			_stdinBuckets.consume(static_cast<size_t>(written));
+			bytes_sent += static_cast<size_t>(written);
+			continue;
+		}
+		if (written < 0 && errno == EINTR)
+			continue;
+		if (written < 0 && (errno == EAGAIN || errno == EWOULDBLOCK))
+			return Connection::WANT_WRITE;
+		return Connection::ERROR;
+	}
 
 	if (_stdinBuckets.bytes() == 0) {
 		close(_stdin_pipe[1]);
 		_stdinClosed = true;
 		return Connection::OK;
 	}
-
-	std::string payload = _stdinBuckets.flatten(kPipeWriteChunk);
-	if (payload.empty())
-		return Connection::WANT_WRITE;
-
-	const ssize_t written = write(_stdin_pipe[1], payload.data(), payload.size());
-	if (written > 0) {
-		_stdinBuckets.consume(static_cast<size_t>(written));
-		bytes_sent += static_cast<size_t>(written);
-		if (_stdinBuckets.bytes() == 0) {
-			close(_stdin_pipe[1]);
-			_stdinClosed = true;
-			return Connection::OK;
-		}
-		return Connection::WANT_WRITE;
-	}
-	if (written < 0 && (errno == EINTR || errno == EAGAIN || errno == EWOULDBLOCK))
-		return Connection::WANT_WRITE;
-
-	return Connection::ERROR;
+	return Connection::WANT_WRITE;
 }
 
 Connection::e_result CgiHandler::CGISession::onReadable()
@@ -331,7 +334,10 @@ Connection::e_result CgiHandler::CGISession::onReadable()
 int CgiHandler::CGISession::register_read_pipe(int epoll_fd)
 {
 	struct epoll_event ev = {};
-	ev.data.ptr = tag_ptr(this, WebServer::EP_CGI);
+	ConnWorker *owner = _parentConnection != NULL ? _parentConnection->getParent() : NULL;
+	if (owner == NULL)
+		return -1;
+	ev.data.ptr = tag_ptr(owner, WebServer::EP_CGI);
 	ev.events	= EPOLLIN;
 	return epoll_ctl(epoll_fd, EPOLL_CTL_ADD, _stdout_pipe[0], &ev);
 }
@@ -339,11 +345,12 @@ int CgiHandler::CGISession::register_read_pipe(int epoll_fd)
 int CgiHandler::CGISession::register_write_pipe(int epoll_fd)
 {
 	struct epoll_event ev = {};
-	CGISession *ptr = this;
-	ev.data.ptr = tag_ptr(ptr, WebServer::EP_CGI);
+	ConnWorker *owner = _parentConnection != NULL ? _parentConnection->getParent() : NULL;
+	if (owner == NULL)
+		return -1;
+	ev.data.ptr = tag_ptr(owner, WebServer::EP_CGI);
 	ev.events	= EPOLLOUT;
 	return epoll_ctl(epoll_fd, EPOLL_CTL_ADD, _stdin_pipe[1], &ev);
-	return epoll_ctl(epoll_fd, EPOLL_CTL_ADD, this->_parentConnection->getFd(), &ev);
 }
 
 void CgiHandler::CGISession::stageRequestBody(const std::vector<char> &body)
@@ -358,10 +365,15 @@ void CgiHandler::_build_env(std::vector<std::string> &env)
 {
 	env.push_back("GATEWAY_INTERFACE=CGI/1.1");
 	env.push_back("SERVER_PROTOCOL=HTTP/1.1");
+	const bool raw_binary_cgi = (!ends_with(_script_path, ".py") &&
+								 _script_path.find("php-cgi") == std::string::npos);
 
 	env.push_back("REQUEST_METHOD=" + _req.method);
 	env.push_back("SCRIPT_NAME=" + _req.path);
-	env.push_back("PATH_INFO=");
+	if (raw_binary_cgi)
+		env.push_back("PATH_INFO=" + _req.path);
+	else
+		env.push_back("PATH_INFO=");
 
 	if (_req.headers.count("query-string"))
 		env.push_back("QUERY_STRING=" + _req.headers["query-string"]);
@@ -486,6 +498,13 @@ namespace {
 	bool starts_with(const std::string &s, const std::string &prefix)
 	{
 		return s.size() >= prefix.size() && s.compare(0, prefix.size(), prefix) == 0;
+	}
+
+	bool ends_with(const std::string &s, const std::string &suffix)
+	{
+		if (s.size() < suffix.size())
+			return false;
+		return s.compare(s.size() - suffix.size(), suffix.size(), suffix) == 0;
 	}
 
 

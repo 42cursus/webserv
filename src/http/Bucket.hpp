@@ -37,6 +37,7 @@ public:
 	size_t readableBytes() const;
 	bool   empty() const;
 	void   consume(size_t nbytes);
+	const char *dataPtr() const;
 	std::string viewAsString() const;
 
 private:

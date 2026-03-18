@@ -16,9 +16,11 @@
 #include "CgiHandler.hpp"
 #include <sys/epoll.h>
 
+class ConnWorker;
+
 class CgiSessionManager {
 public:
-	static void handleEvent(CgiHandler::CGISession *cgiSession, epoll_event &ev, int epoll_fd);
+	static void handleEvent(ConnWorker *worker, epoll_event &ev, int epoll_fd);
 
 private:
 	static int epollMod(int epoll_fd, int fd, void *tagged_ptr, uint32_t events);

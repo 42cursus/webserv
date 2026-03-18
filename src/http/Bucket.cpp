@@ -62,6 +62,13 @@ void Bucket::consume(size_t nbytes)
 	_offset += n;
 }
 
+const char *Bucket::dataPtr() const
+{
+	if (_type == EOS || _offset >= _data.size())
+		return NULL;
+	return &_data[_offset];
+}
+
 std::string Bucket::viewAsString() const
 {
 	if (_type == EOS)

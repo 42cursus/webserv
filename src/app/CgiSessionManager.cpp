@@ -57,8 +57,9 @@ int CgiSessionManager::epollDel(int epoll_fd, int fd)
 	return epoll_ctl(epoll_fd, EPOLL_CTL_DEL, fd, NULL);
 }
 
-void CgiSessionManager::handleEvent(CgiHandler::CGISession *cgiSession, epoll_event &ev, int epoll_fd)
+void CgiSessionManager::handleEvent(ConnWorker *worker, epoll_event &ev, int epoll_fd)
 {
+	CgiHandler::CGISession *cgiSession = worker != NULL ? worker->getCgiSession() : NULL;
 	if (cgiSession == NULL)
 		return;
 
@@ -67,22 +68,25 @@ void CgiSessionManager::handleEvent(CgiHandler::CGISession *cgiSession, epoll_ev
 		if (result == Connection::OK) {
 			epollDel(epoll_fd, cgiSession->_stdout_pipe[0]);
 		} else if (result == Connection::WANT_WRITE) {
-			ConnWorker *worker = cgiSession->_parentConnection->getParent();
-			if (worker != NULL) {
-				worker->refreshBackpressureState();
-				void	   *taggedPtr = tag_ptr(worker, WebServer::EP_WRKR);
+			ConnWorker *owner = cgiSession->_parentConnection->getParent();
+			if (owner != NULL) {
+				owner->refreshBackpressureState();
+				void	   *taggedPtr = tag_ptr(owner, WebServer::EP_WRKR);
 				uint32_t	events = EPOLLOUT;
-				if (worker->ctx.conn.shouldReadFromSocket())
+				if (owner->ctx.conn.shouldReadFromSocket())
 					events |= EPOLLIN;
 				epollMod(epoll_fd, cgiSession->_parentConnection->getFd(), taggedPtr, events);
 			}
 		} else if (result == Connection::ERROR) {
+			HttpResponse *res = cgiSession->_parentConnection->getCurrentResponse();
+			if (res != NULL)
+				res->body_complete = true;
 			epollDel(epoll_fd, cgiSession->_stdout_pipe[0]);
 			epollDel(epoll_fd, cgiSession->_stdin_pipe[1]);
 			kill(cgiSession->_pid, SIGTERM);
-			ConnWorker *worker = cgiSession->_parentConnection->getParent();
-			if (worker != NULL)
-				worker->clearCgiSession();
+			ConnWorker *owner = cgiSession->_parentConnection->getParent();
+			if (owner != NULL)
+				owner->clearCgiSession();
 			delete cgiSession;
 		}
 		return;
@@ -93,12 +97,15 @@ void CgiSessionManager::handleEvent(CgiHandler::CGISession *cgiSession, epoll_ev
 		if (result == Connection::OK)
 			epollDel(epoll_fd, cgiSession->_stdin_pipe[1]);
 		else if (result == Connection::ERROR) {
+			HttpResponse *res = cgiSession->_parentConnection->getCurrentResponse();
+			if (res != NULL)
+				res->body_complete = true;
 			epollDel(epoll_fd, cgiSession->_stdout_pipe[0]);
 			epollDel(epoll_fd, cgiSession->_stdin_pipe[1]);
 			kill(cgiSession->_pid, SIGTERM);
-			ConnWorker *worker = cgiSession->_parentConnection->getParent();
-			if (worker != NULL)
-				worker->clearCgiSession();
+			ConnWorker *owner = cgiSession->_parentConnection->getParent();
+			if (owner != NULL)
+				owner->clearCgiSession();
 			delete cgiSession;
 		}
 		return;
@@ -110,9 +117,9 @@ void CgiSessionManager::handleEvent(CgiHandler::CGISession *cgiSession, epoll_ev
 			res->body_complete = true;
 		epollDel(epoll_fd, cgiSession->_stdout_pipe[0]);
 		epollDel(epoll_fd, cgiSession->_stdin_pipe[1]);
-		ConnWorker *worker = cgiSession->_parentConnection->getParent();
-		if (worker != NULL)
-			worker->clearCgiSession();
+		ConnWorker *owner = cgiSession->_parentConnection->getParent();
+		if (owner != NULL)
+			owner->clearCgiSession();
 		delete cgiSession;
 	}
 }
