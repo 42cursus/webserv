@@ -298,9 +298,9 @@ Connection::e_result CgiHandler::CGISession::onWritable()
 			bytes_sent += static_cast<size_t>(written);
 			continue;
 		}
-		if (written < 0 && errno == EINTR)
-			continue;
-		if (written < 0 && (errno == EAGAIN || errno == EWOULDBLOCK))
+		// if (written < 0 && errno == EINTR)
+		// 	continue;
+		if (written < 0)
 			return Connection::WANT_WRITE;
 		return Connection::ERROR;
 	}
@@ -340,10 +340,10 @@ Connection::e_result CgiHandler::CGISession::onReadable()
 		_stdoutBuckets.appendEOS();
 		res->body_complete = true;
 		result = Connection::OK;
-	} else if (errno == EINTR || errno == EAGAIN || errno == EWOULDBLOCK) {
-		result = Connection::OK;
+	// } else if (errno == EINTR || errno == EAGAIN || errno == EWOULDBLOCK) {
+	// 	result = Connection::OK;
 	} else {
-		result = Connection::ERROR;
+		result = Connection::OK;
 	}
 	return result;
 }

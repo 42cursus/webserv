@@ -124,11 +124,11 @@ Connection::~Connection()
 
 Connection::e_result Connection::_recvFromClient()
 {
-	while (true) {
+	// while (true) {
 		ssize_t nread = ::read(_fd, _req_buffer, REQUEST_BUF_SIZE);
 		if (nread > 0) {
 			_transportInput.appendMemory(_req_buffer, static_cast<size_t>(nread));
-			continue; // drain the kernel buffer
+			return OK; // drain the kernel buffer
 		}
 		if (nread == 0) {
 			// Peer closed its write-side (FIN).
@@ -138,17 +138,17 @@ Connection::e_result Connection::_recvFromClient()
 			return OK;
 		}
 
-		if (errno == EINTR)  // FIXME: CAN'T DO THAT!!!
-			continue;
-		if (errno == EAGAIN || errno == EWOULDBLOCK)  // FIXME: CAN'T DO THAT!!!
-		{
-			updateBackpressureState();
-			return OK;
-		}
+		// if (errno == EINTR)  // FIXME: CAN'T DO THAT!!!
+		// 	continue;
+		// if (errno == EAGAIN || errno == EWOULDBLOCK)  // FIXME: CAN'T DO THAT!!!
+		// {
+		// 	updateBackpressureState();
+		// 	return OK;
+		// }
 
 		updateBackpressureState();
-		return ERROR;
-	}
+		return OK;
+	// }
 }
 
 void logServingFile(const std::string &path, const std::string &mimetype)
