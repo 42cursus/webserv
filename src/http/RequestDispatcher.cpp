@@ -74,12 +74,12 @@ HttpResponse *RequestDispatcher::dispatch(Connection &conn, HttpRequest &req)
 		}
 
 		switch (req.get_method()) {
-			case (HttpRequest::GET): {
-				StaticFileHandler handler(*res->location);
-				StatusCode code = handler.handle(req, *res);
-				res->set_response_code(code);
+			case (HttpRequest::GET):
+				prepareResponseGet(req, *res);
 				return res;
-			}
+			case (HttpRequest::HEAD):
+				prepareResponseHead(req, *res);
+				return res;
 			case (HttpRequest::PUT):
 				prepareResponsePut(req, *res);
 				break;
@@ -114,6 +114,21 @@ HttpResponse *RequestDispatcher::dispatch(Connection &conn, HttpRequest &req)
 	return res;
 }
 
+void RequestDispatcher::prepareResponseGet(HttpRequest &req, HttpResponse &res)
+{
+	StaticFileHandler handler(*res.location);
+	StatusCode code = handler.handle(req, res);
+	res.set_response_code(code);
+}
+
+void RequestDispatcher::prepareResponseHead(HttpRequest &req, HttpResponse &res)
+{
+	prepareResponseGet(req, res);
+	if (res.headers.find("content-length") == res.headers.end())
+		res.headers["content-length"] = ::itoa(res.body.size());
+	res.body.clear();
+}
+
 void RequestDispatcher::prepareResponsePut(HttpRequest &req, HttpResponse &res)
 {
 	std::string rel_path = req.path.substr(res.location->_path.length(), req.path.length());
@@ -134,8 +149,23 @@ void RequestDispatcher::prepareResponsePut(HttpRequest &req, HttpResponse &res)
 
 void RequestDispatcher::prepareResponsePost(HttpRequest &req, HttpResponse &res)
 {
-	(void) req;
-	(void) res;
+	std::string rel_path = req.path.substr(res.location->_path.length(), req.path.length());
+	if (rel_path.empty() || rel_path == "/")
+		rel_path = "post_body.bin";
+	std::string path = res.location->_root + rel_path;
+
+	if (access(path.c_str(), F_OK) == 0)
+		res.set_response_code(SC_204);
+	else
+		res.set_response_code(SC_201);
+
+	int fd = open(path.c_str(), O_WRONLY | O_TRUNC | O_CREAT, S_IRWXU | S_IROTH | S_IRGRP);
+	if (fd >= 0) {
+		if (!req.body.empty())
+			write(fd, &req.body[0], req.body.size());
+		close(fd);
+	}
+	res.headers["content-length"] = "0";
 }
 
 void RequestDispatcher::prepareResponseDelete(Connection &conn, HttpRequest &req, HttpResponse &res)

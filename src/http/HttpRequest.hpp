@@ -38,6 +38,7 @@ public:
 	enum e_method
 	{
 		GET,
+		HEAD,
 		PUT,
 		POST,
 		DELETE,

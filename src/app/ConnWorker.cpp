@@ -75,6 +75,16 @@ bool ConnWorker::hasPendingResponses() const
 	return _ctx.conn.hasPendingResponses();
 }
 
+bool ConnWorker::shouldReadFromSocket() const
+{
+	return _ctx.conn.shouldReadFromSocket();
+}
+
+void ConnWorker::refreshBackpressureState()
+{
+	_ctx.conn.refreshBackpressureState();
+}
+
 void ConnWorker::resetForReuse()
 {
 	_ctx.resetForReuse();
@@ -124,8 +134,7 @@ const Connection &ConnWorker::getConn() const {
 }
 
 const Connection *ConnWorker::getConnPtr() const {
-	ConnectionContext receiver = _ctx;
-	return &receiver.conn;
+	return &_ctx.conn;
 }
 
 CgiHandler::CGISession *ConnWorker::getCgiSession() const
@@ -141,6 +150,11 @@ void ConnWorker::setCgiSession(CgiHandler::CGISession *session)
 void ConnWorker::clearCgiSession()
 {
 	_ctx.clearCgiSession();
+}
+
+const ConnectionContext &ConnWorker::getCtx() const
+{
+	return _ctx;
 }
 
 /*

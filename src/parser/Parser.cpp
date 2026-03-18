@@ -164,8 +164,10 @@ void Parser::handleBlockIn(std::vector<t_token> line)
 
 void Parser::handleBlockOut()
 {
+	if (!_current_block)
+		throw Error("Error: invalid config: block out syntax error");
 	if (_current_block->getBlockType() != HTTP_) {
-		if (!_current_block->getParent()->isInBlock())
+		if (!_current_block->getParent() || !_current_block->getParent()->isInBlock())
 			throw Error("Error: invalid config: block out syntax error");
 	}
 

@@ -36,6 +36,8 @@ SRCS			= src/main.cpp \
 				  src/app/WorkerPool.cpp \
 				  src/app/TCPServer.cpp \
 				  src/http/Connection.cpp \
+				  src/http/Bucket.cpp \
+				  src/http/BucketChain.cpp \
 				  src/http/HttpRequest.cpp \
 				  src/http/RequestParser.cpp \
 				  src/http/RequestDispatcher.cpp \

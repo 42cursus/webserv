@@ -70,7 +70,7 @@ StatusCode StaticFileHandler::handle(HttpRequest &req, HttpResponse &res)
 	if (res.headers.find("content-type") == res.headers.end() || res.headers["content-type"].empty())
 		res.headers["content-type"] = "application/octet-stream";
 
-	res.headers["content-length"] = ::itoa(static_cast<int>(res.body.size()));
+	res.headers["content-length"] = ::itoa((int)res.body.size());
 	return status;
 }
 

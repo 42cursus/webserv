@@ -198,6 +198,8 @@ HttpRequest::e_method	HttpRequest::get_method() const
 {
 	if (this->method == "GET")
 		return GET;
+	if (this->method == "HEAD")
+		return HEAD;
 	if (this->method == "POST")
 		return POST;
 	if (this->method == "PUT")

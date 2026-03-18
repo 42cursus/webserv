@@ -29,6 +29,7 @@
 #include <sys/types.h>
 #include <sys/wait.h>
 #include <unistd.h>
+#include <fcntl.h>
 
 
 /*
@@ -49,7 +50,8 @@ CgiHandler::CGISession::CGISession() :
 	_stdin_pipe(),
 	_stdout_pipe(),
 	bytes_sent(0),
-	bytes_received(0)
+	bytes_received(0),
+	_stdinClosed(false)
 {}
 
 CgiHandler::CgiHandler(HttpRequest		 &req,
@@ -141,6 +143,8 @@ StatusCode CgiHandler::handle(HttpRequest &req, HttpResponse &res)
 
 	close(sess._stdout_pipe[1]);
 	close(sess._stdin_pipe[0]);
+	set_non_blocking(sess._stdin_pipe[1]);
+	set_non_blocking(sess._stdout_pipe[0]);
 
 	// write(sess._stdin_pipe[1], "", 0);
 	// close(sess._stdin_pipe[1]);
@@ -161,6 +165,7 @@ StatusCode CgiHandler::handle(HttpRequest &req, HttpResponse &res)
 
 	CGISession *session = new CGISession();
 	*session = sess;
+	session->stageRequestBody(req.body);
 	this->wrkr->setCgiSession(session);
 	return SC_200;
 	(void)_state;
@@ -238,6 +243,8 @@ StatusCode CgiHandler::handlePHP(HttpRequest &req, HttpResponse &res)
 
 	close(sess._stdout_pipe[1]);
 	close(sess._stdin_pipe[0]);
+	set_non_blocking(sess._stdin_pipe[1]);
+	set_non_blocking(sess._stdout_pipe[0]);
 
 	// write(sess._stdin_pipe[1], "", 0);
 	// close(sess._stdin_pipe[1]);
@@ -258,6 +265,7 @@ StatusCode CgiHandler::handlePHP(HttpRequest &req, HttpResponse &res)
 
 	CGISession *session = new CGISession();
 	*session = sess;
+	session->stageRequestBody(req.body);
 	this->wrkr->setCgiSession(session);
 	return SC_200;
 	(void)_state;
@@ -265,18 +273,40 @@ StatusCode CgiHandler::handlePHP(HttpRequest &req, HttpResponse &res)
 
 Connection::e_result CgiHandler::CGISession::onWritable()
 {
-	if (_parentConnection->hasPendingResponses())
-		_parentConnection->_sendToClient(); // FIXME: onWritable is for writing body to cgi handler
+	static const size_t kPipeWriteChunk = 8192;
+	if (_stdinClosed)
+		return Connection::OK;
 
-	return  Connection::OK;
+	if (_stdinBuckets.bytes() == 0) {
+		close(_stdin_pipe[1]);
+		_stdinClosed = true;
+		return Connection::OK;
+	}
+
+	std::string payload = _stdinBuckets.flatten(kPipeWriteChunk);
+	if (payload.empty())
+		return Connection::WANT_WRITE;
+
+	const ssize_t written = write(_stdin_pipe[1], payload.data(), payload.size());
+	if (written > 0) {
+		_stdinBuckets.consume(static_cast<size_t>(written));
+		bytes_sent += static_cast<size_t>(written);
+		if (_stdinBuckets.bytes() == 0) {
+			close(_stdin_pipe[1]);
+			_stdinClosed = true;
+			return Connection::OK;
+		}
+		return Connection::WANT_WRITE;
+	}
+	if (written < 0 && (errno == EINTR || errno == EAGAIN || errno == EWOULDBLOCK))
+		return Connection::WANT_WRITE;
+
+	return Connection::ERROR;
 }
 
 Connection::e_result CgiHandler::CGISession::onReadable()
 {
-
 	Connection::e_result result = Connection::OK;
-
-	// std::vector<char> v(32768);
 	std::vector<char> v(8192);
 
 	const ssize_t bytesRead = read(this->_stdout_pipe[0], &v[0], v.size());
@@ -286,26 +316,27 @@ Connection::e_result CgiHandler::CGISession::onReadable()
 
 	if (bytesRead > 0) {
 		v.resize(bytesRead);
-		std::string toAppend(v.begin(), v.end());
-		_raw_output += toAppend;
-
-		res->body.append(toAppend);
+		_stdoutBuckets.appendMemory(&v[0], static_cast<size_t>(bytesRead));
+		std::string streamed = _stdoutBuckets.flatten(0);
+		if (!streamed.empty()) {
+			_raw_output += streamed;
+			_body_buffer += streamed;
+			res->body.append(streamed);
+			_stdoutBuckets.consume(streamed.size());
+		}
+		bytes_received += static_cast<size_t>(bytesRead);
 
 		result = Connection::WANT_WRITE;
-	}
-	else if (bytesRead < 0)
-	{
-		std::cout << "Cgi read error" << std::endl;
+	} else if (bytesRead == 0) {
+		_stdoutBuckets.appendEOS();
+		res->body_complete = true;
+		result = Connection::OK;
+	} else if (errno == EINTR || errno == EAGAIN || errno == EWOULDBLOCK) {
+		result = Connection::OK;
+	} else {
 		result = Connection::ERROR;
 	}
-	else
-	{
-		std::cout << "Cgi read zero" << std::endl;
-		res->body_complete = true;
-	}
 	return result;
-	(void)this->bytes_sent;
-	(void)this->bytes_received;
 }
 
 int CgiHandler::CGISession::register_read_pipe(int epoll_fd)
@@ -324,6 +355,14 @@ int CgiHandler::CGISession::register_write_pipe(int epoll_fd)
 	ev.events	= EPOLLOUT;
 	return epoll_ctl(epoll_fd, EPOLL_CTL_ADD, _stdin_pipe[1], &ev);
 	return epoll_ctl(epoll_fd, EPOLL_CTL_ADD, this->_parentConnection->getFd(), &ev);
+}
+
+void CgiHandler::CGISession::stageRequestBody(const std::vector<char> &body)
+{
+	_stdinBuckets.clear();
+	if (!body.empty())
+		_stdinBuckets.appendMemory(&body[0], body.size());
+	_stdinBuckets.appendEOS();
 }
 
 void CgiHandler::_build_env(std::vector<std::string> &env)
@@ -436,6 +475,14 @@ std::string CgiHandler::CGISession::body_buffer() const
 std::string CgiHandler::CGISession::raw_output() const
 {
 	return (_raw_output);
+}
+
+int CgiHandler::set_non_blocking(int fd)
+{
+	int flags = fcntl(fd, F_GETFL, 0);
+	if (flags < 0)
+		return -1;
+	return fcntl(fd, F_SETFL, flags | O_NONBLOCK);
 }
 
 /*

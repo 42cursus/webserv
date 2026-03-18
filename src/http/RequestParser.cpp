@@ -64,3 +64,8 @@ RequestParser::Result RequestParser::tryExtract(const std::string &buffer, size_
 	res.consumed_bytes = need_total;
 	return res;
 }
+
+RequestParser::Result RequestParser::tryExtract(const BucketChain &buffer_chain)
+{
+	return tryExtract(buffer_chain.flatten(0), 0);
+}

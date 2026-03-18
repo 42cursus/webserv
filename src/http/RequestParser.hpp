@@ -13,6 +13,7 @@
 #ifndef REQUESTPARSER_HPP
 #define REQUESTPARSER_HPP
 
+#include "BucketChain.hpp"
 #include "HttpRequest.hpp"
 #include <cstddef>
 #include <string>
@@ -42,6 +43,7 @@ public:
 	};
 
 	static Result tryExtract(const std::string &buffer, size_t in_offset);
+	static Result tryExtract(const BucketChain &buffer_chain);
 };
 
 #endif//REQUESTPARSER_HPP

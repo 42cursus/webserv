@@ -37,12 +37,16 @@ public:
 	Connection::e_result sendResponse();
 
 	bool hasPendingResponses() const;
+	bool shouldReadFromSocket() const;
+	void refreshBackpressureState();
 
 	void resetForReuse();
 	void clearRequest();
 
 	e_status getStatus() const;
 	e_status setStatus(Connection::e_status);
+
+	const ConnectionContext &getCtx() const;
 
 	void closeSocketFd();
 

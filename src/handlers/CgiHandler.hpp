@@ -16,6 +16,7 @@
 #include <string>
 #include <vector>
 
+#include "BucketChain.hpp"
 #include "Connection.hpp"
 #include "HttpRequest.hpp"
 #include "HttpResponse.hpp"
@@ -37,6 +38,7 @@ public:
 		int					 register_write_pipe(int epoll_fd);
 		std::string			 body_buffer() const;
 		std::string			 raw_output() const;
+		void				 stageRequestBody(const std::vector<char> &body);
 
 		pid_t		_pid;
 		int			_wstatus;
@@ -44,11 +46,14 @@ public:
 		int			_stdout_pipe[2];// CGI -> server
 		std::string _body_buffer;
 		std::string _raw_output; // FIXME: should probably use std::vector<char> as by design std::string doesn't guarantee contiguous space
+		BucketChain _stdinBuckets;
+		BucketChain _stdoutBuckets;
 
 		Connection *_parentConnection;
 
 	private:
 		std::size_t bytes_sent, bytes_received;
+		bool		_stdinClosed;
 	};
 
 private:
@@ -74,6 +79,7 @@ public:
 
 	StatusCode handle(HttpRequest &req, HttpResponse &res);
 	StatusCode handlePHP(HttpRequest &req, HttpResponse &res);
+	static int		   set_non_blocking(int fd);
 };
 
 #endif//CGIHANDLER_HPP

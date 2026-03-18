@@ -37,6 +37,11 @@
 #include "CgiHandler.hpp"
 #include "StaticFileHandler.hpp"
 
+namespace {
+const size_t READ_WM_HIGH = 256 * 1024;
+const size_t READ_WM_LOW = 128 * 1024;
+}
+
 /*
 ** -------------------------------- STATIC VARS -------------------------------
 */
@@ -50,7 +55,9 @@ Connection::Connection() :
 	_srv(NULL),
 	_status(READING_HEADERS),
 	_req(NULL),
-	_inOffset(0),
+	_transportInput(),
+	_transportOutput(),
+	_readBackpressure(false),
 	_peerClosedInput(false),
 	_parent(NULL),
 	_req_buffer()
@@ -66,7 +73,9 @@ Connection::Connection(const Connection &other) :
 	_srv(other._srv),
 	_status(other._status),
 	_req(other._req),
-	_inOffset(other._inOffset),
+	_transportInput(other._transportInput),
+	_transportOutput(other._transportOutput),
+	_readBackpressure(other._readBackpressure),
 	_peerClosedInput(other._peerClosedInput),
 	_pendingResponses(other._pendingResponses),
 	_parent(other._parent)
@@ -77,7 +86,9 @@ Connection::Connection(int fd, TCPServer *srv) :
 	_srv(srv),
 	_status(READING_HEADERS),
 	_req(NULL),
-	_inOffset(0),
+	_transportInput(),
+	_transportOutput(),
+	_readBackpressure(false),
 	_peerClosedInput(false),
 	_req_buffer()
 {
@@ -116,29 +127,26 @@ Connection::e_result Connection::_recvFromClient()
 	while (true) {
 		ssize_t nread = ::read(_fd, _req_buffer, REQUEST_BUF_SIZE);
 		if (nread > 0) {
-			_req_buffer[nread] = '\0';
-			_inputBuffer.append(_req_buffer, static_cast<size_t>(nread));
+			_transportInput.appendMemory(_req_buffer, static_cast<size_t>(nread));
 			continue; // drain the kernel buffer
 		}
 		if (nread == 0) {
 			// Peer closed its write-side (FIN).
 			// We might still have a full request in _in.
 			_peerClosedInput = true;
+			_updateBackpressureState();
 			return OK;
-		}
-
-		if (_status == READING_BODY) {
-			size_t old_size = _req->body.size();
-			_req->body.resize(old_size + nread);
-			std::memcpy(_req->body.data() + old_size, _req_buffer, nread);
-			//_req->printBody();
 		}
 
 		if (errno == EINTR)  // FIXME: CAN'T DO THAT!!!
 			continue;
 		if (errno == EAGAIN || errno == EWOULDBLOCK)  // FIXME: CAN'T DO THAT!!!
+		{
+			_updateBackpressureState();
 			return OK;
+		}
 
+		_updateBackpressureState();
 		return ERROR;
 	}
 }
@@ -179,10 +187,16 @@ Connection::e_result Connection::_sendToClient()
 	// If the request said "Connection: close",
 	// close *after* we sent its response.
 	if (close_after)
+	{
+		_updateBackpressureState();
 		return CLOSED;
+	}
 
 	if (!_pendingResponses.empty())
+	{
+		_updateBackpressureState();
 		return WANT_WRITE;
+	}
 
 	_status = READING_HEADERS;
 
@@ -190,7 +204,11 @@ Connection::e_result Connection::_sendToClient()
 	// so we don't wait for another EPOLLIN.
 	e_result pr = _processInput();
 	if (pr == WANT_WRITE)
+	{
+		_updateBackpressureState();
 		return WANT_WRITE;
+	}
+	_updateBackpressureState();
 	return OK;
 }
 
@@ -206,14 +224,20 @@ Connection::e_result Connection::_sendToClient()
 
 void Connection::_consumeInputBytes(size_t nbytes)
 {
-	_inOffset += nbytes;
+	_transportInput.consume(nbytes);
+	_updateBackpressureState();
+}
 
-	size_t magic_nbr = 65536; // FIXME: magic-number...
-
-	if (_inOffset > magic_nbr || (_inOffset > 0 && _inOffset * 2 > _inputBuffer.size())) {
-		_inputBuffer.erase(0, _inOffset);
-		_inOffset = 0;
+void Connection::_updateBackpressureState()
+{
+	const size_t buffered = _transportInput.bytes() + _transportOutput.bytes();
+	if (_readBackpressure) {
+		if (buffered <= READ_WM_LOW)
+			_readBackpressure = false;
+		return;
 	}
+	if (buffered >= READ_WM_HIGH)
+		_readBackpressure = true;
 }
 
 void Connection::_resetCurrentRequest()
@@ -252,12 +276,12 @@ bool Connection::_shouldKeepAlive(const HttpRequest &req) const
  */
 bool Connection::_tryExtractOneRequest()
 {
-	RequestParser::Result extract = RequestParser::tryExtract(_inputBuffer, _inOffset);
+	RequestParser::Result extract = RequestParser::tryExtract(_transportInput);
 	if (extract.status == RequestParser::NEED_MORE_DATA)
 		return false;
 
 	if (extract.status == RequestParser::BAD_REQUEST) {
-		_inputBuffer.erase();
+		_transportInput.clear();
 		delete _req;
 		_req = NULL;
 
@@ -527,8 +551,9 @@ void Connection::_parseRange(HttpResponse &res) const
 
 void Connection::clearRequest()
 {
-	_inputBuffer.clear();
-	_inOffset = 0;
+	_transportInput.clear();
+	_transportOutput.clear();
+	_readBackpressure = false;
 	_resetCurrentRequest();
 }
 
@@ -551,8 +576,9 @@ void Connection::reset()
 	delete _req;
 	_req = NULL;
 
-	_inputBuffer.clear();
-	_inOffset = 0;
+	_transportInput.clear();
+	_transportOutput.clear();
+	_readBackpressure = false;
 
 	_peerClosedInput = false;
 	_status			 = READING_HEADERS;
@@ -613,6 +639,48 @@ void	Connection::setIpStr(std::string ip)
 std::string const&	Connection::getIpStr(void) const
 {
 	return _ip;
+}
+
+BucketChain &Connection::transportInputBuckets()
+{
+	return _transportInput;
+}
+
+BucketChain &Connection::transportOutputBuckets()
+{
+	return _transportOutput;
+}
+
+const BucketChain &Connection::transportInputBuckets() const
+{
+	return _transportInput;
+}
+
+const BucketChain &Connection::transportOutputBuckets() const
+{
+	return _transportOutput;
+}
+
+bool Connection::shouldReadFromSocket() const
+{
+	if (_status != READY_TO_WRITE)
+		return true;
+	return !_readBackpressure;
+}
+
+void Connection::refreshBackpressureState()
+{
+	_updateBackpressureState();
+}
+
+size_t Connection::transportInputBytes() const
+{
+	return _transportInput.bytes();
+}
+
+size_t Connection::transportOutputBytes() const
+{
+	return _transportOutput.bytes();
 }
 
 /*

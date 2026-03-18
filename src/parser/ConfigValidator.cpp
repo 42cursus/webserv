@@ -23,7 +23,7 @@ bool ConfigValidator::validateCgiParam(std::string cgi_param)
 
 bool ConfigValidator::validateMethod(std::string method)
 {
-	return method == "PUT" || method == "GET" || method == "DELETE" || method == "POST";
+	return method == "PUT" || method == "GET" || method == "HEAD" || method == "DELETE" || method == "POST";
 }
 
 bool ConfigValidator::validateErrorCode(std::string error_code)

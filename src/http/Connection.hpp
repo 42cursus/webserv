@@ -16,6 +16,7 @@
 #include "HttpRequest.hpp"
 #include "HttpResponse.hpp"
 #include "HttpTransaction.hpp"
+#include "BucketChain.hpp"
 #include "Router.hpp"
 #include "State.hpp"
 #include "StaticFileHandler.hpp"
@@ -85,6 +86,14 @@ public:
 	void closeSocketFd();
 	void reset();
 	void clearRequest();
+	BucketChain &transportInputBuckets();
+	BucketChain &transportOutputBuckets();
+	const BucketChain &transportInputBuckets() const;
+	const BucketChain &transportOutputBuckets() const;
+	bool shouldReadFromSocket() const;
+	void refreshBackpressureState();
+	size_t transportInputBytes() const;
+	size_t transportOutputBytes() const;
 
 	e_result _sendToClient();
 
@@ -97,6 +106,7 @@ private:
 
 	bool _tryExtractOneRequest();
 	void _consumeInputBytes(size_t nbytes);
+	void _updateBackpressureState();
 	void _resetCurrentRequest();
 
 	bool _shouldKeepAlive(const HttpRequest &req) const;
@@ -113,9 +123,9 @@ private:
 	HttpRequest *_req;
 	//    HttpResponse*   _res;
 
-	// input buffering
-	std::string _inputBuffer;
-	size_t		_inOffset;
+	BucketChain _transportInput;
+	BucketChain _transportOutput;
+	bool	   _readBackpressure;
 
 	bool _peerClosedInput;
 

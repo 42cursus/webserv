@@ -159,9 +159,6 @@ void WebServer::serve_handle_worker(ConnWorker *wrkr, struct epoll_event &ev)
             return;
         }
 
-        if (retval == Connection::WANT_WRITE || wrkr->getStatus() == Connection::READY_TO_WRITE)
-            epoll_mod(wrkr->getConnFd(), tag_ptr(wrkr, EP_WRKR), EPOLLIN | EPOLLOUT);
-
         // If peer hung up, and we have nothing queued to write, we can close now.
         if (hup && !wrkr->hasPendingResponses())
         {
@@ -200,9 +197,18 @@ void WebServer::serve_handle_worker(ConnWorker *wrkr, struct epoll_event &ev)
                 _wrkrPool.free(wrkr);
                 return;
             }
-            epoll_mod(wrkr->getConnFd(), tag_ptr(wrkr, EP_WRKR), EPOLLIN);
         }
     }
+
+	wrkr->refreshBackpressureState();
+	uint32_t events = 0;
+	if (wrkr->shouldReadFromSocket())
+		events |= EPOLLIN;
+	if (wrkr->getStatus() == Connection::READY_TO_WRITE)
+		events |= EPOLLOUT;
+	if (events == 0)
+		events = EPOLLOUT;
+	epoll_mod(wrkr->getConnFd(), tag_ptr(wrkr, EP_WRKR), events);
 }
 
 int WebServer::serve()

@@ -17,6 +17,7 @@
 
 #include "HttpResponse.hpp"
 
+#define DEFAULT_CHUNK_SIZE 32768
 class Connection;
 
 class ResponseWriter {
@@ -29,7 +30,7 @@ public:
 		WR_RESP_COMPLETE,
 	};
 
-	static e_result writeCurrent(Connection const &conn, int fd, HttpResponse &res);
+	static e_result writeCurrent(Connection &conn, int fd, HttpResponse &res);
 };
 
 #endif//RESPONSEWRITER_HPP

@@ -23,6 +23,8 @@ public:
 	static HttpResponse *dispatch(Connection &conn, HttpRequest &req);
 
 private:
+	static void prepareResponseGet(HttpRequest &req, HttpResponse &res);
+	static void prepareResponseHead(HttpRequest &req, HttpResponse &res);
 	static void prepareResponsePut(HttpRequest &req, HttpResponse &res);
 	static void prepareResponsePost(HttpRequest &req, HttpResponse &res);
 	static void prepareResponseDelete(Connection &conn, HttpRequest &req, HttpResponse &res);
