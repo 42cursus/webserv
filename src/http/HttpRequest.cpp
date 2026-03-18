@@ -16,6 +16,7 @@
 #include <fstream>
 #include <sstream>
 #include <string>
+#include <sys/stat.h>
 #include <unistd.h>
 #include <vector>
 #include "HttpRequest.hpp"
@@ -26,7 +27,10 @@
 #include "src/handlers/CgiHandler.hpp"
 #include "Location.hpp"
 
-HttpRequest::HttpRequest(const std::string &path) : path(path)
+HttpRequest::HttpRequest(const std::string &path) : path(path), content_length(0)
+{}
+
+HttpRequest::~HttpRequest()
 {}
 
 size_t	HttpRequest::_parseStartLine(const std::string &line)
@@ -46,12 +50,18 @@ size_t	HttpRequest::_parseStartLine(const std::string &line)
 			i++;
 	}
 	if (tokens.size() != 3)
-	{
 		throw HttpRequest::MalformedStartlineException();
-	}
+
 	method = tokens[0];
 	headers["method"] = method;
 	path = tokens[1];
+	size_t query_pos = path.find('?');
+	if (query_pos != std::string::npos) {
+		headers["query-string"] = path.substr(query_pos + 1);
+		path = path.substr(0, query_pos);
+	} else {
+		headers["query-string"] = "";
+	}
 	headers["path"] = path;
 	protocol = tokens[2];
 	headers["protocol"] = protocol;
@@ -127,6 +137,27 @@ static bool directory_exists(HttpResponse& res)
 	return !access(path.c_str(), F_OK);
 }
 
+static bool path_is_dir(const std::string &path)
+{
+	struct stat st;
+	if (stat(path.c_str(), &st) != 0)
+		return false;
+	return S_ISDIR(st.st_mode);
+}
+
+static bool has_index_file(HttpResponse &res)
+{
+	std::string dir_path = res.location->_root + res.filename;
+	if (!dir_path.empty() && dir_path[dir_path.size() - 1] != '/')
+		dir_path += '/';
+	for (std::vector<std::string>::iterator it = res.location->_index.begin(); it != res.location->_index.end(); ++it) {
+		std::string candidate = dir_path + *it;
+		if (access(candidate.c_str(), F_OK) == 0)
+			return true;
+	}
+	return false;
+}
+
 StatusCode HttpRequest::getHtmlResponse(HttpResponse& res, Location *location)
 {
 	StatusCode	status = SC_200;
@@ -166,6 +197,11 @@ StatusCode HttpRequest::getHtmlResponse(HttpResponse& res, Location *location)
 	}
 	else
 	{
+		std::string path = res.location->_root + res.filename;
+		if (!res.filename.empty() && *res.filename.rbegin() != '/' && !access(path.c_str(), F_OK) && path_is_dir(path)) {
+			if (!res.location->_autoindex && !has_index_file(res))
+				throw HttpResponse::Exception404();
+		}
 		res.headers["content-type"] = getMimeType(res.filename);
 		status = res.readHtmlFile(res.location->_root + res.filename);
 	}
@@ -183,6 +219,7 @@ std::string HttpRequest::getMimeType(const std::string &path) const {
 	mimeTypes.insert(std::make_pair("jpeg", "image/jpeg"));
 	mimeTypes.insert(std::make_pair("jpg", "image/jpeg"));
 	mimeTypes.insert(std::make_pair("png", "image/png"));
+	mimeTypes.insert(std::make_pair("ico", "image/x-icon"));
 	mimeTypes.insert(std::make_pair("mp4", "video/mp4"));
 
 	std::string fileExtension = path.substr(path.find_last_of(".") + 1);
@@ -194,6 +231,8 @@ HttpRequest::e_method	HttpRequest::get_method() const
 {
 	if (this->method == "GET")
 		return GET;
+	if (this->method == "HEAD")
+		return HEAD;
 	if (this->method == "POST")
 		return POST;
 	if (this->method == "PUT")

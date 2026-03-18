@@ -16,6 +16,7 @@
 #include "WebServer.hpp"
 #include "webserv.hpp"
 #include <csignal>
+#include <cstdlib>
 #include <vector>
 
 typedef struct sigaction t_sigaction;
@@ -32,6 +33,18 @@ void sig_handler(int sig, siginfo_t *info, void *ctx) {
 	(void)sipid;
 }
 
+void	sig_chld(int signo)
+{
+	pid_t	pid;
+	int		stat;
+
+	// std::cout << "handler called" << std::endl;
+
+	while ((pid = waitpid(-1, &stat, WNOHANG)) > 0) ;
+	return ;
+	(void)signo;
+}
+
 int main(int argc, char **argv) {
 	t_sigaction act;
 	t_sigaction old_act;
@@ -41,6 +54,9 @@ int main(int argc, char **argv) {
 	sigemptyset(&act.sa_mask);
 	if (sigaction(SIGINT, &act, &old_act) != 0)
 		exit(EXIT_FAILURE);
+
+	signal(SIGCHLD, sig_chld);
+	signal(SIGPIPE, SIG_IGN);
 
 	log_title();
 
@@ -77,5 +93,7 @@ int main(int argc, char **argv) {
 		return 1;
 	srv.serve();
 	srv.stop();
-	return (0);
+
+	return (EXIT_SUCCESS);
+	(void) filename;
 }

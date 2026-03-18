@@ -38,6 +38,7 @@ public:
 	enum e_method
 	{
 		GET,
+		HEAD,
 		PUT,
 		POST,
 		DELETE,
@@ -52,6 +53,7 @@ public:
 	std::map<std::string, std::string> headers;
 
 	explicit HttpRequest(const std::string &path);
+	~HttpRequest();
 
 	void parseRequest(const std::string& rawRequest);
 

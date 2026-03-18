@@ -3,14 +3,15 @@
 /*                                                        :::      ::::::::   */
 /*   State.cpp                                          :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By: margo <margo@student.42.fr>                +#+  +:+       +#+        */
+/*   By: mganchev <mganchev@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/01/25 15:43:47 by margo             #+#    #+#             */
-/*   Updated: 2026/02/01 17:53:15 by margo            ###   ########.fr       */
+/*   Updated: 2026/03/18 12:32:04 by mganchev         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
 #include "webserv.hpp"
+#include "ConfigCompiler.hpp"
 #include "Location.hpp"
 #include "State.hpp"
 #include "Prefix_suffix.hpp"
@@ -97,6 +98,7 @@ CGI& CGI::operator=(const CGI& copy)
         IBlock::operator=(copy);
         _ext = copy._ext;
         _script = copy._script;
+        _cgi_pass = copy._cgi_pass;
         _cgi_param = std::map<std::string, std::string>(copy._cgi_param);
     }
     return *this;
@@ -190,53 +192,9 @@ const std::map<std::string, std::string>& Server::getErrorPages() const { return
 // 	cfg.http.server.error_pages["504"] = "./resources/default_error_pages/50x.html";
 // }
 
-static void overwrite_error_pages(struct Config& cfg, std::map<std::string, std::string>& error_pages)
-{
-	std::map<std::string, std::string>::iterator it;
-
-	for (it = error_pages.begin(); it != error_pages.end(); it++)
-	{
-		cfg.http.server.error_pages[it->first] = it->second;
-	}
-}
-
-static TrieNode	*build_cgi_trie(std::vector<CGI>& cgis)
-{
-	TrieNode	*head = new TrieNode();
-
-	for (uint64_t i = 0; i < cgis.size(); i++)
-	{
-		suffix_trie_insert(head, &cgis[i]);
-	}
-	return head;
-}
-
 void Server::get_config(struct Config& cfg)
 {
-	// for (uint64_t i = 0; i < _locations.size(); i++)
-	// {
-	// 	cfg.http.server.locations.push_back(&this->_locations[i]);
-	// }
-	cfg.http.server.locations = this->_locations;
-	cfg.http.server.redirects = this->_redirects;
-	cfg.http.server.server_name = this->_hostname;
-	cfg.http.server.ipv4_listen.sin_family = AF_INET;
-	cfg.http.server.ipv4_listen.sin_addr.s_addr = htonl(INADDR_ANY);
-	std::memset(cfg.http.server.ipv4_listen.sin_zero, 0, 8);
-	cfg.http.server.ipv4_listen.sin_port = htons(this->_port);
-	cfg.http.server.loc_trie = new TrieNode();
-	cfg.http.server.redirect_trie = new TrieNode();
-	// setup_default_error_pages(cfg);
-	overwrite_error_pages(cfg, this->_error_pages);
-	for (uint64_t i = 0; i < cfg.http.server.locations.size(); i++)
-	{
-		prefix_trie_insert(cfg.http.server.loc_trie, cfg.http.server.locations[i]._path, &cfg.http.server.locations[i]);
-		cfg.http.server.locations[i].cgi_trie = build_cgi_trie(cfg.http.server.locations[i]._cgi);
-	}
-	for (uint64_t i = 0; i < cfg.http.server.redirects.size(); i++)
-	{
-		prefix_trie_insert(cfg.http.server.redirect_trie, cfg.http.server.redirects[i]._path, &cfg.http.server.redirects[i]);
-	}
+	ConfigCompiler::compileServer(*this, cfg);
 }
 
 void    Server::setPort(unsigned int port) { _port = port; }

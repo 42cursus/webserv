@@ -22,7 +22,8 @@ public:
     explicit StaticFileHandler(const Location& loc);
 	StatusCode handle(HttpRequest& req, HttpResponse& res);
 private:
-    const Location& _loc;
+    const	Location& _loc;
+	void	parse_range(HttpRequest &req, HttpResponse &res);
 };
 
 

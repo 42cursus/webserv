@@ -3,10 +3,10 @@
 /*                                                        :::      ::::::::   */
 /*   State.hpp                                          :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By: margo <margo@student.42.fr>                +#+  +:+       +#+        */
+/*   By: mganchev <mganchev@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/01/21 17:45:42 by margo             #+#    #+#             */
-/*   Updated: 2026/02/01 17:52:58 by margo            ###   ########.fr       */
+/*   Updated: 2026/03/18 12:31:14 by mganchev         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -80,6 +80,7 @@ std::ostream& operator<<(std::ostream& os, const Redirect& redirect);
 struct CGI : public IBlock {
     std::string _ext;
     std::string _script;
+    std::string _cgi_pass;
     std::map<std::string, std::string> _cgi_param;// std::map<key, value>
     CGI();
     CGI &operator=(const CGI &copy);

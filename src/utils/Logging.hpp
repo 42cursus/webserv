@@ -57,12 +57,14 @@ void	log_startup_error(TCPServer const& srv, StartupCategory type);
 void	log_no_servers(void);
 void	log_server_stop(TCPServer const& srv);
 void	log_shutdown(void);
+void	log_prune(ConnWorker const& wrkr);
 
 void	log_connection(ConnWorker const& wrkr, ConnectStatus status);
 
 void	log_request(Connection const& conn, HttpRequest const& req);
 void	log_request_error(Connection const& conn, std::exception &e);
 void	log_response(Connection const& conn, HttpResponse const& res);
+void	log_chunk_response(Connection const& conn, HttpResponse const& res);
 
 std::string	colour_num(int num);
 

@@ -24,13 +24,12 @@
 */
 
 ConnWorker::ConnWorker()
-    : _conn()
 {
-	_conn.setParent(this);
+	ctx.conn.setParent(this);
 }
 
-ConnWorker::ConnWorker(const ConnWorker &other) : _conn(other._conn) {
-	_conn.setParent(this);
+ConnWorker::ConnWorker(const ConnWorker &other) : ctx(other.ctx) {
+	ctx.conn.setParent(this);
 }
 
 /*
@@ -40,8 +39,8 @@ ConnWorker::ConnWorker(const ConnWorker &other) : _conn(other._conn) {
 ConnWorker::~ConnWorker()
 {
     // Connection destructor closes fd; keep explicit close safe:
-    closeSocketFd();
-    resetForReuse();
+	closeSocketFd();
+	resetForReuse();
 }
 
 /*
@@ -57,44 +56,24 @@ ConnWorker &ConnWorker::operator=(const ConnWorker &other) {
 ** -------------------------------- OVERLOADS ---------------------------------
 */
 
-/*
-** --------------------------------- METHODS ----------------------------------
-*/
-
-Connection::e_result ConnWorker::handleRequest()
+void ConnWorker::refreshBackpressureState()
 {
-    return _conn.onReadable();
-}
-
-Connection::e_result ConnWorker::sendResponse()
-{
-    Connection::e_result r = _conn.onWritable();
-	
-    // if (r == Connection::WANT_WRITE)
-    //     return Connection::WANT_WRITE;
-    // return Connection::OK;
-	
-	return r;
-}
-
-bool ConnWorker::hasPendingResponses() const
-{
-    return _conn.hasPendingResponses();
+	ctx.conn.updateBackpressureState();
 }
 
 void ConnWorker::resetForReuse()
 {
-    _conn.reset();
+	ctx.resetForReuse();
 }
 
 void ConnWorker::clearRequest()
 {
-    _conn.clearRequest();
+	ctx.conn.clearRequest();
 }
 
 void ConnWorker::closeSocketFd()
 {
-    _conn.closeSocketFd();
+	ctx.conn.closeSocketFd();
 }
 
 /*
@@ -103,26 +82,50 @@ void ConnWorker::closeSocketFd()
 
 void ConnWorker::setSrv(TCPServer* srv)
 {
-    _conn.setSrv(srv);
+	ctx.conn.setSrv(srv);
 }
 
 void ConnWorker::setConnFd(int connFd)
 {
-    _conn.setFd(connFd);
+	ctx.conn.setFd(connFd);
 }
 
 int ConnWorker::getConnFd() const
 {
-    return _conn.getFd();
+	return ctx.conn.getFd();
 }
 
 ConnWorker::e_status ConnWorker::getStatus() const
 {
-    return _conn.getStatus();
+	return ctx.conn.getStatus();
+}
+
+ConnWorker::e_status ConnWorker::setStatus(Connection::e_status status)
+{
+	return ctx.conn.setStatus(status);
 }
 
 const Connection &ConnWorker::getConn() const {
-    return _conn;
+	return ctx.conn;
+}
+
+const Connection *ConnWorker::getConnPtr() const {
+	return &ctx.conn;
+}
+
+CgiHandler::CGISession *ConnWorker::getCgiSession() const
+{
+	return ctx.getCgiSession();
+}
+
+void ConnWorker::setCgiSession(CgiHandler::CGISession *session)
+{
+	ctx.setCgiSession(session);
+}
+
+void ConnWorker::clearCgiSession()
+{
+	ctx.clearCgiSession();
 }
 
 /*

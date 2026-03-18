@@ -6,13 +6,18 @@
 /*   By: abelov <abelov@student.42london.com>       +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/01/31 21:42:24 by abelov            #+#    #+#             */
-/*   Updated: 2026/02/03 00:57:28 by fsmyth           ###   ########.fr       */
+/*   Updated: 2026/03/16 17:44:19 by abelov           ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
 #include "WebServer.hpp"
+#include "CgiSessionManager.hpp"
+#include "HttpResponse.hpp"
 #include "Logging.hpp"
+#include "WorkerPool.hpp"
+#include <csignal>
 #include <exception>
+#include <sys/epoll.h>
 
 /*
 ** -------------------------------- STATIC VARS -------------------------------
@@ -35,7 +40,8 @@ WebServer::WebServer() :
 */
 
 WebServer::~WebServer()
-{}
+{
+}
 
 /*
 ** -------------------------------- OPERATORS ---------------------------------
@@ -104,6 +110,7 @@ int WebServer::stop()
         _servers[i]->stop();
         delete _servers[i];
     }
+	_wrkrPool.killOrphans();
 	log_shutdown();
     return 0;
 }
@@ -127,7 +134,7 @@ void WebServer::serve_handle_worker(ConnWorker *wrkr, struct epoll_event &ev)
     if (ev.events & EPOLLIN)
     {
         // std::cout << "Read ready on fd" << std::endl;
-        Connection::e_result retval = wrkr->handleRequest();
+		Connection::e_result retval = wrkr->ctx.handleRequest();
         if (retval == Connection::CLOSED || retval == Connection::ERROR)
         {
             // std::cout << "Connection closed on fd: " << wrkr->getConnFd() << std::endl;
@@ -140,18 +147,20 @@ void WebServer::serve_handle_worker(ConnWorker *wrkr, struct epoll_event &ev)
 
         if (wrkr->getStatus() == Connection::HANDLING_CGI)
         {
-            wrkr->cgiSession->register_write_pipe(_epoll_fd);
-            wrkr->cgiSession->register_read_pipe(_epoll_fd);
-            epoll_del(wrkr->getConnFd());
-            //  FIXME: do stuff: too tired to figure out how to handle this rn
+            CgiHandler::CGISession *cgiSession = wrkr->getCgiSession();
+            if (cgiSession == NULL)
+                return;
+            cgiSession->register_write_pipe(_epoll_fd);
+            cgiSession->register_read_pipe(_epoll_fd);
+
+            // epollDel(wrkr->getConnFd());
+        	wrkr->setStatus(Connection::READY_TO_WRITE);
+
             return;
         }
 
-        if (retval == Connection::WANT_WRITE || wrkr->getStatus() == Connection::READY_TO_WRITE)
-            epoll_mod(wrkr->getConnFd(), tag_ptr(wrkr, WebServer::EP_WRKR), EPOLLOUT); // FIXME: now it can only be writte which is not true
-
-        // If peer hung up and we have nothing queued to write, we can close now.
-        if (hup && !wrkr->hasPendingResponses())
+        // If peer hung up, and we have nothing queued to write, we can close now.
+		if (hup && !wrkr->ctx.conn.hasPendingResponses())
         {
             // std::cout << "Peer hung up (EPOLLHUP) and no pending responses on fd: " << wrkr->getConnFd() << std::endl;
 			log_connection(*wrkr, CONN_HANGUP);
@@ -162,10 +171,10 @@ void WebServer::serve_handle_worker(ConnWorker *wrkr, struct epoll_event &ev)
         }
     }
     // Checks if a WRITE can be performed without blocking
-    else if (ev.events & EPOLLOUT && wrkr->getStatus() == Connection::READY_TO_WRITE)
+    if (ev.events & EPOLLOUT && wrkr->getStatus() == Connection::READY_TO_WRITE)
     {
         // std::cout << "Write ready on fd: " << wrkr->getConnFd() << std::endl;
-        Connection::e_result retval = wrkr->sendResponse();
+		Connection::e_result retval = wrkr->ctx.sendResponse();
         if (retval == Connection::CLOSED || retval == Connection::ERROR)
         {
             // std::cout << "Connection closed on fd: " << wrkr->getConnFd() << std::endl;
@@ -179,7 +188,8 @@ void WebServer::serve_handle_worker(ConnWorker *wrkr, struct epoll_event &ev)
         if (retval == Connection::OK)
         {
             // If peer hung up, don’t switch back to EPOLLIN; close once drained.
-            if (hup && !wrkr->hasPendingResponses())
+        	// std::cout << "Returned Connection::OK" << std::endl;
+			if (hup && !wrkr->ctx.conn.hasPendingResponses())
             {
                 std::cout << "Finished writes after peer hangup on fd: " << wrkr->getConnFd() << std::endl;
                 epoll_del(wrkr->getConnFd());
@@ -187,20 +197,28 @@ void WebServer::serve_handle_worker(ConnWorker *wrkr, struct epoll_event &ev)
                 _wrkrPool.free(wrkr);
                 return;
             }
-            epoll_mod(wrkr->getConnFd(), tag_ptr(wrkr, EP_WRKR), EPOLLIN);
         }
     }
+
+	wrkr->refreshBackpressureState();
+	uint32_t events = 0;
+	if (wrkr->ctx.conn.shouldReadFromSocket())
+		events |= EPOLLIN;
+	if (wrkr->getStatus() == Connection::READY_TO_WRITE)
+		events |= EPOLLOUT;
+	if (events == 0)
+		events = EPOLLOUT;
+	epoll_mod(wrkr->getConnFd(), tag_ptr(wrkr, EP_WRKR), events);
 }
 
 int WebServer::serve()
 {
     extern sig_atomic_t				g_var;
     ConnWorker* 					wrkr;
-    CgiHandler*						cgiSession;
 
-    while(g_var != SIGINT)
+	while(g_var != SIGINT)
     {
-        int nfds = epoll_wait(_epoll_fd, _events.data(), EVS_SIZE, -1);
+        int nfds = epoll_wait(_epoll_fd, &_events[0], EVS_SIZE, -1); // event demultiplexer
         for (int i = 0; i < nfds; i++)
         {
             void *ptr = _events[i].data.ptr;
@@ -218,9 +236,9 @@ int WebServer::serve()
                     serve_handle_worker(wrkr, _events[i]);
                     break;
                 }
-                case (EP_CGIS): {
-                    cgiSession = reinterpret_cast<CgiHandler *>(detag_ptr(ptr));
-                    (void)cgiSession; // handle cgi IO
+                case (EP_CGI): {
+                    ConnWorker* owner = reinterpret_cast<ConnWorker *>(detag_ptr(ptr));
+                    CgiSessionManager::handleEvent(owner, _events[i], _epoll_fd);
                     break;
                 }
                 default:
@@ -233,7 +251,7 @@ int WebServer::serve()
     return 0;
 }
 
-int WebServer::epoll_mod(int fd, void* tagged_ptr, EPOLL_EVENTS events)
+int WebServer::epoll_mod(int fd, void *tagged_ptr, uint32_t events)
 {
     struct epoll_event ev;
     std::memset(&ev, 0, sizeof(ev));
@@ -274,7 +292,7 @@ void	*tag_ptr(void *ptr, WebServer::epoll_ptr_type tag)
         case (WebServer::EP_WRKR):
             tagged |= TAG_B;
             break;
-        case (WebServer::EP_CGIS):
+        case (WebServer::EP_CGI):
             tagged |= TAG_C;
             break;
         case (WebServer::EP_NONE):
@@ -297,7 +315,7 @@ WebServer::epoll_ptr_type	get_tag(void *ptr)
             return WebServer::EP_WRKR;
         case (0xC):
             // std::cout << "ptr tagged as server" << std::endl;
-            return WebServer::EP_CGIS;
+            return WebServer::EP_CGI;
         default:
             return WebServer::EP_NONE;
     }

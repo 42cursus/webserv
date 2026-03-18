@@ -26,10 +26,10 @@ set(COMMON_LDFLAGS
 		-fsanitize=address,undefined
 		-fsanitize=float-divide-by-zero,float-cast-overflow
 		-fno-sanitize-recover=all)
+
 set(COMMON_CFLAGS
 		-Wwrite-strings -Wnarrowing
 		-O0
-		-masm=att
 		-fno-omit-frame-pointer
 		-fdwarf2-cfi-asm
 		-fcf-protection=none
@@ -92,5 +92,3 @@ add_custom_target(re
 
 add_custom_target(norm
 		COMMAND make -C ${PROJECT_SOURCE_DIR} norm)
-
-add_subdirectory(doodle)

@@ -1,5 +1,11 @@
 import os
+import time
 
-print("hello world")
-print(os.getenv("FUCK"))
-print(os.getenv("TWAT"))
+# time.sleep(5)
+# print("hello world")
+# print(os.getenv("TRY"))
+num = 0
+# while True:
+while num < 10000000:
+    print(num)
+    num += 1

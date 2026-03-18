@@ -189,3 +189,9 @@ tags
 /webserv
 /src/utils/parse
 test*
+/doodle/smoke/
+en.subject.txt
+en.subject.pdf
+/.venv/
+/.vscode/
+/.vscode/

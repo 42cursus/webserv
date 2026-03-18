@@ -6,7 +6,7 @@
 #    By: mganchev <mganchev@student.42.fr>          +#+  +:+       +#+         #
 #                                                 +#+#+#+#+#+   +#+            #
 #    Created: 2025/07/17 22:30:53 by abelov            #+#    #+#              #
-#    Updated: 2026/01/29 10:08:37 by mganchev         ###   ########.fr        #
+#    Updated: 2026/03/16 17:03:55 by abelov           ###   ########.fr        #
 #                                                                              #
 # **************************************************************************** #
 
@@ -30,17 +30,26 @@ INCLUDE_FLAGS	:= -I. \
 
 SRCS			= src/main.cpp \
 				  src/app/WebServer.cpp \
+				  src/app/CgiSessionManager.cpp \
+				  src/app/ConnectionContext.cpp \
 				  src/app/ConnWorker.cpp \
 				  src/app/WorkerPool.cpp \
 				  src/app/TCPServer.cpp \
 				  src/http/Connection.cpp \
+				  src/http/Bucket.cpp \
+				  src/http/BucketChain.cpp \
 				  src/http/HttpRequest.cpp \
+				  src/http/RequestParser.cpp \
+				  src/http/RequestDispatcher.cpp \
+				  src/http/ResponseWriter.cpp \
 				  src/http/HttpResponse.cpp \
 				  src/parser/Location.cpp \
 				  src/parser/Prefix_suffix.cpp \
 				  src/parser/DirectiveHandlers.cpp \
 				  src/parser/State.cpp \
-				  src/parser/Error.cpp \
+				  src/parser/ConfigLexer.cpp \
+				  src/parser/ConfigValidator.cpp \
+				  src/parser/ConfigCompiler.cpp \
 				  src/parser/ParserUtils.cpp \
 				  src/parser/Parser.cpp \
 				  src/utils/Utils.cpp \

@@ -11,11 +11,10 @@
 /* ************************************************************************** */
 
 #pragma once
-#include "CgiHandler.hpp"
 #ifndef WORKER_HPP
 #define WORKER_HPP
 
-#include "Connection.hpp"
+#include "ConnectionContext.hpp"
 #include "HttpRequest.hpp"
 #include "HttpResponse.hpp"
 #include "TCPServer.hpp"
@@ -23,39 +22,39 @@
 
 class ConnWorker {
 public:
-    typedef Connection::e_status e_status;
+	ConnectionContext ctx;
 
-    explicit ConnWorker();
-    ConnWorker(const ConnWorker &other);
-    ~ConnWorker();
+	typedef Connection::e_status e_status;
 
-    void setSrv(TCPServer *srv);
-    void setConnFd(int connFd);
+	explicit ConnWorker();
+	ConnWorker(const ConnWorker &other);
+	~ConnWorker();
 
-    int getConnFd() const;
+	void setSrv(TCPServer *srv);
+	void setConnFd(int connFd);
 
-    Connection::e_result handleRequest();
-    Connection::e_result sendResponse();
+	int getConnFd() const;
 
-    bool hasPendingResponses() const;
+	void refreshBackpressureState();
 
-    void resetForReuse();
-    void clearRequest();
+	void resetForReuse();
+	void clearRequest();
 
-    e_status getStatus() const;
+	e_status getStatus() const;
+	e_status setStatus(Connection::e_status);
 
-    void closeSocketFd();
+	void closeSocketFd();
 
-    class GenericException : public std::exception {
-    public:
-        const char *what() const throw();
-    };
+	class GenericException : public std::exception {
+	public:
+		const char *what() const throw();
+	};
 
-    ConnWorker& operator=(const ConnWorker&);
-    const Connection &getConn() const;
-	CgiHandler		*cgiSession;
-
-private:
-    Connection _conn;
+	ConnWorker			   &operator=(const ConnWorker &);
+	const Connection	   &getConn() const;
+	const Connection	   *getConnPtr() const;
+	CgiHandler::CGISession *getCgiSession() const;
+	void					setCgiSession(CgiHandler::CGISession *session);
+	void					clearCgiSession();
 };
-#endif //WORKER_HPP
+#endif//WORKER_HPP

@@ -15,14 +15,14 @@
 #include "webserv.hpp"
 #include <cstddef>
 
-TrieNode::TrieNode(void) : data(NULL), children() {}
+TrieNode::TrieNode(void) : data(NULL), children()
+{}
 
-void	prefix_trie_insert(TrieNode *head, std::string const& path, void *location)
+void prefix_trie_insert(TrieNode *head, std::string const &path, void *location)
 {
-	TrieNode		*current = head;
+	TrieNode *current = head;
 
-	for (uint64_t i = 0; i < path.length(); i++)
-	{
+	for (uint64_t i = 0; i < path.length(); i++) {
 		size_t idx = static_cast<size_t>(path[i]);
 
 		if (current->children[idx] == NULL)
@@ -32,32 +32,13 @@ void	prefix_trie_insert(TrieNode *head, std::string const& path, void *location)
 	current->data = location;
 }
 
-void	*prefix_trie_search(TrieNode *head, std::string const& path)
+void suffix_trie_insert(TrieNode *head, CGI *cgi)
 {
-	TrieNode						*current = head;
-	Location	*last_loc = NULL;
-
-	for (uint64_t i = 0; i < path.length() && current != NULL; i++)
-	{
-		// std::cout << path[i] << std::endl;
-		size_t idx = static_cast<size_t>(path[i]);
-
-		current = current->children[idx];
-		if (current != NULL && current->data != NULL)
-			last_loc = reinterpret_cast<Location*>(current->data);
-	}
-
-	return last_loc;
-}
-
-void	suffix_trie_insert(TrieNode *head, CGI *cgi)
-{
-	TrieNode		*current = head;
-	std::string&	suffix = cgi->_ext;
+	TrieNode	*current = head;
+	std::string &suffix	 = cgi->_ext;
 
 	std::string::reverse_iterator it = suffix.rbegin();
-	for (; it != suffix.rend(); it++)
-	{
+	for (; it != suffix.rend(); it++) {
 		// std::cout << *it << std::endl;
 		size_t idx = static_cast<size_t>(*it);
 
@@ -68,33 +49,32 @@ void	suffix_trie_insert(TrieNode *head, CGI *cgi)
 	current->data = cgi;
 }
 
-CGI	*suffix_trie_search(TrieNode *head, std::string const& path)
+CGI *suffix_trie_search(TrieNode *head, std::string const &path)
 {
-	TrieNode	*current = head;
-	CGI			*last_match = NULL;
+	TrieNode *current	 = head;
+	CGI		 *last_match = NULL;
 
 	std::string::const_reverse_iterator it = path.rbegin();
-	for (; it != path.rend() && current != NULL; it++)
-	{
+	for (; it != path.rend() && current != NULL; it++) {
 		// std::cout << path[i] << std::endl;
 		size_t idx = static_cast<size_t>(*it);
 
 		current = current->children[idx];
 		if (current != NULL && current->data != NULL)
-			last_match = reinterpret_cast<CGI*>(current->data);
+			last_match = reinterpret_cast<CGI *>(current->data);
 	}
 
 	return last_match;
 }
 
-void	free_trie(TrieNode *node)
+void free_trie(TrieNode *node)
 {
 	if (node == NULL)
-		return ;
+		return;
 
-    for (uint64_t i = 0; i < TrieNode::CHILDREN_SIZE; i++)
-        free_trie(node->children[i]);
-    delete node;
+	for (uint64_t i = 0; i < TrieNode::CHILDREN_SIZE; i++)
+		free_trie(node->children[i]);
+	delete node;
 }
 
 // void	test_trie_match(TrieNode *head, std::string path)
@@ -106,7 +86,7 @@ void	free_trie(TrieNode *node)
 // 	std::cout << "Matches to: '" << match->_root << "'" << std::endl << std::endl;
 // }
 
-std::string apply_location(std::string& path, Location const *location)
+std::string apply_location(std::string &path, Location const *location)
 {
 	std::basic_string<char> filename = path.substr(location->_path.length(), path.length());
 	return (location->_root + filename);

@@ -133,8 +133,8 @@ void	TCPServer::acceptAllPendingConns(WorkerPool& wrkrPool, int epoll_fd)
 {
     ConnWorker * wrkr;
 
-    while (true) // multiple connections may already be queued on the listen socket
-    {
+    // while (true) // multiple connections may already be queued on the listen socket
+    // {
         struct sockaddr_in		_addr;
         socklen_t				_addr_size = sizeof(_addr);
         struct sockaddr         *addr = reinterpret_cast<struct sockaddr*>(&_addr); // NOLINT(*-pro-type-reinterpret-cast)
@@ -149,12 +149,12 @@ void	TCPServer::acceptAllPendingConns(WorkerPool& wrkrPool, int epoll_fd)
 		// std::cout << inet_ntoa(_addr.sin_addr) << ":" << ntohs(_addr.sin_port) << std::endl;
         if (conn_fd < 0) {
 			// Something fundamentally wrong happened
-            if (errno == EINTR)
-                continue;
-            if (errno == EAGAIN || errno == EWOULDBLOCK)
-                break;
+            // if (errno == EINTR)
+            //     continue;
+            // if (errno == EAGAIN || errno == EWOULDBLOCK)
+            //     break;
             std::cerr << "Failed to accept client request." << std::endl;
-            break;
+            return;
         }
 
         wrkr = wrkrPool.alloc(this);
@@ -177,7 +177,6 @@ void	TCPServer::acceptAllPendingConns(WorkerPool& wrkrPool, int epoll_fd)
         ev.data.ptr = tag_ptr(wrkr, WebServer::EP_WRKR);
         ev.events = EPOLLIN;
         epoll_ctl(epoll_fd, EPOLL_CTL_ADD, conn_fd, &ev);
-    }
 };
 
 const char *TCPServer::GenericException::what() const throw()

@@ -16,7 +16,7 @@
 #include "HttpRequest.hpp"
 #include "HttpResponse.hpp"
 #include "HttpTransaction.hpp"
-#include "Router.hpp"
+#include "BucketChain.hpp"
 #include "State.hpp"
 #include "StaticFileHandler.hpp"
 
@@ -27,6 +27,9 @@
 #ifndef CRLF
 #define CRLF "\r\n"
 #endif
+#ifndef CHUNK_END
+#define CHUNK_END "0\r\n\r\n"
+#endif
 
 class TCPServer;
 class ConnWorker;
@@ -34,10 +37,10 @@ class ConnWorker;
 class Connection {
 public:
 	enum e_result {
-		OK		   = 0,
-		WANT_WRITE = 1,
-		CLOSED	   = 2,
-		ERROR	   = 3
+		OK = 0,
+		WANT_WRITE,
+		CLOSED,
+		ERROR
 	};
 
 	enum e_status {
@@ -45,6 +48,11 @@ public:
 		READING_BODY,
 		HANDLING_CGI,
 		READY_TO_WRITE
+	};
+
+	struct PendingResponse {
+		HttpResponse *res;
+		bool		  closeAfter;// close connection after this response is fully sent
 	};
 
 	Connection();
@@ -59,9 +67,9 @@ public:
 	ConnWorker *getParent() const;
 	void		setParent(ConnWorker *parent);
 	e_status	getStatus() const;
+	e_status	setStatus(e_status);
 
-	e_result onReadable();
-	e_result onWritable();
+	HttpResponse *getCurrentResponse() const;
 
 
 	bool hasPendingResponses() const;
@@ -73,12 +81,26 @@ public:
 	void closeSocketFd();
 	void reset();
 	void clearRequest();
+	BucketChain &transportInputBuckets();
+	BucketChain &transportOutputBuckets();
+	const BucketChain &transportInputBuckets() const;
+	const BucketChain &transportOutputBuckets() const;
+	bool shouldReadFromSocket() const;
+	void updateBackpressureState();
+	size_t transportInputBytes() const;
+	size_t transportOutputBytes() const;
+
+	e_result _sendToClient();
+
+	e_result	  onWritable();
+
+	e_result	  onReadable();
 
 private:
+
 	Connection &operator=(const Connection &);
 
 	e_result _recvFromClient();
-	e_result _sendToClient();
 	e_result _processInput();
 
 	bool _tryExtractOneRequest();
@@ -99,16 +121,11 @@ private:
 	HttpRequest *_req;
 	//    HttpResponse*   _res;
 
-	// input buffering
-	std::string _in;
-	size_t		_in_off;
+	BucketChain _transportInput;
+	BucketChain _transportOutput;
+	bool	   _readBackpressure;
 
-	bool _peerClosedInput;// read() returned 0 at least once
-
-	struct PendingResponse {
-		HttpResponse *res;
-		bool		  closeAfter;// close connection after this response is fully sent
-	};
+	bool _peerClosedInput;
 
 	// output queue
 	std::deque<PendingResponse> _pendingResponses;
@@ -117,11 +134,11 @@ private:
 
 	void _parseRange(HttpResponse &res) const;
 
-	HttpResponse *_prepareResponse();
 	void		  _prepareResponse_get(HttpResponse *res) const;
 	void		  _prepareResponse_put(HttpResponse *res) const;
 	void		  _prepareResponse_delete(HttpResponse *res) const;
 	void		  _prepareResponse_post(HttpResponse *res) const;
+	bool		  _wantWrite() const;
 };
 
 #endif//CONNECTION_HPP
