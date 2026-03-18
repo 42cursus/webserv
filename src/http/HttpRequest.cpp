@@ -16,6 +16,7 @@
 #include <fstream>
 #include <sstream>
 #include <string>
+#include <sys/stat.h>
 #include <unistd.h>
 #include <vector>
 #include "HttpRequest.hpp"
@@ -136,6 +137,27 @@ static bool directory_exists(HttpResponse& res)
 	return !access(path.c_str(), F_OK);
 }
 
+static bool path_is_dir(const std::string &path)
+{
+	struct stat st;
+	if (stat(path.c_str(), &st) != 0)
+		return false;
+	return S_ISDIR(st.st_mode);
+}
+
+static bool has_index_file(HttpResponse &res)
+{
+	std::string dir_path = res.location->_root + res.filename;
+	if (!dir_path.empty() && dir_path[dir_path.size() - 1] != '/')
+		dir_path += '/';
+	for (std::vector<std::string>::iterator it = res.location->_index.begin(); it != res.location->_index.end(); ++it) {
+		std::string candidate = dir_path + *it;
+		if (access(candidate.c_str(), F_OK) == 0)
+			return true;
+	}
+	return false;
+}
+
 StatusCode HttpRequest::getHtmlResponse(HttpResponse& res, Location *location)
 {
 	StatusCode	status = SC_200;
@@ -175,6 +197,11 @@ StatusCode HttpRequest::getHtmlResponse(HttpResponse& res, Location *location)
 	}
 	else
 	{
+		std::string path = res.location->_root + res.filename;
+		if (!res.filename.empty() && *res.filename.rbegin() != '/' && !access(path.c_str(), F_OK) && path_is_dir(path)) {
+			if (!res.location->_autoindex && !has_index_file(res))
+				throw HttpResponse::Exception404();
+		}
 		res.headers["content-type"] = getMimeType(res.filename);
 		status = res.readHtmlFile(res.location->_root + res.filename);
 	}
