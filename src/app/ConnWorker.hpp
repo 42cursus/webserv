@@ -22,6 +22,8 @@
 
 class ConnWorker {
 public:
+	ConnectionContext ctx;
+
 	typedef Connection::e_status e_status;
 
 	explicit ConnWorker();
@@ -33,11 +35,6 @@ public:
 
 	int getConnFd() const;
 
-	Connection::e_result handleRequest();
-	Connection::e_result sendResponse();
-
-	bool hasPendingResponses() const;
-	bool shouldReadFromSocket() const;
 	void refreshBackpressureState();
 
 	void resetForReuse();
@@ -59,8 +56,5 @@ public:
 	CgiHandler::CGISession *getCgiSession() const;
 	void					setCgiSession(CgiHandler::CGISession *session);
 	void					clearCgiSession();
-
-private:
-	ConnectionContext _ctx;
 };
 #endif//WORKER_HPP

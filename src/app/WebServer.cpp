@@ -134,7 +134,7 @@ void WebServer::serve_handle_worker(ConnWorker *wrkr, struct epoll_event &ev)
     if (ev.events & EPOLLIN)
     {
         // std::cout << "Read ready on fd" << std::endl;
-        Connection::e_result retval = wrkr->handleRequest();
+		Connection::e_result retval = wrkr->ctx.handleRequest();
         if (retval == Connection::CLOSED || retval == Connection::ERROR)
         {
             // std::cout << "Connection closed on fd: " << wrkr->getConnFd() << std::endl;
@@ -160,7 +160,7 @@ void WebServer::serve_handle_worker(ConnWorker *wrkr, struct epoll_event &ev)
         }
 
         // If peer hung up, and we have nothing queued to write, we can close now.
-        if (hup && !wrkr->hasPendingResponses())
+		if (hup && !wrkr->ctx.conn.hasPendingResponses())
         {
             // std::cout << "Peer hung up (EPOLLHUP) and no pending responses on fd: " << wrkr->getConnFd() << std::endl;
 			log_connection(*wrkr, CONN_HANGUP);
@@ -174,7 +174,7 @@ void WebServer::serve_handle_worker(ConnWorker *wrkr, struct epoll_event &ev)
     if (ev.events & EPOLLOUT && wrkr->getStatus() == Connection::READY_TO_WRITE)
     {
         // std::cout << "Write ready on fd: " << wrkr->getConnFd() << std::endl;
-        Connection::e_result retval = wrkr->sendResponse();
+		Connection::e_result retval = wrkr->ctx.sendResponse();
         if (retval == Connection::CLOSED || retval == Connection::ERROR)
         {
             // std::cout << "Connection closed on fd: " << wrkr->getConnFd() << std::endl;
@@ -189,7 +189,7 @@ void WebServer::serve_handle_worker(ConnWorker *wrkr, struct epoll_event &ev)
         {
             // If peer hung up, don’t switch back to EPOLLIN; close once drained.
         	// std::cout << "Returned Connection::OK" << std::endl;
-            if (hup && !wrkr->hasPendingResponses())
+			if (hup && !wrkr->ctx.conn.hasPendingResponses())
             {
                 std::cout << "Finished writes after peer hangup on fd: " << wrkr->getConnFd() << std::endl;
                 epoll_del(wrkr->getConnFd());
@@ -202,7 +202,7 @@ void WebServer::serve_handle_worker(ConnWorker *wrkr, struct epoll_event &ev)
 
 	wrkr->refreshBackpressureState();
 	uint32_t events = 0;
-	if (wrkr->shouldReadFromSocket())
+	if (wrkr->ctx.conn.shouldReadFromSocket())
 		events |= EPOLLIN;
 	if (wrkr->getStatus() == Connection::READY_TO_WRITE)
 		events |= EPOLLOUT;

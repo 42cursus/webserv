@@ -17,7 +17,6 @@
 #include "HttpResponse.hpp"
 #include "HttpTransaction.hpp"
 #include "BucketChain.hpp"
-#include "Router.hpp"
 #include "State.hpp"
 #include "StaticFileHandler.hpp"
 
@@ -70,10 +69,6 @@ public:
 	e_status	getStatus() const;
 	e_status	setStatus(e_status);
 
-	e_result onReadable();
-	e_result onWritable();
-
-	void enqueueResponse(PendingResponse &req);
 	HttpResponse *getCurrentResponse() const;
 
 
@@ -91,11 +86,15 @@ public:
 	const BucketChain &transportInputBuckets() const;
 	const BucketChain &transportOutputBuckets() const;
 	bool shouldReadFromSocket() const;
-	void refreshBackpressureState();
+	void updateBackpressureState();
 	size_t transportInputBytes() const;
 	size_t transportOutputBytes() const;
 
 	e_result _sendToClient();
+
+	e_result	  onWritable();
+
+	e_result	  onReadable();
 
 private:
 
@@ -106,7 +105,6 @@ private:
 
 	bool _tryExtractOneRequest();
 	void _consumeInputBytes(size_t nbytes);
-	void _updateBackpressureState();
 	void _resetCurrentRequest();
 
 	bool _shouldKeepAlive(const HttpRequest &req) const;
@@ -141,8 +139,6 @@ private:
 	void		  _prepareResponse_delete(HttpResponse *res) const;
 	void		  _prepareResponse_post(HttpResponse *res) const;
 	bool		  _wantWrite() const;
-	e_result	  _handleReadable();
-	e_result	  _handleWritable();
 };
 
 #endif//CONNECTION_HPP

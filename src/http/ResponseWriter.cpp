@@ -26,7 +26,7 @@ ResponseWriter::e_result ResponseWriter::writeCurrent(Connection &conn, int fd, 
 	BucketChain &out = conn.transportOutputBuckets();
 	if (res.start >= response.size()) {
 		out.clear();
-		conn.refreshBackpressureState();
+		conn.updateBackpressureState();
 		if (res.chunk_start < res.body.size() || res.body_complete) {
 			res.start = 0;
 			res.response = res.chunk_response(DEFAULT_CHUNK_SIZE);
@@ -47,7 +47,7 @@ ResponseWriter::e_result ResponseWriter::writeCurrent(Connection &conn, int fd, 
 		const size_t remaining = response.size() - res.start;
 		const size_t staged = std::min(remaining, kWriteChunkBytes);
 		out.appendMemory(response.data() + res.start, staged);
-		conn.refreshBackpressureState();
+		conn.updateBackpressureState();
 	}
 
 	std::string wire = out.flatten(kWriteChunkBytes);
@@ -60,7 +60,7 @@ ResponseWriter::e_result ResponseWriter::writeCurrent(Connection &conn, int fd, 
 		const size_t consumed = static_cast<size_t>(bytesWritten);
 		out.consume(consumed);
 		res.start += consumed;
-		conn.refreshBackpressureState();
+		conn.updateBackpressureState();
 		if (res.start >= response.size()) {
 			if (res.chunked && !res.chunking_express) {
 				if (res.chunk_start >= res.body.size()) {
@@ -72,12 +72,12 @@ ResponseWriter::e_result ResponseWriter::writeCurrent(Connection &conn, int fd, 
 				res.start = 0;
 				res.response = res.chunk_response(DEFAULT_CHUNK_SIZE);
 				out.clear();
-				conn.refreshBackpressureState();
+				conn.updateBackpressureState();
 				log_chunk_response(conn, res);
 				return WR_WANT_WRITE;
 			}
 			out.clear();
-			conn.refreshBackpressureState();
+			conn.updateBackpressureState();
 			return WR_RESP_COMPLETE;
 		}
 		return WR_WANT_WRITE;

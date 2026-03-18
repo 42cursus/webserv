@@ -3,10 +3,10 @@
 /*                                                        :::      ::::::::   */
 /*   State.cpp                                          :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By: margo <margo@student.42.fr>                +#+  +:+       +#+        */
+/*   By: mganchev <mganchev@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/01/25 15:43:47 by margo             #+#    #+#             */
-/*   Updated: 2026/02/01 17:53:15 by margo            ###   ########.fr       */
+/*   Updated: 2026/03/18 12:32:04 by mganchev         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -98,6 +98,7 @@ CGI& CGI::operator=(const CGI& copy)
         IBlock::operator=(copy);
         _ext = copy._ext;
         _script = copy._script;
+        _cgi_pass = copy._cgi_pass;
         _cgi_param = std::map<std::string, std::string>(copy._cgi_param);
     }
     return *this;

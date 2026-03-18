@@ -134,7 +134,7 @@ Connection::e_result Connection::_recvFromClient()
 			// Peer closed its write-side (FIN).
 			// We might still have a full request in _in.
 			_peerClosedInput = true;
-			_updateBackpressureState();
+			updateBackpressureState();
 			return OK;
 		}
 
@@ -142,11 +142,11 @@ Connection::e_result Connection::_recvFromClient()
 			continue;
 		if (errno == EAGAIN || errno == EWOULDBLOCK)  // FIXME: CAN'T DO THAT!!!
 		{
-			_updateBackpressureState();
+			updateBackpressureState();
 			return OK;
 		}
 
-		_updateBackpressureState();
+		updateBackpressureState();
 		return ERROR;
 	}
 }
@@ -188,13 +188,13 @@ Connection::e_result Connection::_sendToClient()
 	// close *after* we sent its response.
 	if (close_after)
 	{
-		_updateBackpressureState();
+		updateBackpressureState();
 		return CLOSED;
 	}
 
 	if (!_pendingResponses.empty())
 	{
-		_updateBackpressureState();
+		updateBackpressureState();
 		return WANT_WRITE;
 	}
 
@@ -205,10 +205,10 @@ Connection::e_result Connection::_sendToClient()
 	e_result pr = _processInput();
 	if (pr == WANT_WRITE)
 	{
-		_updateBackpressureState();
+		updateBackpressureState();
 		return WANT_WRITE;
 	}
-	_updateBackpressureState();
+	updateBackpressureState();
 	return OK;
 }
 
@@ -225,10 +225,10 @@ Connection::e_result Connection::_sendToClient()
 void Connection::_consumeInputBytes(size_t nbytes)
 {
 	_transportInput.consume(nbytes);
-	_updateBackpressureState();
+	updateBackpressureState();
 }
 
-void Connection::_updateBackpressureState()
+void Connection::updateBackpressureState()
 {
 	const size_t buffered = _transportInput.bytes() + _transportOutput.bytes();
 	if (_readBackpressure) {
@@ -292,6 +292,12 @@ bool Connection::_tryExtractOneRequest()
 		res->set_response_code(SC_400);
 		res->headers["Server"] = "Webserv/0.69";
 		handleErrorResponse(res);
+		if (_req != NULL && _req->method == "HEAD") {
+			if (res->headers.find("content-length") == res->headers.end())
+				res->headers["content-length"] = ::itoa(res->body.size());
+			res->body.clear();
+			res->chunked = false;
+		}
 		res->buildHttpResponse();
 
 		const PendingResponse &presp = (PendingResponse){
@@ -314,8 +320,14 @@ bool Connection::_tryExtractOneRequest()
 	HttpResponse* res = RequestDispatcher::dispatch(*this, *_req);
 	if (_status == HANDLING_CGI)
 	{
+		if (_req != NULL && _req->method == "HEAD") {
+			if (res->headers.find("content-length") == res->headers.end())
+				res->headers["content-length"] = ::itoa(res->body.size());
+			res->body.clear();
+			res->chunked = false;
+		}
 		res->buildHttpResponse();
-		PendingResponse presp;
+		PendingResponse presp = {};
 		presp.res		 = res;
 		presp.closeAfter = !_shouldKeepAlive(*_req);
 
@@ -324,10 +336,16 @@ bool Connection::_tryExtractOneRequest()
 	}
 
 
+	if (_req != NULL && _req->method == "HEAD") {
+		if (res->headers.find("content-length") == res->headers.end())
+			res->headers["content-length"] = ::itoa(res->body.size());
+		res->body.clear();
+		res->chunked = false;
+	}
 	res->buildHttpResponse();
 	// _req->printBody();
 
-	PendingResponse presp;
+	PendingResponse presp = {};
 	presp.res		 = res;
 	presp.closeAfter = !_shouldKeepAlive(*_req);
 
@@ -364,21 +382,6 @@ Connection::e_result Connection::_processInput()
 	return queued_any ? WANT_WRITE : OK;
 }
 
-Connection::e_result Connection::onReadable()
-{
-	return _handleReadable();
-}
-
-Connection::e_result Connection::onWritable()
-{
-	return _handleWritable();
-}
-
-void Connection::enqueueResponse(PendingResponse &req)
-{
-	_pendingResponses.push_back(req);
-}
-
 HttpResponse *Connection::getCurrentResponse() const
 {
 	if (_pendingResponses.empty())
@@ -392,7 +395,7 @@ bool Connection::_wantWrite() const
 	return !_pendingResponses.empty() && _status == READY_TO_WRITE;
 }
 
-Connection::e_result Connection::_handleReadable()
+Connection::e_result Connection::onReadable()
 {
 	e_result rr = _recvFromClient();
 	if (rr != OK)
@@ -410,7 +413,7 @@ Connection::e_result Connection::_handleReadable()
 	return _wantWrite() ? WANT_WRITE : OK;
 }
 
-Connection::e_result Connection::_handleWritable()
+Connection::e_result Connection::onWritable()
 {
 	// if (_status != READY_TO_WRITE)
 	// {
@@ -666,11 +669,6 @@ bool Connection::shouldReadFromSocket() const
 	if (_status != READY_TO_WRITE)
 		return true;
 	return !_readBackpressure;
-}
-
-void Connection::refreshBackpressureState()
-{
-	_updateBackpressureState();
 }
 
 size_t Connection::transportInputBytes() const

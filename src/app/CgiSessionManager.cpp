@@ -72,7 +72,7 @@ void CgiSessionManager::handleEvent(CgiHandler::CGISession *cgiSession, epoll_ev
 				worker->refreshBackpressureState();
 				void	   *taggedPtr = tag_ptr(worker, WebServer::EP_WRKR);
 				uint32_t	events = EPOLLOUT;
-				if (worker->shouldReadFromSocket())
+				if (worker->ctx.conn.shouldReadFromSocket())
 					events |= EPOLLIN;
 				epollMod(epoll_fd, cgiSession->_parentConnection->getFd(), taggedPtr, events);
 			}

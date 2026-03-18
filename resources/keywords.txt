@@ -16,3 +16,4 @@ ext
 script
 cgi_param
 error_page
+cgi_pass

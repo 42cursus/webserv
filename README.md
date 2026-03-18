@@ -1,3 +1,73 @@
+*This project has been created as part of the 42 curriculum by fsmyth, mganchev and abelov. 
+
+# Description
+
+Webserv is a custom HTTP server developed in C++ as part of the 42 curriculum. Its goal is to implement a fully functional web server capable of handling HTTP/1.1 requests, managing multiple connections, executing CGI scripts, and providing flexible configuration similar to Nginx. The project demonstrates low-level network programming, process management, and robust configuration parsing.
+
+# Instructions
+
+## Compilation
+
+To compile the project, run:
+```sh
+make
+```
+This will build the `webserv` binary in the root directory.
+
+## Execution
+
+To start the server with the default configuration:
+```sh
+./webserv
+```
+You can specify a custom configuration file:
+```sh
+./webserv path/to/config.conf
+```
+
+## Docker
+
+A Dockerfile and docker-compose.yaml are provided for containerized deployment. To build and run with Docker:
+```sh
+docker-compose up --build
+```
+
+# Resources
+
+## Classic References
+- [RFC 2616 - HTTP/1.1 Specification](https://datatracker.ietf.org/doc/html/rfc2616)
+- [Nginx Documentation](https://nginx.org/en/docs/)
+- [Beej's Guide to Network Programming](https://beej.us/guide/bgnet/)
+- [UNIX man pages: signal, waitpid, fork, execve](https://man7.org/linux/man-pages/)
+
+## AI Usage
+
+AI was used to assist with:
+- Generating documentation and README structure
+- Providing explanations for signal handling, process management, and configuration parsing
+- Drafting usage instructions and Docker integration steps
+
+# Features
+
+- HTTP/1.1 request handling
+- CGI script execution
+- Configurable server and location blocks
+- Static file serving
+- Custom error pages
+- Logging and debugging utilities
+- Docker support
+
+# Technical Choices
+
+- Written in modern C++ with STL
+- Custom parser for configuration files
+- Multi-process model for handling connections
+- Signal handling for graceful shutdown and child process management
+
+# Usage Example
+
+After starting the server, visit `http://localhost:8080` in your browser. Configuration files can be found in the `resources/` directory.
+
 "In this project bugs usually come from lifetime and ownership confusion,
 and storing references inside polymorphic objects is a great way to manufacture that confusion." (c)
 

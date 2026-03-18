@@ -3,10 +3,10 @@
 /*                                                        :::      ::::::::   */
 /*   Parser.cpp                                         :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By: margo <margo@student.42.fr>                +#+  +:+       +#+        */
+/*   By: mganchev <mganchev@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/01/21 21:52:43 by margo             #+#    #+#             */
-/*   Updated: 2026/03/16 15:34:07 by abelov           ###   ########.fr       */
+/*   Updated: 2026/03/18 12:40:11 by mganchev         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -81,6 +81,7 @@ void Parser::init_directive_handlers()
 	_directive_handlers["max_body_size"]	= &Parser::handleMaxBodySize;
 	_directive_handlers["ext"]				= &Parser::handleExt;
 	_directive_handlers["script"]			= &Parser::handleScript;
+    _directive_handlers["cgi_pass"]         = &Parser::handleCgiPass;
 	_directive_handlers["cgi_param"]		= &Parser::handleCgiParam;
 	_directive_handlers["error_page"]		= &Parser::handleErrorPage;
 }
@@ -184,8 +185,8 @@ void Parser::handleBlockOut()
 	} else if (_current_block->getBlockType() == CGI_) {
 		std::string ext	   = getLastCGI()._ext;
 		std::string script = getLastCGI()._script;
-		if (!ConfigValidator::validateCgiScriptExt(ext, script))
-			throw Error("Error: invalid cgi script extension");
+		// if (!ConfigValidator::validateCgiScriptExt(ext, script))
+		// 	throw Error("Error: invalid cgi script extension");
 
 		getLastCGI().setEndLine(_current_line);
 		_current_block->getParent()->setInBlock(false);
