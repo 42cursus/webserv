@@ -28,15 +28,9 @@ public:
 
 	ConnectionContext &operator=(const ConnectionContext &other);
 
-	void bindOwner(ConnWorker *owner);
-	void setSrv(TCPServer *srv);
-	void setConnFd(int connFd);
-
 	Connection::e_result handleRequest();
 	Connection::e_result sendResponse();
 	void				 resetForReuse();
-	void				 clearRequest();
-	void				 closeSocketFd();
 
 	CgiHandler::CGISession *getCgiSession() const;
 	void					setCgiSession(CgiHandler::CGISession *session);

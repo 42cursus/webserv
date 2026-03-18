@@ -25,11 +25,11 @@
 
 ConnWorker::ConnWorker()
 {
-	_ctx.bindOwner(this);
+	_ctx.conn.setParent(this);
 }
 
 ConnWorker::ConnWorker(const ConnWorker &other) : _ctx(other._ctx) {
-	_ctx.bindOwner(this);
+	_ctx.conn.setParent(this);
 }
 
 /*
@@ -92,12 +92,12 @@ void ConnWorker::resetForReuse()
 
 void ConnWorker::clearRequest()
 {
-	_ctx.clearRequest();
+	_ctx.conn.clearRequest();
 }
 
 void ConnWorker::closeSocketFd()
 {
-	_ctx.closeSocketFd();
+	_ctx.conn.closeSocketFd();
 }
 
 /*
@@ -106,12 +106,12 @@ void ConnWorker::closeSocketFd()
 
 void ConnWorker::setSrv(TCPServer* srv)
 {
-	_ctx.setSrv(srv);
+	_ctx.conn.setSrv(srv);
 }
 
 void ConnWorker::setConnFd(int connFd)
 {
-	_ctx.setConnFd(connFd);
+	_ctx.conn.setFd(connFd);
 }
 
 int ConnWorker::getConnFd() const
@@ -150,11 +150,6 @@ void ConnWorker::setCgiSession(CgiHandler::CGISession *session)
 void ConnWorker::clearCgiSession()
 {
 	_ctx.clearCgiSession();
-}
-
-const ConnectionContext &ConnWorker::getCtx() const
-{
-	return _ctx;
 }
 
 /*

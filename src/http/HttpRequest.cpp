@@ -49,12 +49,18 @@ size_t	HttpRequest::_parseStartLine(const std::string &line)
 			i++;
 	}
 	if (tokens.size() != 3)
-	{
 		throw HttpRequest::MalformedStartlineException();
-	}
+
 	method = tokens[0];
 	headers["method"] = method;
 	path = tokens[1];
+	size_t query_pos = path.find('?');
+	if (query_pos != std::string::npos) {
+		headers["query-string"] = path.substr(query_pos + 1);
+		path = path.substr(0, query_pos);
+	} else {
+		headers["query-string"] = "";
+	}
 	headers["path"] = path;
 	protocol = tokens[2];
 	headers["protocol"] = protocol;

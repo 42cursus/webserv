@@ -62,7 +62,7 @@ HttpResponse *RequestDispatcher::dispatch(Connection &conn, HttpRequest &req)
 			cgi_handler.wrkr = conn.getParent();
 
 			StatusCode code = SC_200;
-			if (cgi->_script != "php")
+			if (cgi->_script == "php")
 				code = cgi_handler.handlePHP(req, *res);
 			else
 				code = cgi_handler.handle(req, *res);

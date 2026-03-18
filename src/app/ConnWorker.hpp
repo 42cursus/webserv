@@ -46,8 +46,6 @@ public:
 	e_status getStatus() const;
 	e_status setStatus(Connection::e_status);
 
-	const ConnectionContext &getCtx() const;
-
 	void closeSocketFd();
 
 	class GenericException : public std::exception {

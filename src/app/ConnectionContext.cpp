@@ -34,7 +34,7 @@ ConnectionContext::ConnectionContext(const ConnectionContext &other) :
 
 ConnectionContext::~ConnectionContext()
 {
-	closeSocketFd();
+	conn.closeSocketFd();
 	resetForReuse();
 }
 
@@ -75,35 +75,6 @@ void ConnectionContext::resetForReuse()
 {
 	conn.reset();
 	_cgiSession = NULL;
-}
-
-void ConnectionContext::clearRequest()
-{
-	conn.clearRequest();
-}
-
-void ConnectionContext::closeSocketFd()
-{
-	conn.closeSocketFd();
-}
-
-/*
-** -------------------------------- ACCESSORS ---------------------------------
-*/
-
-void ConnectionContext::bindOwner(ConnWorker *owner)
-{
-	conn.setParent(owner);
-}
-
-void ConnectionContext::setSrv(TCPServer *srv)
-{
-	conn.setSrv(srv);
-}
-
-void ConnectionContext::setConnFd(int connFd)
-{
-	conn.setFd(connFd);
 }
 
 CgiHandler::CGISession *ConnectionContext::getCgiSession() const

@@ -194,21 +194,10 @@ StatusCode CgiHandler::handlePHP(HttpRequest &req, HttpResponse &res)
 		std::string script = apply_location(req.path, res.location);
 		// build ARGV
 
-		char		cwd[PATH_MAX];
-		std::string CWD = "";
-
-		if (getcwd(cwd, PATH_MAX) != NULL)
-			CWD += cwd;
-
 		std::vector<std::string> env;
 		_build_env(env);
 		env.push_back("TRY=me");
 		env.push_back("SEE=you");
-		env.push_back("REQUEST_METHOD=POST");
-		env.push_back("CONTENT_TYPE=application/x-www-form-urlencoded");
-		env.push_back("CONTENT_LENGTH=23");
-		env.push_back("SCRIPT_NAME=/doodle/cgi-bin/index.php");
-		env.push_back("SCRIPT_FILENAME=" + CWD + "/resources/cgi-bin/index.php");
 		env.push_back("REDIRECT_STATUS=200");
 
 		std::vector<char*> envp;
@@ -372,7 +361,7 @@ void CgiHandler::_build_env(std::vector<std::string> &env)
 
 	env.push_back("REQUEST_METHOD=" + _req.method);
 	env.push_back("SCRIPT_NAME=" + _req.path);
-	env.push_back("PATH_INFO=" + _req.path);
+	env.push_back("PATH_INFO=");
 
 	if (_req.headers.count("query-string"))
 		env.push_back("QUERY_STRING=" + _req.headers["query-string"]);
@@ -387,7 +376,7 @@ void CgiHandler::_build_env(std::vector<std::string> &env)
 	if (_req.headers.count("content-length"))
 		env.push_back("CONTENT_LENGTH=" + _req.headers["content-length"]);
 	else
-		env.push_back("CONTENT_LENGTH=0");
+		env.push_back("CONTENT_LENGTH=");
 }
 
 void CgiHandler::_parse_output_into_response(CGISession &sess)
