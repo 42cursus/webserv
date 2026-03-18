@@ -11,6 +11,7 @@
 /* ************************************************************************** */
 
 #include "CgiHandler.hpp"
+#include "ConfigLexer.hpp"
 #include "Connection.hpp"
 #include "HttpRequest.hpp"
 #include "HttpResponse.hpp"
@@ -84,6 +85,16 @@ CgiHandler::CgiHandler(HttpRequest		 &req,
 ** --------------------------------- METHODS ----------------------------------
 */
 
+std::string CgiHandler::get_full_path(std::string& path)
+{
+
+	std::string executablePath = ConfigLexer::getExecutablePath();
+	std::string currentDir	   = ConfigLexer::getDirname(executablePath);
+	std::string keywordsPath   = ConfigLexer::joinPath(currentDir, path);
+
+	return keywordsPath;
+}
+
 StatusCode CgiHandler::handle(HttpRequest &req, HttpResponse &res)
 {
 	CGISession sess;
@@ -104,7 +115,8 @@ StatusCode CgiHandler::handle(HttpRequest &req, HttpResponse &res)
 
 		// build ENVP
 
-		std::string script = _script_path.empty() ? apply_location(req.path, res.location) : _script_path;
+		// std::string script = _script_path.empty() ? apply_location(req.path, res.location) : _script_path;
+		std::string script = apply_location(req.path, res.location);
 		// build ARGV
 
 		std::vector<std::string> env;
@@ -118,12 +130,15 @@ StatusCode CgiHandler::handle(HttpRequest &req, HttpResponse &res)
 			envp.push_back(::strdup(env[i].c_str()));
 		envp.push_back(NULL);
 
+		std::string exec = cgi_pass.empty() ? "/usr/bin/python3" : cgi_pass.substr(2);
+		exec = get_full_path(exec);
+		// std::cerr << "exec: " << exec << std::endl;
 		std::vector<std::string> argv_str;
 		if (ends_with(script, ".py")) {
-			argv_str.push_back("/usr/bin/python3");
+			argv_str.push_back(exec);
 			argv_str.push_back(script);
 		} else
-			argv_str.push_back(script);
+			argv_str.push_back(exec);
 
 		std::vector<char*> argv;
 		argv.reserve(argv_str.size() + 1);
@@ -135,10 +150,12 @@ StatusCode CgiHandler::handle(HttpRequest &req, HttpResponse &res)
 		}
 		argv.push_back(NULL);
 		if (execve(argv[0], &argv[0], &envp[0]) == -1) {
-			for (size_t i = 0; i < argv.size(); ++i)
+			// fprintf(stderr, "execve: %s: %m\n", argv[0]);
+			size_t i = ends_with(script, ".py") ? 2 : 1;
+			for (; i < argv.size(); ++i)
 				delete[] argv[i];
-			for (size_t i = 0; i < envp.size(); ++i)
-				delete[] envp[i];
+			// for (i = 0; i < envp.size(); ++i)
+			// 	delete[] envp[i];
 
 			std::exit(EXIT_FAILURE); // probably should be 127
 		}

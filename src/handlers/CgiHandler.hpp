@@ -76,9 +76,11 @@ public:
 	HttpResponse &res() const;
 	HttpRequest	 &req() const;
 	ConnWorker	 *wrkr;
+	std::string cgi_pass;
 
 	StatusCode handle(HttpRequest &req, HttpResponse &res);
 	StatusCode handlePHP(HttpRequest &req, HttpResponse &res);
+	std::string get_full_path(std::string& path);
 	static int		   set_non_blocking(int fd);
 };
 

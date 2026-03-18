@@ -58,8 +58,9 @@ HttpResponse *RequestDispatcher::dispatch(Connection &conn, HttpRequest &req)
 		if (cgi != NULL) {
 			if (conn.getParent() == NULL)
 				throw TCPServer::GenericException();
-			std::string cgi_runner = cgi->_cgi_pass.empty() ? cgi->_script : cgi->_cgi_pass;
-			CgiHandler cgi_handler(req, *res->location, cgi_runner, *res);
+			std::string cgi_script = req.path.empty() ? cgi->_script : req.path;
+			CgiHandler cgi_handler(req, *res->location, cgi_script, *res);
+			cgi_handler.cgi_pass = cgi->_cgi_pass;
 			cgi_handler.wrkr = conn.getParent();
 
 			StatusCode code = SC_200;
