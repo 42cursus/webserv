@@ -3,10 +3,10 @@
 /*                                                        :::      ::::::::   */
 /*   DirectiveHandlers.cpp                              :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By: margo <margo@student.42.fr>                +#+  +:+       +#+        */
+/*   By: mganchev <mganchev@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/01/27 17:16:32 by margo             #+#    #+#             */
-/*   Updated: 2026/02/01 18:33:25 by margo            ###   ########.fr       */
+/*   Updated: 2026/03/18 12:35:39 by mganchev         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -162,6 +162,15 @@ void    Parser::handleScript(const std::vector<t_token> line) // check if ext on
 
     std::vector<t_token>::const_iterator split = getTokenFromVector(line, EQUAL);
     getLastCGI()._script = (++split)->literal;
+}
+
+void    Parser::handleCgiPass(const std::vector<t_token> line)
+{
+    if (line.size() < 4 || _current_block->getBlockType() != CGI_)
+        throw Error("Error: invalid directive: cgi_pass");
+    
+    std::vector<t_token>::const_iterator split = getTokenFromVector(line, EQUAL);
+    getLastCGI()._cgi_pass = (++split)->literal;
 }
 
 void    Parser::handleCgiParam(const std::vector<t_token> line)

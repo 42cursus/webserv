@@ -3,10 +3,10 @@
 /*                                                        :::      ::::::::   */
 /*   Parser.hpp                                         :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By: margo <margo@student.42.fr>                +#+  +:+       +#+        */
+/*   By: mganchev <mganchev@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/01/21 16:11:56 by margo             #+#    #+#             */
-/*   Updated: 2026/02/01 17:44:45 by margo            ###   ########.fr       */
+/*   Updated: 2026/03/18 12:33:55 by mganchev         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -131,6 +131,7 @@ class   Parser
         void    handleMaxBodySize(const std::vector<t_token> line);
         void    handleExt(const std::vector<t_token> line);
         void    handleScript(const std::vector<t_token> line);
+        void    handleCgiPass(const std::vector<t_token> line);
         void    handleCgiParam(const std::vector<t_token> line);
         void    handleErrorPage(const std::vector<t_token> line);
 

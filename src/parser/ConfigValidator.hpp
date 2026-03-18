@@ -3,10 +3,10 @@
 /*                                                        :::      ::::::::   */
 /*   ConfigValidator.hpp                                :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By: abelov <abelov@student.42london.com>       +#+  +:+       +#+        */
+/*   By: mganchev <mganchev@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/03/16 17:01:18 by abelov            #+#    #+#             */
-/*   Updated: 2026/03/16 17:01:18 by abelov           ###   ########.fr       */
+/*   Updated: 2026/03/18 12:39:49 by mganchev         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -22,7 +22,7 @@ public:
 	static bool validateErrorPage(std::string error_page);
 	static bool validateErrorCode(std::string error_code);
 	static bool validateBool(std::string boolean);
-	static bool validateCgiScriptExt(std::string ext, std::string script);
+	//static bool validateCgiScriptExt(std::string ext, std::string script);
 	static bool validateLocationRedirect(std::string path, std::string root);
 };
 

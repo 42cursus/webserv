@@ -3,10 +3,10 @@
 /*                                                        :::      ::::::::   */
 /*   ConfigValidator.cpp                                :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By: abelov <abelov@student.42london.com>       +#+  +:+       +#+        */
+/*   By: mganchev <mganchev@student.42.fr>          +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2026/03/16 17:01:05 by abelov            #+#    #+#             */
-/*   Updated: 2026/03/16 17:01:05 by abelov           ###   ########.fr       */
+/*   Updated: 2026/03/18 12:40:40 by mganchev         ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -54,16 +54,16 @@ bool ConfigValidator::validateBool(std::string boolean)
 	return boolean == "true" || boolean == "false";
 }
 
-bool ConfigValidator::validateCgiScriptExt(std::string ext, std::string script)
-{
-	size_t find = script.find(ext);
+// bool ConfigValidator::validateCgiScriptExt(std::string ext, std::string script)
+// {
+// 	size_t find = script.find(ext);
 
-	if (find == std::string::npos)
-		return false;
-	if (script.substr(find) != ext)
-		return false;
-	return true;
-}
+// 	if (find == std::string::npos)
+// 		return false;
+// 	if (script.substr(find) != ext)
+// 		return false;
+// 	return true;
+// }
 
 bool ConfigValidator::validateLocationRedirect(std::string path, std::string root)
 {
