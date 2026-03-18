@@ -78,6 +78,9 @@ void CgiSessionManager::handleEvent(ConnWorker *worker, epoll_event &ev, int epo
 				epollMod(epoll_fd, cgiSession->_parentConnection->getFd(), taggedPtr, events);
 			}
 		} else if (result == Connection::ERROR) {
+			HttpResponse *res = cgiSession->_parentConnection->getCurrentResponse();
+			if (res != NULL)
+				res->body_complete = true;
 			epollDel(epoll_fd, cgiSession->_stdout_pipe[0]);
 			epollDel(epoll_fd, cgiSession->_stdin_pipe[1]);
 			kill(cgiSession->_pid, SIGTERM);
@@ -94,6 +97,9 @@ void CgiSessionManager::handleEvent(ConnWorker *worker, epoll_event &ev, int epo
 		if (result == Connection::OK)
 			epollDel(epoll_fd, cgiSession->_stdin_pipe[1]);
 		else if (result == Connection::ERROR) {
+			HttpResponse *res = cgiSession->_parentConnection->getCurrentResponse();
+			if (res != NULL)
+				res->body_complete = true;
 			epollDel(epoll_fd, cgiSession->_stdout_pipe[0]);
 			epollDel(epoll_fd, cgiSession->_stdin_pipe[1]);
 			kill(cgiSession->_pid, SIGTERM);

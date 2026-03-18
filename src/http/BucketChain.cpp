@@ -122,9 +122,11 @@ std::string BucketChain::flatten(size_t max_bytes) const
 	size_t produced = 0;
 	std::deque<Bucket>::const_iterator it = _buckets.begin();
 	for (; it != _buckets.end() && produced < limit; ++it) {
-		std::string chunk = it->viewAsString();
-		const size_t n = std::min(chunk.size(), limit - produced);
-		out.append(chunk.data(), n);
+		const size_t n = std::min(it->readableBytes(), limit - produced);
+		const char *p = it->dataPtr();
+		if (p == NULL || n == 0)
+			continue;
+		out.append(p, n);
 		produced += n;
 	}
 	return out;
@@ -142,7 +144,6 @@ std::string BucketChain::flatten(size_t max_bytes) const
 /*
 ** -------------------------------- MISCELLANEOUS --------------------------------
 */
-
 
 
 
